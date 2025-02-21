@@ -16,15 +16,9 @@ app.use(morgan("dev"));
 const usersRoutes = require("./routes/usersRoutes");
 app.use("/users", usersRoutes);
 
-const testRoutes = require("./routes/testRoutes");
-app.use("/test", testRoutes);
-
-const patientRoutes = require("./routes/patientRoutes");
-app.use("/patients", patientRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
