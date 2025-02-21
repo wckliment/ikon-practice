@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 require("dotenv").config();
 
+
 const app = express();
 
 // Middleware
@@ -12,10 +13,12 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 
-// Import routes
+// Import Routes
+const authRoutes = require("./routes/authRoutes");
+app.use("/auth", authRoutes);
+
 const usersRoutes = require("./routes/usersRoutes");
 app.use("/users", usersRoutes);
-
 
 // Start server
 const PORT = process.env.PORT || 5000;
