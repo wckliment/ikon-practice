@@ -24,20 +24,22 @@ export default function Login() {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-[#EBEAE6] font-nunito">
-      <div className="w-full max-w-md bg-white p-10 rounded-lg shadow-lg">
-        {/* Logo */}
-        <div className="flex justify-start mb-6">
-          <img src="/logo.svg" alt="ikon Practice Logo" className="w-12" />
-        </div>
+    <div className="relative flex h-screen items-center justify-center bg-[#EBEAE6] font-nunito">
+      {/* Top-Left Logo */}
+      <div className="absolute top-8 left-10 flex items-center">
+        <img src="/logo.svg" alt="ikon Practice Logo" className="w-10 h-10" />
+        <span className="ml-2 text-xl font-semibold text-gray-800">ikon Practice</span>
+      </div>
 
+      {/* Login Container */}
+      <div className="w-full max-w-md bg-white p-10 rounded-lg shadow-lg">
         {/* Welcome Message */}
         <div className="text-center mb-6">
           <h2 className="text-3xl font-extrabold text-gray-800">Welcome back</h2>
           <p className="text-gray-600 text-sm mt-1">Sign in to get started.</p>
         </div>
 
-        {/* Error Message */}
+        {/* Error Message (if any) */}
         {error && <p className="text-red-600 text-sm text-center mb-4">{error}</p>}
 
         {/* Login Form */}
@@ -108,3 +110,4 @@ export default function Login() {
     </div>
   );
 }
+
