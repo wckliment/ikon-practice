@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { handleLogin } from "../redux/authActions";
+import ErrorModal from "../components/ErrorModal";
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -10,18 +11,22 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    dispatch(handleLogin(email, password));
-  };
+  const [isErrorOpen, setIsErrorOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (error) setIsErrorOpen(true);
+  }, [error]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    dispatch(handleLogin(email, password));
+  };
 
   return (
     <div className="relative flex h-screen items-center justify-center bg-[#EBEAE6] font-nunito">
@@ -31,18 +36,16 @@ export default function Login() {
         <span className="ml-2 text-xl font-semibold text-gray-800">ikon Practice</span>
       </div>
 
+      {/* Error Modal */}
+      <ErrorModal isOpen={isErrorOpen} onClose={() => setIsErrorOpen(false)} message={error} />
+
       {/* Login Container */}
       <div className="w-full max-w-md bg-white p-10 rounded-lg shadow-lg">
-        {/* Welcome Message */}
         <div className="text-center mb-6">
           <h2 className="text-3xl font-extrabold text-gray-800">Welcome back</h2>
           <p className="text-gray-600 text-sm mt-1">Sign in to get started.</p>
         </div>
 
-        {/* Error Message (if any) */}
-        {error && <p className="text-red-600 text-sm text-center mb-4">{error}</p>}
-
-        {/* Login Form */}
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1">
@@ -74,23 +77,6 @@ export default function Login() {
             />
           </div>
 
-          {/* Remember Me & Forgot Password */}
-          <div className="flex items-center justify-between mb-6 text-sm text-gray-600">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="mr-2"
-              />
-              Remember me
-            </label>
-            <a href="#" className="hover:underline">
-              Forgot password?
-            </a>
-          </div>
-
-          {/* Login Button */}
           <button
             type="submit"
             className="w-full bg-[#5A5656] text-white py-2 rounded-md hover:bg-[#4a4747] transition duration-200"
@@ -98,14 +84,6 @@ export default function Login() {
             Log in
           </button>
         </form>
-
-        {/* Signup Link */}
-        <p className="text-sm text-center text-gray-600 mt-4">
-          Don’t have an account?{" "}
-          <a href="/signup" className="text-gray-800 font-semibold hover:underline">
-            Sign up here
-          </a>
-        </p>
       </div>
     </div>
   );

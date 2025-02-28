@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import ErrorModal from "../components/ErrorModal"; 
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function Signup() {
   });
 
   const [error, setError] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -22,6 +24,7 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsModalOpen(false);
 
     try {
       const res = await axios.post("http://localhost:5000/api/auth/register", formData);
@@ -30,6 +33,7 @@ export default function Signup() {
       }
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong.");
+      setIsModalOpen(true);
     }
   };
 
@@ -50,9 +54,6 @@ export default function Signup() {
             Create an account to unlock the full power of ikon Practice.
           </p>
         </div>
-
-        {/* Error Message */}
-        {error && <p className="text-red-600 text-sm text-center mb-4">{error}</p>}
 
         {/* Signup Form */}
         <form onSubmit={handleSubmit}>
@@ -167,7 +168,9 @@ export default function Signup() {
           </a>
         </p>
       </div>
+
+      {/* Error Modal */}
+      <ErrorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} message={error} />
     </div>
   );
 }
-
