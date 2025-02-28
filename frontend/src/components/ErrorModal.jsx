@@ -17,15 +17,17 @@ export default function ErrorModal({ isOpen, onClose, message }) {
             leaveTo="opacity-0 scale-95"
           >
             <Dialog.Panel className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
-              <Dialog.Title className="text-lg font-bold text-red-600">
+              {/* Updated text color to match Log in button */}
+              <Dialog.Title className="text-lg font-bold text-[rgb(90,86,86)]">
                 Error
               </Dialog.Title>
               <Dialog.Description className="mt-2 text-sm text-gray-700">
                 {message}
               </Dialog.Description>
               <div className="mt-4 flex justify-end">
+                {/* Updated button color to match Log in button */}
                 <button
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition duration-200"
+                  className="px-4 py-2 bg-[rgb(90,86,86)] text-white rounded hover:bg-[rgb(70,66,66)] transition duration-200"
                   onClick={onClose}
                 >
                   Close

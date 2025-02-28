@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import ErrorModal from "../components/ErrorModal"; 
+import ErrorModal from "../components/ErrorModal"; // Ensure correct import
 
 export default function Signup() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     name: "",
-    role: "dentist", // Default selection
+    role: "dentist", // Default role selection
     dob: "",
     email: "",
     password: "",
@@ -21,10 +21,40 @@ export default function Signup() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError("Name is required.");
+      setIsModalOpen(true);
+      return false;
+    }
+    if (!formData.role) {
+      setError("Please select a role.");
+      setIsModalOpen(true);
+      return false;
+    }
+    if (!formData.dob) {
+      setError("Date of Birth is required.");
+      setIsModalOpen(true);
+      return false;
+    }
+    if (!formData.email.includes("@")) {
+      setError("Please enter a valid email address.");
+      setIsModalOpen(true);
+      return false;
+    }
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      setIsModalOpen(true);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setIsModalOpen(false);
+
+    // Frontend Validation
+    if (!validateForm()) return;
 
     try {
       const res = await axios.post("http://localhost:5000/api/auth/register", formData);
@@ -32,7 +62,7 @@ export default function Signup() {
         navigate("/login");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong.");
+      setError(err.response?.data?.message || "Something went wrong. Please try again.");
       setIsModalOpen(true);
     }
   };
@@ -56,7 +86,7 @@ export default function Signup() {
         </div>
 
         {/* Signup Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           {/* Full Name */}
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1">
@@ -70,11 +100,10 @@ export default function Signup() {
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
               placeholder="Enter your full name"
-              required
             />
           </div>
 
-          {/* Role Dropdown (Moved Below Name) */}
+          {/* Role Dropdown */}
           <div className="mb-4">
             <label htmlFor="role" className="block text-sm font-semibold text-gray-700 mb-1">
               Select Role
@@ -85,7 +114,6 @@ export default function Signup() {
               value={formData.role}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-500"
-              required
             >
               <option value="dentist">Dentist</option>
               <option value="staff">Staff</option>
@@ -106,7 +134,6 @@ export default function Signup() {
               value={formData.dob}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-              required
             />
           </div>
 
@@ -123,7 +150,6 @@ export default function Signup() {
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
               placeholder="Enter your email"
-              required
             />
           </div>
 
@@ -140,7 +166,6 @@ export default function Signup() {
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
               placeholder="Create a password"
-              required
             />
           </div>
 
@@ -174,3 +199,4 @@ export default function Signup() {
     </div>
   );
 }
+
