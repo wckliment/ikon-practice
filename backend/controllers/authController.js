@@ -1,10 +1,14 @@
-const jwt = require("jsonwebtoken"); 
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/userModel");
 
-// ✅ User Registration with Password Hashing
+// ✅ User Registration with Role & DOB
 exports.register = (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, dob, email, password, role } = req.body;
+
+  if (!name || !dob || !email || !password || !role) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
 
   User.findByEmail(email, (err, results) => {
     if (err) return res.status(500).json({ error: "Server error" });
@@ -20,7 +24,7 @@ exports.register = (req, res) => {
         return res.status(500).json({ error: "Error hashing password" });
       }
 
-      User.create(name, email, hashedPassword, role, (err, result) => {
+      User.create(name, dob, email, hashedPassword, role.toLowerCase(), (err, result) => {
         if (err) {
           console.error("Error registering user:", err);
           return res.status(500).json({ error: "Server error" });
@@ -31,7 +35,7 @@ exports.register = (req, res) => {
   });
 };
 
-// ✅ User Login & JWT Token Generation
+// ✅ User Login Function (Ensure This Exists)
 exports.login = (req, res) => {
   const { email, password } = req.body;
 
@@ -48,7 +52,7 @@ exports.login = (req, res) => {
       // ✅ Generate JWT Token
       const token = jwt.sign(
         { userId: user.id, role: user.role },
-        process.env.JWT_SECRET,  // ✅ Ensure you have JWT_SECRET in your .env file
+        process.env.JWT_SECRET,  // Ensure JWT_SECRET exists in .env
         { expiresIn: "1h" }
       );
 
@@ -56,3 +60,4 @@ exports.login = (req, res) => {
     });
   });
 };
+

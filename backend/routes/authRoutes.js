@@ -8,9 +8,13 @@ router.post(
   "/register",
   [
     body("name").trim().notEmpty().withMessage("Name is required"),
+    body("dob").isISO8601().withMessage("Date of Birth must be a valid date (YYYY-MM-DD)"),
     body("email").isEmail().withMessage("Valid email is required"),
     body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
-    body("role").isIn(["admin", "dentist", "staff"]).withMessage("Role must be admin, dentist, or staff")
+    body("role")
+      .toLowerCase() // Convert role to lowercase before storing
+      .isIn(["admin", "dentist", "staff", "hygienist"])
+      .withMessage("Role must be Admin, Dentist, Staff, or Hygienist"),
   ],
   (req, res, next) => {
     const errors = validationResult(req);
