@@ -17,46 +17,56 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Logo - Always Fixed at the Top */}
+      {/* ✅ Logo - Stays Fixed */}
       <div className="fixed top-8 left-6 z-50">
         <img src="/logo.svg" alt="Ikon Practice Logo" className="w-20 h-24" />
       </div>
 
-      {/* Sidebar - Fully Locked in Place */}
-      <div className="fixed left-6 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-[50px] py-6 px-3 flex flex-col items-center w-[65px] h-[500px] z-50">
-        {/* Navigation Icons */}
-        <nav className="flex flex-col gap-10">
-          <NavLink to="/dashboard">
-            <Grid size={36} />
+      {/* ✅ Sidebar - Fully Fixed in Position */}
+      <div className="fixed left-8 top-1/2 transform -translate-y-1/2 bg-white shadow-lg rounded-[50px] py-6 px-3 flex flex-col items-center w-[65px] h-[500px] z-50">
+        {/* ✅ Navigation Icons */}
+        <nav className="flex flex-col gap-8">
+          <NavLink to="/dashboard" className="hover:bg-[#252525] group w-14 h-14 flex items-center justify-center rounded-full transition">
+            <Grid size={36} className="group-hover:text-white transition duration-300" />
           </NavLink>
-          <NavLink to="/messages">
-            <MessageCircle size={36} />
+          <NavLink to="/messages" className="hover:bg-[#252525] group w-14 h-14 flex items-center justify-center rounded-full transition">
+            <MessageCircle size={36} className="group-hover:text-white transition duration-300" />
           </NavLink>
-          <NavLink to="/analytics">
-            <BarChart2 size={36} />
+          <NavLink to="/analytics" className="hover:bg-[#252525] group w-14 h-14 flex items-center justify-center rounded-full transition">
+            <BarChart2 size={36} className="group-hover:text-white transition duration-300" />
           </NavLink>
-          <NavLink to="/forms">
-            <Edit size={36} />
+          <NavLink to="/forms" className="hover:bg-[#252525] group w-14 h-14 flex items-center justify-center rounded-full transition">
+            <Edit size={36} className="group-hover:text-white transition duration-300" />
           </NavLink>
-          <NavLink to="/tasks">
-            <Clipboard size={36} />
+          <NavLink to="/tasks" className="hover:bg-[#252525] group w-14 h-14 flex items-center justify-center rounded-full transition">
+            <Clipboard size={36} className="group-hover:text-white transition duration-300" />
           </NavLink>
         </nav>
 
-        {/* Settings Menu */}
-        <MoreHorizontal size={32} className="mt-auto mb-2" />
+        {/* ✅ Settings Icon - Inside Sidebar, Correct Size & Padding */}
+        <div className="mt-auto flex justify-center w-full pb-4">
+          <NavLink
+            to="/settings"
+            className="w-14 h-14 flex items-center justify-center rounded-full hover:bg-[#252525] transition duration-300"
+          >
+            <MoreHorizontal size={38} className="text-gray-700 hover:text-white transition duration-300" />
+          </NavLink>
+        </div>
       </div>
 
-      {/* User Avatar & Logout - Fixed at Bottom */}
-      <div className="fixed bottom-8 left-6 flex flex-col items-center space-y-4 z-50">
+      {/* ✅ Avatar & Logout - Fixed in Position, Correctly Sized */}
+      <div className="fixed bottom-10 left-12 flex flex-col items-center space-y-8 z-50">
         {/* User Avatar */}
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-300">
+        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-gray-300">
           <img src={user?.profilePicture || "/default-avatar.png"} alt="User Avatar" className="w-full h-full object-cover" />
         </div>
 
-        {/* Logout Button */}
-        <button onClick={handleLogout} className="hover:text-red-600">
-          <LogOut size={30} className="text-gray-700" />
+        {/* ✅ Fixed Logout Button Padding & Size */}
+        <button
+          onClick={handleLogout}
+          className="w-14 h-14 flex items-center justify-center rounded-full hover:bg-[#252525] transition duration-300"
+        >
+          <LogOut size={38} className="text-gray-700 hover:text-white transition duration-300" />
         </button>
       </div>
     </>
@@ -64,3 +74,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+
