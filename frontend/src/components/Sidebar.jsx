@@ -74,18 +74,18 @@ const Sidebar = () => {
       </div>
 
       {/* User Avatar & Logout - Fixed at Bottom */}
-      <div className="absolute bottom-6 flex flex-col items-center">
-        {/* User Avatar */}
-        <div className="w-12 h-12 mb-4 rounded-full overflow-hidden border-2 border-gray-300">
-          <img
-            src={user?.profilePicture || "/default-avatar.png"} // ✅ Fix: Use Redux user profile
-            alt="User Avatar"
-            className="w-full h-full object-cover"
-          />
-        </div>
+      <div className="absolute bottom-20 flex flex-col items-center">
+  {/* User Avatar */}
+  <div className="w-12 h-12 mb-6 rounded-full overflow-hidden border-2 border-gray-300">
+    <img
+      src={user?.profilePicture || "/default-avatar.png"} // ✅ Use Redux user profile
+      alt="User Avatar"
+      className="w-full h-full object-cover"
+    />
+  </div>
 
-        {/* Logout Button */}
-        <button onClick={handleLogout} className="hover:text-red-600">
+  {/* Logout Button - Increased Spacing */}
+  <button onClick={handleLogout} className="mt-4 hover:text-red-600">
           <LogOut size={30} className="text-gray-700" />
         </button>
       </div>
