@@ -3,12 +3,10 @@ import { useSelector } from "react-redux";
 
 const Header = () => {
   const user = useSelector((state) => state.auth.user);
-
-  // Extract first name from full name
   const firstName = user?.name ? user.name.split(" ")[0] : "there";
 
   return (
-    <div className="w-full px-[5rem] mt-12">
+    <div className="w-full px-[6rem] mt-[2.5rem] flex items-center"> {/* ✅ Adjusted margin */}
       <h1 className="text-4xl font-bold text-gray-800">
         Hi {firstName}, Welcome Back!
       </h1>
@@ -17,3 +15,4 @@ const Header = () => {
 };
 
 export default Header;
+

@@ -1,6 +1,7 @@
 import React from "react";
 import Sidebar from "../components/Sidebar";
-import Header from "../components/Header"; // ✅ Import the Header
+import Header from "../components/Header";
+import TopBar from "../components/TopBar"; // ✅ Import the TopBar component
 
 const Dashboard = () => {
   return (
@@ -9,7 +10,11 @@ const Dashboard = () => {
       <Sidebar />
 
       {/* Dashboard Content */}
-      <div className="flex-1 flex flex-col p-6 ml-[5rem]"> {/* Adjust ml-[value] for alignment */}
+      <div className="flex-1 flex flex-col p-6 ml-[5rem] relative"> {/* Added 'relative' for proper positioning */}
+
+        {/* TopBar (Fixed in the top-right corner) */}
+        <TopBar />
+
         {/* Separate Header */}
         <Header />
 
