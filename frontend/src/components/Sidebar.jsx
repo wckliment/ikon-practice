@@ -1,8 +1,20 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { Grid, MessageCircle, BarChart2, Edit, Clipboard, MoreHorizontal } from "react-feather"; // Feather Icons
+import { useSelector, useDispatch } from "react-redux"; // ✅ Import Redux hooks
+import { logout } from "../redux/authSlice"; // ✅ Import logout action
+import { Grid, MessageCircle, BarChart2, Edit, Clipboard, MoreHorizontal, LogOut } from "react-feather"; // Feather Icons
 
 const Sidebar = () => {
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user); // ✅ Get user from Redux state
+
+  const handleLogout = () => {
+    dispatch(logout());
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login"; // ✅ Redirect to login after logout
+  };
+
   return (
     <div className="relative h-screen flex flex-col items-center pl-12">
       {/* Logo (Stays in Good Position) */}
@@ -12,7 +24,6 @@ const Sidebar = () => {
 
       {/* Sidebar - Moved Higher */}
       <div className="absolute top-[20%] left-8 w-16 bg-white shadow-lg rounded-[50px] flex flex-col items-center py-4">
-
         {/* Navigation Icons (Big Icons) */}
         <nav className="flex flex-col gap-6">
           <NavLink
@@ -62,19 +73,21 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Avatar & Logout - Fixed Position at Bottom Left */}
-      <div className="absolute left-11 bottom-8 flex flex-col items-center">
-        <img
-          src="/profile.jpg"
-          alt="User Avatar"
-          className="w-12 h-12 rounded-full border border-gray-300"
-        />
-        <NavLink
-          to="/logout"
-          className="flex items-center justify-center w-12 h-12 rounded-full hover:bg-gray-100 transition mt-4"
-        >
-          <img src="/logout-icon.svg" alt="Logout" className="w-6 h-6" />
-        </NavLink>
+      {/* User Avatar & Logout - Fixed at Bottom */}
+      <div className="absolute bottom-6 flex flex-col items-center">
+        {/* User Avatar */}
+        <div className="w-12 h-12 mb-4 rounded-full overflow-hidden border-2 border-gray-300">
+          <img
+            src={user?.profilePicture || "/default-avatar.png"} // ✅ Fix: Use Redux user profile
+            alt="User Avatar"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        {/* Logout Button */}
+        <button onClick={handleLogout} className="hover:text-red-600">
+          <LogOut size={30} className="text-gray-700" />
+        </button>
       </div>
     </div>
   );
