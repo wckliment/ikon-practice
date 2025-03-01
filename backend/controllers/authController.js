@@ -52,12 +52,21 @@ exports.login = (req, res) => {
       // ✅ Generate JWT Token
       const token = jwt.sign(
         { userId: user.id, role: user.role },
-        process.env.JWT_SECRET,  // Ensure JWT_SECRET exists in .env
+        process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
 
-      res.json({ message: "Login successful", token });
+      // ✅ Return user data in response
+      res.json({
+        message: "Login successful",
+        token,
+        user: {
+          id: user.id,
+          name: user.name,  // Ensure `name` exists in your database
+          email: user.email,
+          role: user.role
+        }
+      });
     });
   });
 };
-

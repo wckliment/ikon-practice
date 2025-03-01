@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { loginSuccess } from "../redux/authSlice"; // Import Redux action
 import axios from "axios";
 import ErrorModal from "../components/ErrorModal"; // Ensure import is correct
 
 export default function Login() {
   const navigate = useNavigate();
+  const dispatch = useDispatch(); // Initialize Redux dispatch
 
   const [formData, setFormData] = useState({
     email: "",
@@ -33,21 +36,32 @@ export default function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    // Frontend Validation
-    if (!validateForm()) return;
+  try {
+    console.log("Sending login request..."); // ✅ Debugging step
+    const res = await axios.post("http://localhost:5000/api/auth/login", formData);
 
-    try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", formData);
-      if (res.data.token) {
-        navigate("/dashboard");
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || "Invalid credentials. Please try again.");
-      setIsModalOpen(true);
+    console.log("Login Response Data:", res.data); // ✅ Ensure API response includes `user`
+
+    if (res.data.user && res.data.token) {
+      console.log("User received:", res.data.user); // ✅ Debug user data
+      dispatch(loginSuccess({ user: res.data.user, token: res.data.token }));
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      navigate("/dashboard");
+    } else {
+      console.error("User data is missing in API response");
     }
-  };
+  } catch (err) {
+    setError(err.response?.data?.message || "Invalid credentials. Please try again.");
+    setIsModalOpen(true);
+  }
+};
+
 
   return (
     <div className="relative flex h-screen items-center justify-center bg-[#EBEAE6] font-nunito">
@@ -120,4 +134,3 @@ export default function Login() {
     </div>
   );
 }
-
