@@ -23,7 +23,7 @@ const Sidebar = () => {
       </div>
 
       {/* ✅ Sidebar - Moved Up, Thinner & Taller */}
-      <div className="fixed left-8 top-[45%] transform -translate-y-1/2 bg-white shadow-lg rounded-[50px] py-6 px-2 flex flex-col items-center w-[55px] h-[505px] z-50">
+      <div className="fixed left-10 top-[41%] transform -translate-y-1/2 bg-white shadow-lg rounded-[50px] py-6 px-2 flex flex-col items-center w-[55px] h-[505px] z-50">
         {/* ✅ Navigation Icons */}
         <nav className="flex flex-col gap-6">
           <NavLink to="/dashboard" className="hover:bg-[#252525] group w-12 h-12 flex items-center justify-center rounded-full transition">
