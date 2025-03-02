@@ -18,7 +18,7 @@ const Sidebar = () => {
   return (
     <>
       {/* ✅ Logo - Stays Fixed */}
-      <div className="fixed top-6 left-6 z-50">
+      <div className="fixed top-10 left-6 z-50">
         <img src="/logo.svg" alt="Ikon Practice Logo" className="w-20 h-24" />
       </div>
 
