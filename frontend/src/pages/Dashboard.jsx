@@ -1,7 +1,10 @@
 import React from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
-import TopBar from "../components/TopBar"; // ✅ Import the TopBar component
+import TopBar from "../components/TopBar";
+import KPICard from "../components/KPICards/KPICard";
+import CircularProgress from "../components/KPICards/CircularProgress";
+import { DollarSign, Users, Target } from 'react-feather'; // Import all needed icons
 
 const Dashboard = () => {
   return (
@@ -10,35 +13,44 @@ const Dashboard = () => {
       <Sidebar />
 
       {/* Dashboard Content */}
-      <div className="flex-1 flex flex-col p-6 ml-[5rem] relative">
-        {/* TopBar (Fixed in the top-right corner) */}
+      <div className="flex-1 flex flex-col p-6 ml-[10rem] relative">
+        {/* TopBar */}
         <TopBar />
 
-        {/* Separate Header */}
+        {/* Header */}
         <Header />
 
-        {/* ✅ Updated KPI Cards with Fixed Dimensions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {/* ✅ Account Balances */}
-          <div className="bg-white p-6 rounded-[30px] shadow-lg flex flex-col w-[391px] h-[186px]">
-            <h2 className="text-lg font-semibold text-gray-700">Account Balances</h2>
-            <p className="text-3xl font-bold mt-2">$17k</p>
-            <p className="text-gray-500 text-sm">out of $25k collected</p>
-          </div>
+        {/* KPI Cards Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
+          {/* Account Balances */}
+          <KPICard
+            title="Account Balances"
+            value="$17k"
+            description="out of $25k collected"
+            icon={DollarSign}
+          >
+            <CircularProgress percentage={68} size={80} />
+          </KPICard>
 
-          {/* ✅ New Patients */}
-          <div className="bg-white p-6 rounded-[30px] shadow-lg flex flex-col w-[391px] h-[186px]">
-            <h2 className="text-lg font-semibold text-gray-700">New Patients</h2>
-            <p className="text-3xl font-bold mt-2">45</p>
-            <p className="text-gray-500 text-sm">out of 60 Total</p>
-          </div>
+          {/* New Patients */}
+          <KPICard
+            title="New Patients"
+            value="45"
+            description="out of 60 Total"
+            icon={Users}
+          >
+            <CircularProgress percentage={75} size={80} />
+          </KPICard>
 
-          {/* ✅ Daily Goal */}
-          <div className="bg-white p-6 rounded-[30px] shadow-lg flex flex-col w-[391px] h-[186px]">
-            <h2 className="text-lg font-semibold text-gray-700">Daily Goal</h2>
-            <p className="text-3xl font-bold mt-2">$3.2K</p>
-            <p className="text-gray-500 text-sm">out of $5k collected</p>
-          </div>
+          {/* Daily Goal */}
+          <KPICard
+            title="Daily Goal"
+            value="$3.2K"
+            description="out of $5k collected"
+            icon={Target}
+          >
+            <CircularProgress percentage={64} size={80} />
+          </KPICard>
         </div>
       </div>
     </div>
