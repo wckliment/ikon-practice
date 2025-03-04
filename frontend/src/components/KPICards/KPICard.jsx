@@ -11,10 +11,36 @@ const KPICard = ({
 }) => {
   return (
     <div className="bg-white p-5 rounded-[30px] shadow-lg w-[391px] h-[186px] relative">
-      {/* Settings icon in the top right */}
-      <div className="absolute top-4 right-4 cursor-pointer">
-        <div className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#252525] transition duration-300">
-          <MoreHorizontal size={16} style={{ strokeWidth: 1.25 }} className="text-gray-700 hover:text-white transition duration-300" />
+      {/* Settings icon in the top right with enhanced hover effect */}
+      <div className="absolute top-4 right-4 cursor-pointer z-20">
+        <div
+          className="w-8 h-8 flex items-center justify-center rounded-full transition duration-300"
+          style={{
+            // Inline styles have higher specificity than classes
+            // Using !important to ensure these styles aren't overridden
+            backgroundColor: "transparent !important",
+            ":hover": {
+              backgroundColor: "#252525 !important"
+            }
+          }}
+          onMouseEnter={(e) => {
+            // Direct DOM manipulation for the hover effect
+            e.currentTarget.style.backgroundColor = "#252525";
+            const icon = e.currentTarget.querySelector("svg");
+            if (icon) icon.style.color = "white";
+          }}
+          onMouseLeave={(e) => {
+            // Reset on mouse leave
+            e.currentTarget.style.backgroundColor = "transparent";
+            const icon = e.currentTarget.querySelector("svg");
+            if (icon) icon.style.color = "";
+          }}
+        >
+          <MoreHorizontal
+            size={16}
+            style={{ strokeWidth: 1.25 }}
+            className="text-gray-700 transition duration-300"
+          />
         </div>
       </div>
 
@@ -33,7 +59,7 @@ const KPICard = ({
         {/* Text content */}
         <div className="flex-grow">
           <p className="text-5xl font-bold">{value}</p>
-          <p className="text-gray-500 text-sm mt-0">{description}</p>
+          <div className="text-gray-500 text-sm mt-0">{description}</div>
         </div>
 
         {/* Progress circle */}
