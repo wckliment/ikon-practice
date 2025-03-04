@@ -5,6 +5,8 @@ import TopBar from "../components/TopBar";
 import KPICard from "../components/KPICards/KPICard";
 import CircularProgress from "../components/KPICards/CircularProgress";
 import DailyGoalCard from "../components/KPICards/DailyGoalCard";
+import WeeklyProductionCard from "../components/KPICards/WeeklyProductionCard";
+import GoogleReviewsCard from "../components/KPICards/GoogleReviewsCard";
 import { DollarSign, Target, Users, MoreHorizontal } from 'react-feather';
 
 const Dashboard = () => {
@@ -33,9 +35,9 @@ const Dashboard = () => {
           >
             <CircularProgress
               percentage={68}
-              width={140}
-              height={90}
-              strokeWidth={12}
+              width={100}
+              height={100}
+              strokeWidth={18}
             />
           </KPICard>
 
@@ -71,6 +73,19 @@ const Dashboard = () => {
 
           {/* Daily Goal - New Component */}
           <DailyGoalCard />
+        </div>
+
+        {/* Second Row - Weekly Production and Google Reviews */}
+        <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 mt-6">
+          {/* Weekly Production Card - Spans 4 columns */}
+          <div className="lg:col-span-4">
+            <WeeklyProductionCard />
+          </div>
+
+          {/* Google Reviews Card - Spans 3 columns */}
+          <div className="lg:col-span-3">
+            <GoogleReviewsCard current={12} goal={20} />
+          </div>
         </div>
       </div>
     </div>
