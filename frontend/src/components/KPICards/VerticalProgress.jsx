@@ -5,13 +5,13 @@ const VerticalProgress = ({ percentage = 0, height = 60 }) => {
   const normalizedPercentage = Math.min(100, Math.max(0, percentage));
 
   return (
-    <div className="flex flex-col items-center">
-      {/* Percentage display */}
-      <div className="text-sm font-medium mb-2">{normalizedPercentage}%</div>
+    <div className="flex items-center gap-2">
+      {/* Percentage display - now on the left */}
+      <div className="text-sm font-medium">{normalizedPercentage}%</div>
 
       {/* Pill container */}
       <div
-        className="relative w-3 bg-gray-200 rounded-full overflow-hidden"
+        className="relative w-6 bg-gray-200 rounded-full overflow-hidden"
         style={{ height: `${height}px` }}
       >
         {/* Filled portion */}

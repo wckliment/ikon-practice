@@ -29,8 +29,14 @@ const Dashboard = () => {
             value="$17k"
             description="out of $25k collected"
             icon={DollarSign}
+            iconBgColor="#F8E3CC"
           >
-            <CircularProgress percentage={68} size={80} />
+            <CircularProgress
+              percentage={68}
+              width={80}
+              height={100}
+              strokeWidth={12}
+            />
           </KPICard>
 
           {/* New Patients - Custom Implementation */}
@@ -51,7 +57,7 @@ const Dashboard = () => {
             <div className="mt-4">
               <div className="flex items-center">
                 <div>
-                  <p className="text-4xl font-bold">45</p>
+                  <p className="text-5xl font-bold">45</p>
                   <p className="text-gray-500 text-sm mt-1">out of 60 Total</p>
                 </div>
                 {/* Percentage text to the right */}

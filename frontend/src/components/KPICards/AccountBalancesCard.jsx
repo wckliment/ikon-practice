@@ -1,7 +1,7 @@
 import React from 'react';
 import KPICard from './KPICard';
 import CircularProgress from './CircularProgress';
-import { DollarSign } from 'react-feather'; // Import the DollarSign icon from react-feather
+import { DollarSign } from 'react-feather';
 
 const AccountBalancesCard = ({ value = "$17k", total = "$25k", percentage = 68 }) => {
   return (
@@ -9,9 +9,15 @@ const AccountBalancesCard = ({ value = "$17k", total = "$25k", percentage = 68 }
       title="Account Balances"
       value={value}
       description={`out of ${total} collected`}
-      icon={DollarSign} // Pass the DollarSign icon component
+      icon={DollarSign}
+      iconBgColor="#F8E3CC" // Match the gold theme of the progress circle
     >
-      <CircularProgress percentage={percentage} size={80} />
+      <CircularProgress
+        percentage={percentage}
+        width={76}
+        height={100} // Increased height to make it taller
+        strokeWidth={12}
+      />
     </KPICard>
   );
 };
