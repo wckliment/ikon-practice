@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import TopBar from "../components/TopBar";
@@ -7,6 +7,8 @@ import CircularProgress from "../components/KPICards/CircularProgress";
 import DailyGoalCard from "../components/KPICards/DailyGoalCard";
 import WeeklyProductionCard from "../components/KPICards/WeeklyProductionCard";
 import GoogleReviewsCard from "../components/KPICards/GoogleReviewsCard";
+import PatientAlertsCard from "../components/KPICards/PatientAlertsCard";
+import CommunicationHubCard from "../components/KPICards/CommunicationHubCard";
 import { DollarSign, Target, Users, MoreHorizontal } from 'react-feather';
 
 const Dashboard = () => {
@@ -23,7 +25,7 @@ const Dashboard = () => {
         {/* Header */}
         <Header />
 
-        {/* KPI Cards Row */}
+        {/* First Row - KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
           {/* Account Balances */}
           <KPICard
@@ -87,10 +89,22 @@ const Dashboard = () => {
             <GoogleReviewsCard current={12} goal={20} />
           </div>
         </div>
+
+        {/* Third Row - Patient Alerts and Communication Hub */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Patient Alerts Card */}
+          <div>
+            <PatientAlertsCard />
+          </div>
+
+          {/* Communication Hub Card */}
+          <div>
+            <CommunicationHubCard />
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default Dashboard;
-
