@@ -51,7 +51,7 @@ const CircularProgress = ({
 
       {/* Percentage text */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-sm font-medium">{percentage}%</span>
+        <span className="text-lg font-medium">{percentage}%</span>
       </div>
     </div>
   );

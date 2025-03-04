@@ -15,8 +15,8 @@ const AccountBalancesCard = ({ value = "$17k", total = "$25k", percentage = 68 }
       <CircularProgress
         percentage={percentage}
         width={76}
-        height={100} // Increased height to make it taller
-        strokeWidth={12}
+        height={120} // Increased height to make it taller
+        strokeWidth={16}
       />
     </KPICard>
   );

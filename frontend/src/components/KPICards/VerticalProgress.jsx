@@ -7,7 +7,7 @@ const VerticalProgress = ({ percentage = 0, height = 60 }) => {
   return (
     <div className="flex items-center gap-2">
       {/* Percentage display - now on the left */}
-      <div className="text-sm font-medium">{normalizedPercentage}%</div>
+      <div className="text-lg font-medium">{normalizedPercentage}%</div>
 
       {/* Pill container */}
       <div

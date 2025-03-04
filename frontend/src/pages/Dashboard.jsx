@@ -33,8 +33,8 @@ const Dashboard = () => {
           >
             <CircularProgress
               percentage={68}
-              width={80}
-              height={100}
+              width={140}
+              height={90}
               strokeWidth={12}
             />
           </KPICard>
