@@ -14,8 +14,15 @@ const GoogleReviewsCard = ({ current = 12, goal = 20 }) => {
         </div>
       </div>
 
+      {/* "See Detail" link repositioned to the right */}
+      <div className="absolute top-6 right-16 cursor-pointer">
+        <div className="text-sm text-gray-600 hover:text-gray-800">
+          See Detail
+        </div>
+      </div>
+
       {/* Header with Google icon and title */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center mb-4">
         <div className="flex items-center gap-3">
           {/* Google G icon */}
           <div className="p-2 rounded-full">
@@ -27,11 +34,6 @@ const GoogleReviewsCard = ({ current = 12, goal = 20 }) => {
             </svg>
           </div>
           <h2 className="text-lg font-semibold text-gray-700">Google Reviews</h2>
-        </div>
-
-        {/* "See Detail" button */}
-        <div className="text-sm text-gray-600 cursor-pointer hover:text-gray-800">
-          See Detail
         </div>
       </div>
 

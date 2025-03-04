@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import TopBar from "../components/TopBar";
@@ -77,13 +77,13 @@ const Dashboard = () => {
 
         {/* Second Row - Weekly Production and Google Reviews */}
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 mt-6">
-          {/* Weekly Production Card - Spans 4 columns */}
-          <div className="lg:col-span-4">
+          {/* Weekly Production Card - Spans 5 columns (71%) */}
+          <div className="lg:col-span-5">
             <WeeklyProductionCard />
           </div>
 
-          {/* Google Reviews Card - Spans 3 columns */}
-          <div className="lg:col-span-3">
+          {/* Google Reviews Card - Spans 2 columns (29%) */}
+          <div className="lg:col-span-2">
             <GoogleReviewsCard current={12} goal={20} />
           </div>
         </div>
@@ -93,3 +93,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
