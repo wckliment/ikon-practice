@@ -2,11 +2,10 @@ import React from 'react';
 import { MoreHorizontal, MessageCircle } from 'react-feather';
 
 const CommunicationHubCard = () => {
-  // Sample communication data
+  // Sample communication data WITHOUT avatars
   const communications = [
     {
       id: 1,
-      avatar: '/avatars/sally-johnson.jpg',
       name: 'Sally Johnson',
       status: 'In-Office',
       message: 'Can you check if John Smith\'s medical clearance came in?',
@@ -14,7 +13,6 @@ const CommunicationHubCard = () => {
     },
     {
       id: 2,
-      avatar: '/avatars/megan-bening.jpg',
       name: 'Megan Bening',
       status: 'New Lead',
       message: 'Your 3 o\'clock is here...',
@@ -22,7 +20,6 @@ const CommunicationHubCard = () => {
     },
     {
       id: 3,
-      avatar: '/avatars/andy-jones.jpg',
       name: 'Andy Jones',
       status: 'Patient Communication',
       message: 'Ethan, you\'re right in that...',
@@ -31,9 +28,9 @@ const CommunicationHubCard = () => {
   ];
 
   return (
-    <div className="bg-white p-5 rounded-[30px] shadow-lg flex flex-col w-full h-auto min-h-[300px] relative">
+    <div className="bg-white p-5 rounded-[30px] shadow-lg flex flex-col w-full h-auto max-h-[280px] relative">
       {/* Header section */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-pink-100">
             <MessageCircle size={16} className="text-pink-700" />
@@ -52,21 +49,15 @@ const CommunicationHubCard = () => {
         </div>
       </div>
 
-      {/* Communication list */}
-      <div className="space-y-4">
+      {/* Communication list with scroll capability */}
+      <div className="space-y-3 overflow-y-auto" style={{ maxHeight: "210px" }}>
         {communications.map(comm => (
           <div key={comm.id} className="flex items-start space-x-3 py-2">
-            {/* Avatar */}
-            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-              <img
-                src={comm.avatar}
-                alt={comm.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = '/avatars/default.png';
-                }}
-              />
+            {/* Avatar - Using ONLY initials, NO image tags */}
+            <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-blue-100 flex items-center justify-center">
+              <span className="text-blue-700 font-medium text-lg">
+                {comm.name.split(' ').map(n => n[0]).join('')}
+              </span>
             </div>
 
             {/* Message content */}
@@ -86,7 +77,7 @@ const CommunicationHubCard = () => {
               <p className="text-gray-600 text-sm truncate">{comm.message}</p>
             </div>
 
-            {/* Right section with time and read more */}
+            {/* Right section with read more */}
             <div className="text-right flex-shrink-0 ml-2">
               <button className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors">
                 Read More
@@ -100,3 +91,4 @@ const CommunicationHubCard = () => {
 };
 
 export default CommunicationHubCard;
+

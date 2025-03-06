@@ -10,7 +10,6 @@ const PatientAlertsCard = () => {
     {
       id: 1,
       name: 'Sally Smith',
-      avatar: '/avatars/sally.jpg',
       type: 'Form Missing',
       status: 'Upload Form',
       icon: FileText,
@@ -19,7 +18,6 @@ const PatientAlertsCard = () => {
     {
       id: 2,
       name: 'Darlene Allen',
-      avatar: '/avatars/darlene.jpg',
       type: 'Balance Owed',
       status: 'Pending Payment',
       icon: Calendar,
@@ -28,7 +26,6 @@ const PatientAlertsCard = () => {
     {
       id: 3,
       name: 'Tim Slater',
-      avatar: '/avatars/tim.jpg',
       type: 'Medical Alert',
       status: 'Critical - View Alert',
       icon: AlertTriangle,
@@ -37,7 +34,6 @@ const PatientAlertsCard = () => {
     {
       id: 4,
       name: 'Bill Johnson',
-      avatar: '/avatars/bill.jpg',
       type: 'Shared Appointment',
       status: 'Scheduled',
       icon: Calendar,
@@ -46,7 +42,6 @@ const PatientAlertsCard = () => {
     {
       id: 5,
       name: 'Brooke Adler',
-      avatar: '/avatars/brooke.jpg',
       type: 'Missed Appointment',
       status: 'Incomplete - Reminder',
       icon: Clock,
@@ -58,7 +53,7 @@ const PatientAlertsCard = () => {
   const tabs = ['All', 'Forms', 'Collections', 'Medical', 'Shared'];
 
   return (
-    <div className="bg-white p-5 rounded-[30px] shadow-lg flex flex-col w-full h-auto min-h-[300px] relative">
+    <div className="bg-white p-5 rounded-[30px] shadow-lg flex flex-col w-full h-auto max-h-[280px] relative">
       {/* Header section */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -80,7 +75,7 @@ const PatientAlertsCard = () => {
       </div>
 
       {/* Tabs for filtering */}
-      <div className="flex space-x-2 mb-4 border-b border-gray-200 pb-2">
+      <div className="flex space-x-2 mb-2 border-b border-gray-200 pb-1">
         {tabs.map(tab => (
           <button
             key={tab}
@@ -97,7 +92,7 @@ const PatientAlertsCard = () => {
       </div>
 
       {/* Alert list section */}
-      <div className="mt-2">
+      <div className="mt-2 overflow-y-auto" style={{ maxHeight: "180px" }}>
         <div className="grid grid-cols-12 gap-2 text-sm text-gray-500 font-medium px-2 mb-2">
           <div className="col-span-4">Patient Name</div>
           <div className="col-span-4">Alert Type</div>
@@ -110,16 +105,9 @@ const PatientAlertsCard = () => {
             <div key={alert.id} className="grid grid-cols-12 gap-2 items-center">
               {/* Patient info */}
               <div className="col-span-4 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200">
-                  <img
-                    src={alert.avatar}
-                    alt={alert.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = '/avatars/default.png';
-                    }}
-                  />
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-medium">
+                  {/* Display initials */}
+                  {alert.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <span className="font-medium text-gray-800">{alert.name}</span>
               </div>

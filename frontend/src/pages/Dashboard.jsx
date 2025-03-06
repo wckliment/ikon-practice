@@ -26,7 +26,7 @@ const Dashboard = () => {
         <Header />
 
         {/* First Row - KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
           {/* Account Balances */}
           <KPICard
             title="Account Balances"
@@ -78,7 +78,7 @@ const Dashboard = () => {
         </div>
 
         {/* Second Row - Weekly Production and Google Reviews */}
-        <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 mt-4">
           {/* Weekly Production Card - Spans 5 columns (71%) */}
           <div className="lg:col-span-5">
             <WeeklyProductionCard />
@@ -91,7 +91,7 @@ const Dashboard = () => {
         </div>
 
         {/* Third Row - Patient Alerts and Communication Hub */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
           {/* Patient Alerts Card */}
           <div>
             <PatientAlertsCard />
