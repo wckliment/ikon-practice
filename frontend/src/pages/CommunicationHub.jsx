@@ -1,6 +1,5 @@
 import React from "react";
 import Sidebar from "../components/Sidebar";
-import Header from "../components/Header";
 import TopBar from "../components/TopBar";
 
 const CommunicationHub = () => {
@@ -11,12 +10,14 @@ const CommunicationHub = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar - without the welcome message */}
+        {/* Top Bar */}
         <TopBar />
 
-        {/* Custom Header for Communication Hub */}
-        <div className="px-6 py-4">
-          <h1 className="text-2xl font-semibold text-gray-800">Communication Hub</h1>
+        {/* Custom Header - with adjusted positioning */}
+        <div className="w-full px-[0.5rem] mt-[4rem] flex items-center pl-20">
+          <h1 className="text-4xl font-bold text-gray-800 ml-24">
+            Communication Hub
+          </h1>
         </div>
 
         {/* Empty content area - we'll add the actual communication hub content later */}
