@@ -6,10 +6,12 @@ const CommunicationHub = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Main App Sidebar */}
-      <Sidebar />
+      <div className="w-20 fixed left-0 top-0 h-full">
+        <Sidebar />
+      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Content Area - with left margin to clear the sidebar */}
+      <div className="flex-1 flex flex-col ml-20">
         {/* Top Bar */}
         <TopBar />
 
@@ -21,10 +23,10 @@ const CommunicationHub = () => {
         </div>
 
         {/* Communication Hub Main Content */}
-        <div className="flex-1 p-6">
-          <div className="flex h-full gap-4">
+        <div className="flex-1 p-4 mt-4">
+          <div className="flex h-full max-w-screen-2xl mx-auto gap-4">
             {/* Left Panel - Chats List */}
-            <div className="w-1/4 bg-white rounded-lg shadow overflow-hidden flex flex-col">
+            <div className="w-72 bg-white rounded-lg shadow overflow-hidden flex flex-col">
               <div className="p-4 border-b flex justify-between items-center">
                 <h2 className="font-semibold text-lg">Chats</h2>
                 <button className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
@@ -109,8 +111,8 @@ const CommunicationHub = () => {
             </div>
 
             {/* Middle Panel - Chat Messages */}
-            <div className="w-2/5 bg-white rounded-lg shadow overflow-hidden flex flex-col">
-              <div className="p-4 border-b flex items-center justify-between">
+            <div className="w-[calc(50%-190px)] bg-white rounded-lg shadow overflow-hidden flex flex-col">
+              <div className="p-3 border-b flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
                     SJ
@@ -201,8 +203,8 @@ const CommunicationHub = () => {
             </div>
 
             {/* Right Panel - Contact Details */}
-            <div className="w-1/3 bg-white rounded-lg shadow overflow-hidden flex flex-col">
-              <div className="p-4 border-b flex items-center">
+            <div className="w-72 bg-white rounded-lg shadow overflow-hidden flex flex-col">
+              <div className="p-3 border-b flex items-center">
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
                   SJ
                 </div>
