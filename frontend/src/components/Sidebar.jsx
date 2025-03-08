@@ -65,7 +65,7 @@ const Sidebar = () => {
         {/* Top section with navigation icons - reduced vertical spacing */}
         <div className="flex flex-col items-center space-y-9 mb-12">
           <NavIcon to="/dashboard" icon={Grid} tooltipText="Dashboard" />
-          <NavIcon to="/messages" icon={MessageCircle} tooltipText="Messages" />
+          <NavIcon to="/communication-hub" icon={MessageCircle} tooltipText="Communication Hub" />
           <NavIcon to="/analytics" icon={BarChart2} tooltipText="Analytics" />
           <NavIcon to="/forms" icon={Edit} tooltipText="Forms" />
           <NavIcon to="/tasks" icon={Clipboard} tooltipText="Tasks" />
