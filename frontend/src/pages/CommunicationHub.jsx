@@ -13,8 +13,15 @@ const CommunicationHub = () => {
         {/* Top Bar */}
         <TopBar />
 
+        {/* Custom Header for Communication Hub */}
+        <div className="px-4 py-2 flex items-center">
+          <h1 className="text-4xl font-bold text-gray-800 ml-16 mt-14">
+            Communication Hub
+          </h1>
+        </div>
+
         {/* Communication Hub Content */}
-        <div className="p-6 mt-32 ml-10">
+        <div className="p-6 mt-6 ml-10">
           <div className="flex space-x-4">
             {/* Left Panel - Chats List */}
             <div className="w-72 bg-white rounded-lg shadow overflow-hidden flex flex-col">
