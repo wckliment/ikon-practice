@@ -4,27 +4,18 @@ import TopBar from "../components/TopBar";
 
 const CommunicationHub = () => {
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Main App Sidebar */}
-      <div className="w-20 fixed left-0 top-0 h-full">
-        <Sidebar />
-      </div>
+    <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
+      {/* Main App Sidebar - Fixed position */}
+      <Sidebar />
 
-      {/* Main Content Area - with left margin to clear the sidebar */}
-      <div className="flex-1 flex flex-col ml-20">
+      {/* Main Content Area */}
+      <div className="ml-20" style={{ backgroundColor: "#EBEAE6" }}>
         {/* Top Bar */}
         <TopBar />
 
-        {/* Custom Header - with adjusted positioning */}
-        <div className="w-full px-[0.5rem] mt-[4rem] flex items-center pl-20">
-          <h1 className="text-4xl font-bold text-gray-800 ml-24">
-            Communication Hub
-          </h1>
-        </div>
-
-        {/* Communication Hub Main Content */}
-        <div className="flex-1 p-4 mt-4">
-          <div className="flex h-full max-w-screen-2xl mx-auto gap-4">
+        {/* Communication Hub Content */}
+        <div className="p-6 mt-32 ml-10">
+          <div className="flex space-x-4">
             {/* Left Panel - Chats List */}
             <div className="w-72 bg-white rounded-lg shadow overflow-hidden flex flex-col">
               <div className="p-4 border-b flex justify-between items-center">
@@ -111,7 +102,7 @@ const CommunicationHub = () => {
             </div>
 
             {/* Middle Panel - Chat Messages */}
-            <div className="w-[calc(50%-190px)] bg-white rounded-lg shadow overflow-hidden flex flex-col">
+            <div className="w-[calc(100%-800px)] min-w-[400px] bg-white rounded-lg shadow overflow-hidden flex flex-col">
               <div className="p-3 border-b flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
@@ -203,7 +194,7 @@ const CommunicationHub = () => {
             </div>
 
             {/* Right Panel - Contact Details */}
-            <div className="w-72 bg-white rounded-lg shadow overflow-hidden flex flex-col">
+            <div className="w-[480px] bg-white rounded-lg shadow overflow-hidden flex flex-col">
               <div className="p-3 border-b flex items-center">
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
                   SJ
