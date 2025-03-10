@@ -14,10 +14,13 @@ app.use(morgan("dev"));
 
 // Import Routes
 const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);  // ✅ Now matches frontend requests
+app.use("/api/auth", authRoutes);
 
 const usersRoutes = require("./routes/usersRoutes");
-app.use("/api/users", usersRoutes); // ✅ Standardized API prefix
+app.use("/api/users", usersRoutes);
+
+const messageRoutes = require("./routes/messageRoutes");
+app.use("/api/messages", messageRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;

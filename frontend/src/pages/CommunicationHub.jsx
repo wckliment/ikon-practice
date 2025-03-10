@@ -1,8 +1,182 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
+import {
+  fetchUsers,
+  fetchConversation,
+  sendMessage,
+  selectUser,
+  clearSelectedUser
+} from "../redux/chatSlice";
 
 const CommunicationHub = () => {
+  const dispatch = useDispatch();
+  const { users = [], messages = [], selectedUser, loading } = useSelector((state) => state.chat);
+  const [newMessageText, setNewMessageText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Get current logged-in user from Redux
+  const { user: currentUser, isAuthenticated } = useSelector((state) => state.auth);
+
+  // Debug Redux state
+  const chatState = useSelector((state) => state.chat);
+  console.log('Chat state from Redux:', chatState);
+  console.log('Current user from Redux:', currentUser);
+
+  // Fetch users on component mount
+  useEffect(() => {
+    console.log('Fetching all users');
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
+  // Log users when they change
+  useEffect(() => {
+    console.log('Users data received:', users);
+  }, [users]);
+
+  // Fetch messages when a user is selected
+  useEffect(() => {
+    if (selectedUser) {
+      console.log('Fetching conversation for user:', selectedUser.id);
+      dispatch(fetchConversation(selectedUser.id));
+    }
+  }, [selectedUser, dispatch]);
+
+  // Log messages when they change
+  useEffect(() => {
+    console.log('Messages updated:', messages);
+  }, [messages]);
+
+  // Auto-select a user for testing
+  useEffect(() => {
+    if (users.length > 0 && !selectedUser) {
+      // Look for either user ID 7 (Dr. John Smith) or 11 (Chase Kliment)
+      const targetUser = users.find(u => u.id === 7 || u.id === 11);
+      if (targetUser) {
+        console.log('Auto-selecting user for testing:', targetUser);
+        dispatch(selectUser(targetUser));
+      } else {
+        console.log('Could not find user with ID 7 or 11');
+        console.log('Available users:', users);
+      }
+    }
+  }, [users, selectedUser, dispatch]);
+
+  // Handle user selection
+  const handleSelectUser = (user) => {
+    console.log('User selected manually:', user);
+    dispatch(selectUser(user));
+  };
+
+  // Handle message submission
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+
+    if (!isAuthenticated) {
+      alert("You must be logged in to send messages");
+      return;
+    }
+
+    if (!selectedUser || !newMessageText.trim() || !currentUser.id) {
+      console.log('Cannot send message:', {
+        isAuthenticated,
+        selectedUser: !!selectedUser,
+        newMessageText: !!newMessageText.trim(),
+        currentUserId: currentUser?.id
+      });
+      return;
+    }
+
+    console.log('Sending message:', {
+      sender_id: currentUser.id,
+      receiver_id: selectedUser.id,
+      message: newMessageText
+    });
+
+    dispatch(sendMessage({
+      sender_id: currentUser.id,
+      receiver_id: selectedUser.id,  // Changed from recipient_id to receiver_id
+      message: newMessageText        // Changed from content to message
+    }));
+
+    setNewMessageText("");
+  };
+
+  // Group messages by date
+  const groupMessagesByDate = () => {
+    if (!messages.length) return {};
+
+    const grouped = {};
+
+    messages.forEach(message => {
+      const date = new Date(message.created_at);
+      const dateStr = date.toDateString();
+
+      if (!grouped[dateStr]) {
+        grouped[dateStr] = [];
+      }
+
+      grouped[dateStr].push(message);
+    });
+
+    // Sort messages within each group by time
+    Object.keys(grouped).forEach(date => {
+      grouped[date].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    });
+
+    return grouped;
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleString('default', { month: 'short' });
+    const year = date.getFullYear().toString().substr(-2);
+    return `${day} ${month}, ${year}`;
+  };
+
+  // Format time for display
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Get user initials from name
+  const getUserInitials = (name) => {
+    if (!name) return "";
+
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return parts[0].charAt(0).toUpperCase() + parts[1].charAt(0).toUpperCase();
+    }
+
+    return parts[0].substring(0, 2).toUpperCase();
+  };
+
+  // Filter users based on search query
+  const filteredUsers = Array.isArray(users)
+    ? users.filter(user =>
+        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
+
+  // Get pinned and regular users
+  const pinnedUsers = Array.isArray(filteredUsers)
+    ? filteredUsers.filter(user => user.pinned)
+    : [];
+  const regularUsers = Array.isArray(filteredUsers)
+    ? filteredUsers.filter(user => !user.pinned)
+    : [];
+
+  // Group messages by date
+  const groupedMessages = groupMessagesByDate();
+  const messagesByDate = Object.keys(groupedMessages).sort((a, b) => new Date(b) - new Date(a));
+
   return (
     <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
       {/* Main App Sidebar - Fixed position */}
@@ -37,73 +211,104 @@ const CommunicationHub = () => {
                   type="text"
                   placeholder="Search users & messages..."
                   className="w-full p-2 border rounded-md text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
 
               <div className="px-3 py-2">
                 <p className="text-xs font-semibold text-gray-500 flex items-center">
-                  <span className="mr-1">📌</span> Pinned Chats...
+                  <span className="mr-1">📌</span> Pinned Chats
                 </p>
               </div>
 
               <div className="overflow-y-auto flex-1">
                 {/* Pinned Chats */}
                 <div className="px-2">
-                  {[
-                    { initials: "SJ", name: "Sarah Jones", message: "Thanks for your...", time: "3:30pm", unread: 3 },
-                    { initials: "MB", name: "Mary Baker", message: "New lab results...", time: "4:45pm", unread: 26 }
-                  ].map((chat, index) => (
-                    <div key={index} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
-                        {chat.initials}
-                      </div>
-                      <div className="ml-2 flex-1 min-w-0">
-                        <div className="flex justify-between items-center">
-                          <p className="font-medium text-sm truncate">{chat.name}</p>
-                          <span className="text-xs text-gray-500">{chat.time}</span>
+                  {loading ? (
+                    <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
+                  ) : (
+                    // If there are pinned users, show them, otherwise show a message
+                    pinnedUsers.length > 0 ? (
+                      pinnedUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer ${
+                            selectedUser?.id === user.id ? 'bg-gray-100' : ''
+                          }`}
+                          onClick={() => handleSelectUser(user)}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
+                            {getUserInitials(user.name)}
+                          </div>
+                          <div className="ml-2 flex-1 min-w-0">
+                            <div className="flex justify-between items-center">
+                              <p className="font-medium text-sm truncate">{user.name}</p>
+                              <span className="text-xs text-gray-500">
+                                {user.last_message_time ? formatTime(user.last_message_time) : ''}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.last_message || 'No messages'}
+                            </p>
+                          </div>
+                          {user.unread_count > 0 && (
+                            <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
+                              {user.unread_count}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500 truncate">{chat.message}</p>
-                      </div>
-                      {chat.unread && (
-                        <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                          {chat.unread}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                      ))
+                    ) : (
+                      <div className="p-2 text-xs text-gray-500">No pinned chats</div>
+                    )
+                  )}
                 </div>
 
                 {/* Recent Chats Header */}
                 <div className="px-3 py-2 mt-2">
-                  <p className="text-xs font-semibold text-gray-500">Recent Chats...</p>
+                  <p className="text-xs font-semibold text-gray-500">Recent Chats</p>
                 </div>
 
                 {/* Recent Chats */}
                 <div className="px-2">
-                  {[
-                    { initials: "AG", name: "Arthur Gardner", message: "Can you check his...", time: "1:20pm", unread: 10 },
-                    { initials: "TW", name: "Terence White", message: "", time: "1:05pm", unread: 0 },
-                    { initials: "MJ", name: "Matt Johnson", message: "This is sent to your...", time: "8:45am", unread: 0 },
-                    { initials: "JA", name: "Jerry Atman", message: "", time: "Yesterday", unread: 21 }
-                  ].map((chat, index) => (
-                    <div key={index} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
-                        {chat.initials}
-                      </div>
-                      <div className="ml-2 flex-1 min-w-0">
-                        <div className="flex justify-between items-center">
-                          <p className="font-medium text-sm truncate">{chat.name}</p>
-                          <span className="text-xs text-gray-500">{chat.time}</span>
+                  {loading ? (
+                    <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
+                  ) : (
+                    regularUsers.length > 0 ? (
+                      regularUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer ${
+                            selectedUser?.id === user.id ? 'bg-gray-100' : ''
+                          }`}
+                          onClick={() => handleSelectUser(user)}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
+                            {getUserInitials(user.name)}
+                          </div>
+                          <div className="ml-2 flex-1 min-w-0">
+                            <div className="flex justify-between items-center">
+                              <p className="font-medium text-sm truncate">{user.name}</p>
+                              <span className="text-xs text-gray-500">
+                                {user.last_message_time ? formatTime(user.last_message_time) : ''}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.last_message || 'No messages'}
+                            </p>
+                          </div>
+                          {user.unread_count > 0 && (
+                            <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
+                              {user.unread_count}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500 truncate">{chat.message || "No message"}</p>
-                      </div>
-                      {chat.unread > 0 && (
-                        <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                          {chat.unread}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                      ))
+                    ) : (
+                      <div className="p-2 text-xs text-gray-500">No chats available</div>
+                    )
+                  )}
                 </div>
               </div>
             </div>
@@ -112,12 +317,18 @@ const CommunicationHub = () => {
             <div className="w-[calc(100%-800px)] min-w-[400px] bg-white rounded-lg shadow overflow-hidden flex flex-col">
               <div className="p-3 border-b flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
-                    SJ
-                  </div>
-                  <div className="ml-2">
-                    <p className="font-medium">Sarah Jones</p>
-                  </div>
+                  {selectedUser ? (
+                    <>
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
+                        {getUserInitials(selectedUser.name)}
+                      </div>
+                      <div className="ml-2">
+                        <p className="font-medium">{selectedUser.name}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-gray-500">Select a user to start chatting</p>
+                  )}
                 </div>
                 <div className="flex items-center">
                   <input
@@ -133,154 +344,153 @@ const CommunicationHub = () => {
                 </div>
               </div>
 
-              {/* Date Header */}
-              <div className="py-2 px-4 text-center">
-                <span className="text-xs text-gray-500">15 Mar, 23</span>
-              </div>
-
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Their Message */}
-                <div className="flex">
-                  <div className="max-w-xs lg:max-w-md rounded-lg bg-blue-100 p-3 text-sm">
-                    <p>Hi Sarah, I wanted to confirm James Brown's upcoming visit for Thursday at 2pm.</p>
-                  </div>
-                </div>
-                <div className="text-right text-xs text-gray-500">1:10pm</div>
+                {loading && messages.length === 0 ? (
+                  <div className="p-3 text-center text-sm text-gray-500">Loading messages...</div>
+                ) : !selectedUser ? (
+                  <div className="p-3 text-center text-sm text-gray-500">Select a user to view messages</div>
+                ) : messages.length === 0 ? (
+                  <div className="p-3 text-center text-sm text-gray-500">No messages yet. Start a conversation!</div>
+                ) : (
+                  messagesByDate.map(date => (
+                    <div key={date}>
+                      {/* Date Header */}
+                      <div className="py-2 px-4 text-center">
+                        <span className="text-xs text-gray-500">{formatDate(date)}</span>
+                      </div>
 
-                {/* My Message */}
-                <div className="flex justify-end">
-                  <div className="max-w-xs lg:max-w-md rounded-lg bg-green-100 p-3 text-sm">
-                    <p>Yes! Just double-checking</p>
-                  </div>
-                </div>
-                <div className="text-right text-xs text-gray-500">1:12pm</div>
+                      {/* Messages for this date */}
+                      {groupedMessages[date].map(message => {
+                        console.log('Rendering message:', message);
+                        const isSentByMe = message.sender_id === currentUser?.id;
 
-                {/* Date Header */}
-                <div className="py-2 px-4 text-center">
-                  <span className="text-xs text-gray-500">21 Mar, 23</span>
-                </div>
-
-                {/* Their Message */}
-                <div className="flex">
-                  <div className="max-w-xs lg:max-w-md rounded-lg bg-blue-100 p-3 text-sm">
-                    <p>Thank you for rescheduling. Your appointment has been confirmed for Thursday at 4pm.</p>
-                  </div>
-                </div>
-                <div className="text-right text-xs text-gray-500">11:39am</div>
-
-                {/* Their Message */}
-                <div className="flex">
-                  <div className="max-w-xs lg:max-w-md rounded-lg bg-blue-100 p-3 text-sm">
-                    <p>Thank you for your care. We have a follow-up appointment scheduled for Friday, Mar 29 at 10am.</p>
-                  </div>
-                </div>
-                <div className="text-right text-xs text-gray-500">2:59pm</div>
-
-                {/* My Message */}
-                <div className="flex justify-end">
-                  <div className="max-w-xs lg:max-w-md rounded-lg bg-green-100 p-3 text-sm">
-                    <p>OK</p>
-                  </div>
-                </div>
-                <div className="text-right text-xs text-gray-500">3:10pm</div>
+                        return (
+                          <div key={message.id}>
+                            <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
+                              <div className={`max-w-xs lg:max-w-md rounded-lg ${
+                                isSentByMe ? 'bg-green-100' : 'bg-blue-100'
+                              } p-3 text-sm`}>
+                                <p>{message.message}</p>  {/* Using message.message instead of message.content */}
+                              </div>
+                            </div>
+                            <div className="text-right text-xs text-gray-500">
+                              {formatTime(message.created_at)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Message Input */}
               <div className="p-3 border-t">
-                <div className="flex">
+                <form onSubmit={handleSendMessage} className="flex">
                   <input
                     type="text"
                     placeholder="Type a message..."
                     className="flex-1 border rounded-l-lg px-3 py-2 focus:outline-none"
+                    value={newMessageText}
+                    onChange={(e) => setNewMessageText(e.target.value)}
+                    disabled={!selectedUser}
                   />
-                  <button className="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600">
+                  <button
+                    type="submit"
+                    className="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600 disabled:bg-gray-300"
+                    disabled={!selectedUser || !newMessageText.trim()}
+                  >
                     Send
                   </button>
-                </div>
+                </form>
               </div>
             </div>
 
             {/* Right Panel - Contact Details */}
             <div className="w-[480px] bg-white rounded-lg shadow overflow-hidden flex flex-col">
-              <div className="p-3 border-b flex items-center">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
-                  SJ
-                </div>
-                <div className="ml-2">
-                  <p className="font-medium">Sarah Jones</p>
-                  <div className="flex items-center">
-                    <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-                    <span className="text-xs text-gray-500">Active</span>
+              {selectedUser ? (
+                <>
+                  <div className="p-3 border-b flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
+                      {getUserInitials(selectedUser.name)}
+                    </div>
+                    <div className="ml-2">
+                      <p className="font-medium">{selectedUser.name}</p>
+                      <div className="flex items-center">
+                        <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                        <span className="text-xs text-gray-500">Active</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="p-4 overflow-y-auto flex-1">
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-amber-600 mb-2">Contact Details</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-16">Phone:</span>
-                      <span className="text-sm">720-555-3012, ext. 4107 (M)</span>
+                  <div className="p-4 overflow-y-auto flex-1">
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold text-amber-600 mb-2">Contact Details</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-start">
+                          <span className="text-gray-500 text-sm w-16">Phone:</span>
+                          <span className="text-sm">{selectedUser.phone || 'Not available'}</span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-gray-500 text-sm w-16">Email:</span>
+                          <span className="text-sm">{selectedUser.email}</span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-gray-500 text-sm w-16">Role:</span>
+                          <span className="text-sm">{selectedUser.role}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-16">Email:</span>
-                      <span className="text-sm">sarah.jones@gmail.com</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-16">Preferred:</span>
-                      <span className="text-sm">Email, Call, Portal</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-amber-600 mb-2">Quick Actions</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
-                      <span>Call Patient</span>
-                    </button>
-                    <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
-                      <span>Send Message</span>
-                    </button>
-                    <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
-                      <span>Send Forms</span>
-                    </button>
-                    <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
-                      <span>Send Payment Link</span>
-                    </button>
-                    <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50 col-span-2">
-                      <span>Reschedule Appointment</span>
-                    </button>
-                  </div>
-                </div>
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold text-amber-600 mb-2">Quick Actions</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
+                          <span>Call User</span>
+                        </button>
+                        <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
+                          <span>Send Message</span>
+                        </button>
+                        <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
+                          <span>Send Forms</span>
+                        </button>
+                        <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
+                          <span>Send Link</span>
+                        </button>
+                        <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50 col-span-2">
+                          <span>Schedule Appointment</span>
+                        </button>
+                      </div>
+                    </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-amber-600 mb-2">Summary</h3>
-                  <div className="space-y-2">
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-24">Last Appt:</span>
-                      <span className="text-sm">5/22/23</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-24">Next Appt:</span>
-                      <span className="text-sm">6/5/23</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-24">Last Message:</span>
-                      <span className="text-sm">5/23/23, "Ok"</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-24">Outstanding Balance:</span>
-                      <span className="text-sm">$75</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-500 text-sm w-24">Last Treatment:</span>
-                      <span className="text-sm">Deep Cleaning, 5/22/23</span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-amber-600 mb-2">User Info</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-start">
+                          <span className="text-gray-500 text-sm w-24">Created:</span>
+                          <span className="text-sm">{selectedUser.created_at ? formatDate(selectedUser.created_at) : 'N/A'}</span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-gray-500 text-sm w-24">DOB:</span>
+                          <span className="text-sm">{selectedUser.dob ? formatDate(selectedUser.dob) : 'N/A'}</span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-gray-500 text-sm w-24">Last Message:</span>
+                          <span className="text-sm">
+                            {messages.length > 0
+                              ? `${formatDate(messages[0].created_at)}, "${messages[0].message?.substring(0, 20)}${messages[0].message?.length > 20 ? '...' : ''}"`
+                              : 'No messages yet'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                </>
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  <p>Select a user to view details</p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
