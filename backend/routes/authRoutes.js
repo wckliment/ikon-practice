@@ -13,8 +13,8 @@ router.post(
     body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
     body("role")
       .toLowerCase() // Convert role to lowercase before storing
-      .isIn(["admin", "dentist", "staff", "hygienist"])
-      .withMessage("Role must be Admin, Dentist, Staff, or Hygienist"),
+      .isIn(["admin", "dentist", "staff", "hygienist", "owner"])
+      .withMessage("Role must be Admin, Dentist, Staff, Hygienist, or Owner"),
   ],
   (req, res, next) => {
     const errors = validationResult(req);
@@ -40,4 +40,3 @@ router.post(
 );
 
 module.exports = router;
-

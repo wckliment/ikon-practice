@@ -8,7 +8,7 @@ export default function Signup() {
 
   const [formData, setFormData] = useState({
     name: "",
-    role: "dentist", // Default role selection
+    role: "owner", // Default role selection
     dob: "",
     email: "",
     password: "",
@@ -115,10 +115,11 @@ export default function Signup() {
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
+              <option value="owner">Owner</option>
               <option value="dentist">Dentist</option>
-              <option value="staff">Staff</option>
-              <option value="hygienist">Hygienist</option>
               <option value="admin">Admin</option>
+              <option value="hygienist">Hygienist</option>
+              <option value="staff">Staff</option>
             </select>
           </div>
 
@@ -199,4 +200,3 @@ export default function Signup() {
     </div>
   );
 }
-
