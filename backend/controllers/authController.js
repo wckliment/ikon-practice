@@ -2,9 +2,9 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/userModel");
 
-// ✅ User Registration with Role & DOB
+// ✅ User Registration with Role, DOB, and Location
 exports.register = (req, res) => {
-  const { name, dob, email, password, role } = req.body;
+  const { name, dob, email, password, role, location_id } = req.body;
 
   if (!name || !dob || !email || !password || !role) {
     return res.status(400).json({ error: "All fields are required" });
@@ -12,7 +12,6 @@ exports.register = (req, res) => {
 
   User.findByEmail(email, (err, results) => {
     if (err) return res.status(500).json({ error: "Server error" });
-
     if (results.length > 0) {
       return res.status(400).json({ error: "Email is already in use" });
     }
@@ -24,11 +23,12 @@ exports.register = (req, res) => {
         return res.status(500).json({ error: "Error hashing password" });
       }
 
-      User.create(name, dob, email, hashedPassword, role.toLowerCase(), (err, result) => {
+      User.create(name, dob, email, hashedPassword, role.toLowerCase(), location_id, (err, result) => {
         if (err) {
           console.error("Error registering user:", err);
           return res.status(500).json({ error: "Server error" });
         }
+
         res.status(201).json({ message: "User registered successfully" });
       });
     });
@@ -56,15 +56,17 @@ exports.login = (req, res) => {
         { expiresIn: "1h" }
       );
 
-      // ✅ Return user data in response
+      // ✅ Return user data with location info in response
       res.json({
         message: "Login successful",
         token,
         user: {
           id: user.id,
-          name: user.name,  // Ensure `name` exists in your database
+          name: user.name,
           email: user.email,
-          role: user.role
+          role: user.role,
+          location_id: user.location_id,
+          location_name: user.location_name
         }
       });
     });

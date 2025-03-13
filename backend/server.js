@@ -3,7 +3,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 require("dotenv").config();
-
 const app = express();
 
 // Middleware
@@ -21,6 +20,10 @@ app.use("/api/users", usersRoutes);
 
 const messageRoutes = require("./routes/messageRoutes");
 app.use("/api/messages", messageRoutes);
+
+// Add the new location routes
+const locationRoutes = require("./routes/locationRoutes");
+app.use("/api/locations", locationRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
