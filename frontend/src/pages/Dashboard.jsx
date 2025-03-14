@@ -5,6 +5,7 @@ import TopBar from "../components/TopBar";
 import KPICard from "../components/KPICards/KPICard";
 import CircularProgress from "../components/KPICards/CircularProgress";
 import DailyGoalCard from "../components/KPICards/DailyGoalCard";
+import TreatmentCompletionCard from "../components/KPICards/TreatmentCompletionCard"; // Add this import
 import WeeklyProductionCard from "../components/KPICards/WeeklyProductionCard";
 import GoogleReviewsCard from "../components/KPICards/GoogleReviewsCard";
 import PatientAlertsCard from "../components/KPICards/PatientAlertsCard";
@@ -25,8 +26,8 @@ const Dashboard = () => {
         {/* Header */}
         <Header />
 
-        {/* First Row - KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        {/* First Row - KPI Cards - Updated grid-cols-4 for 4 cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
           {/* Account Balances */}
           <KPICard
             title="Account Balances"
@@ -73,10 +74,14 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Treatment Completion Card - New Card */}
+          <TreatmentCompletionCard />
+
           {/* Daily Goal - New Component */}
           <DailyGoalCard />
         </div>
 
+        {/* Rest of your dashboard remains the same */}
         {/* Second Row - Weekly Production and Google Reviews */}
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 mt-4">
           {/* Weekly Production Card - Spans 5 columns (71%) */}
