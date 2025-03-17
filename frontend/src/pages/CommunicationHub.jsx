@@ -7,7 +7,8 @@ import {
   fetchConversation,
   sendMessage,
   selectUser,
-  clearSelectedUser
+  clearSelectedUser,
+  togglePinUser // Added import
 } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
@@ -48,21 +49,21 @@ const CommunicationHub = () => {
     console.log('Messages updated:', messages);
   }, [messages]);
 
-// Auto-select a user for testing
-useEffect(() => {
-  if (users.length > 0 && !selectedUser) {
-    // Look for the first user that is not the current user
-    const targetUser = users.find(u => u.id !== currentUser.id);
+  // Auto-select a user for testing
+  useEffect(() => {
+    if (users.length > 0 && !selectedUser) {
+      // Look for the first user that is not the current user
+      const targetUser = users.find(u => u.id !== currentUser.id);
 
-    if (targetUser) {
-      console.log('Auto-selecting user for testing:', targetUser);
-      dispatch(selectUser(targetUser));
-    } else {
-      console.log('Could not find another user to select');
-      console.log('Available users:', users);
+      if (targetUser) {
+        console.log('Auto-selecting user for testing:', targetUser);
+        dispatch(selectUser(targetUser));
+      } else {
+        console.log('Could not find another user to select');
+        console.log('Available users:', users);
+      }
     }
-  }
-}, [users, selectedUser, dispatch, currentUser]);
+  }, [users, selectedUser, dispatch, currentUser]);
 
   // Handle user selection
   const handleSelectUser = (user) => {
@@ -168,15 +169,27 @@ useEffect(() => {
 
   // Get pinned and regular users
   const pinnedUsers = Array.isArray(filteredUsers)
-  ? filteredUsers.filter(user => user.pinned && user.id !== currentUser?.id)
-  : [];
-const regularUsers = Array.isArray(filteredUsers)
-  ? filteredUsers.filter(user => !user.pinned && user.id !== currentUser?.id)
-  : [];
+    ? filteredUsers.filter(user => user.pinned && user.id !== currentUser?.id)
+    : [];
+  const regularUsers = Array.isArray(filteredUsers)
+    ? filteredUsers.filter(user => !user.pinned && user.id !== currentUser?.id)
+    : [];
 
   // Group messages by date
   const groupedMessages = groupMessagesByDate();
   const messagesByDate = Object.keys(groupedMessages).sort((a, b) => new Date(b) - new Date(a));
+
+  // Add this handler function for pinning/unpinning users
+  const handleTogglePin = (user, e) => {
+    // Stop the click from selecting the user
+    e.stopPropagation();
+
+    console.log(`${user.pinned ? 'Unpinning' : 'Pinning'} user:`, user.name);
+    dispatch(togglePinUser({
+      userId: user.id,
+      isPinned: !user.pinned
+    }));
+  };
 
   return (
     <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
@@ -234,9 +247,9 @@ const regularUsers = Array.isArray(filteredUsers)
                       pinnedUsers.map((user) => (
                         <div
                           key={user.id}
-                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer ${
-                            selectedUser?.id === user.id ? 'bg-gray-100' : ''
-                          }`}
+                         className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer relative ${
+  selectedUser?.id === user.id ? 'bg-blue-50' : ''
+}`}
                           onClick={() => handleSelectUser(user)}
                         >
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
@@ -244,7 +257,9 @@ const regularUsers = Array.isArray(filteredUsers)
                           </div>
                           <div className="ml-2 flex-1 min-w-0">
                             <div className="flex justify-between items-center">
-                              <p className="font-medium text-sm truncate">{user.name}</p>
+                              <p className={`font-medium text-sm truncate ${
+  selectedUser?.id === user.id ? 'text-blue-600' : ''
+}`}>{user.name}</p>
                               <span className="text-xs text-gray-500">
                                 {user.last_message_time ? formatTime(user.last_message_time) : ''}
                               </span>
@@ -258,6 +273,16 @@ const regularUsers = Array.isArray(filteredUsers)
                               {user.unread_count}
                             </div>
                           )}
+
+                          {/* Add unpin button */}
+                          <button
+  className="absolute right-2 top-2 text-amber-500 hover:text-gray-400 focus:outline-none"
+  onClick={(e) => handleTogglePin(user, e)}
+>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+  </svg>
+</button>
                         </div>
                       ))
                     ) : (
@@ -280,9 +305,9 @@ const regularUsers = Array.isArray(filteredUsers)
                       regularUsers.map((user) => (
                         <div
                           key={user.id}
-                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer ${
-                            selectedUser?.id === user.id ? 'bg-gray-100' : ''
-                          }`}
+                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer relative ${
+  selectedUser?.id === user.id ? 'bg-blue-50' : ''
+}`}
                           onClick={() => handleSelectUser(user)}
                         >
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
@@ -290,7 +315,9 @@ const regularUsers = Array.isArray(filteredUsers)
                           </div>
                           <div className="ml-2 flex-1 min-w-0">
                             <div className="flex justify-between items-center">
-                              <p className="font-medium text-sm truncate">{user.name}</p>
+                              <p className={`font-medium text-sm truncate ${
+  selectedUser?.id === user.id ? 'text-blue-600' : ''
+}`}>{user.name}</p>
                               <span className="text-xs text-gray-500">
                                 {user.last_message_time ? formatTime(user.last_message_time) : ''}
                               </span>
@@ -304,6 +331,14 @@ const regularUsers = Array.isArray(filteredUsers)
                               {user.unread_count}
                             </div>
                           )}
+
+                          {/* Add pin button */}
+                          <button
+  className="absolute right-2 top-2 text-gray-400 hover:text-amber-500 focus:outline-none"
+  onClick={(e) => handleTogglePin(user, e)}
+>
+  📌
+</button>
                         </div>
                       ))
                     ) : (

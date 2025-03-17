@@ -53,3 +53,38 @@ exports.getUsersWithoutLocation = (req, res) => {
     res.json(results);
   });
 };
+
+// ✅ Toggle pin status for a user
+exports.togglePinStatus = (req, res) => {
+  const targetUserId = req.params.id;
+  const currentUserId = req.user.userId; // Get the current user's ID from the auth token
+  const { isPinned } = req.body;
+
+  // Validate request
+  if (isPinned === undefined) {
+    return res.status(400).json({ error: "isPinned value is required" });
+  }
+
+  User.togglePinStatus(currentUserId, targetUserId, isPinned, (err, result) => {
+    if (err) {
+      console.error("Error toggling pin status:", err);
+      return res.status(500).json({ error: "Database error", details: err.message });
+    }
+
+    res.json({
+      success: true,
+      message: isPinned ? "User pinned successfully" : "User unpinned successfully",
+      pinned: isPinned
+    });
+  });
+};
+
+// Add this to usersController.js
+exports.getAllUsersWithPinStatus = (req, res) => {
+  const currentUserId = req.user.userId;
+
+  User.getAllUsersWithPinStatus(currentUserId, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    res.json(results);
+  });
+};

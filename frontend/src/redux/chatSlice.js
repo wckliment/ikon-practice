@@ -92,6 +92,22 @@ export const markMessageAsRead = createAsyncThunk(
   }
 );
 
+// Add new toggle pin user action
+export const togglePinUser = createAsyncThunk(
+  'chat/togglePinUser',
+  async ({ userId, isPinned }, { rejectWithValue }) => {
+    try {
+      console.log(`${isPinned ? 'Pinning' : 'Unpinning'} user:`, userId);
+      const response = await api.patch(`/users/${userId}/pin`, { isPinned });
+      console.log('Toggle pin response:', response.data);
+      return { userId, isPinned };
+    } catch (error) {
+      console.error('Error toggling pin status:', error);
+      return rejectWithValue(error.response?.data || { error: 'Failed to toggle pin status' });
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   users: [],
@@ -154,6 +170,25 @@ const chatSlice = createSlice({
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.error = action.payload || { error: 'Failed to send message' };
+        state.loading = false;
+      })
+
+      // togglePinUser reducers
+      .addCase(togglePinUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(togglePinUser.fulfilled, (state, action) => {
+        const { userId, isPinned } = action.payload;
+        // Find the user and update their pinned status
+        const userIndex = state.users.findIndex(user => user.id === userId);
+        if (userIndex !== -1) {
+          state.users[userIndex].pinned = isPinned;
+        }
+        state.loading = false;
+      })
+      .addCase(togglePinUser.rejected, (state, action) => {
+        state.error = action.payload || { error: 'Failed to toggle pin status' };
         state.loading = false;
       })
   }

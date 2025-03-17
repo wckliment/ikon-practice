@@ -24,4 +24,7 @@ router.get("/location/:locationId", usersController.getUsersByLocation);
 // Get users without a location
 router.get("/no-location", usersController.getUsersWithoutLocation);
 
+//pin users for chats
+router.patch("/:id/pin", usersController.togglePinStatus);
+
 module.exports = router;
