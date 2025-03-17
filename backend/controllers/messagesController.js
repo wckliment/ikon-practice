@@ -1,8 +1,11 @@
 const Message = require("../models/messageModel");
 
-// Get all messages
+// Get all messages for the logged-in user
 exports.getAllMessages = (req, res) => {
-  Message.getAllMessages((err, results) => {
+  const userId = req.user.id; // Get the ID of the logged-in user from the auth middleware
+
+  // Use the existing getConversation method instead of getAllMessages
+  Message.getConversation(userId, (err, results) => {
     if (err) {
       console.error("Error fetching messages:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
@@ -13,16 +16,17 @@ exports.getAllMessages = (req, res) => {
 
 // Get conversation for a specific user
 exports.getUserConversation = (req, res) => {
-  const userId = req.params.id;
+  const userId = req.params.id;     // This is the selected user ID
+  const currentUserId = req.user.id; // This is the logged-in user's ID
 
-  console.log("Fetching conversation for user ID:", userId);
+  console.log("Fetching conversation between current user ID:", currentUserId, "and selected user ID:", userId);
 
-  Message.getConversation(userId, (err, results) => {
+  // Modified to only get messages between these two specific users
+  Message.getConversationBetweenUsers(currentUserId, userId, (err, results) => {
     if (err) {
       console.error("Error fetching conversation:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
     }
-
     console.log("Conversation results:", results);
     res.json(results);
   });

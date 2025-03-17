@@ -58,18 +58,17 @@ async function seedLocations() {
       city: "Houston",
       state: "TX",
       zip: "77036",
-      customer_key: "your_actual_customer_key",
-      developer_key: "your_actual_developer_key"
+      customer_key: "dTJK7SKiZbOlpSSN",
+      developer_key: "wmOlQPFzPER6YasT"
     },
-    // Add more locations if needed
     {
       name: "Relaxation Dental",
-      address: "456 Another St",
-      city: "Other City",
-      state: "OS",
-      zip: "67890",
-      customer_key: "second_customer_key",
-      developer_key: "second_developer_key"
+      address: "123 Main Street",
+      city: "Denver",
+      state: "CO",
+      zip: "80010",
+      customer_key: "b2n8TVS5k1xdpkI1",
+      developer_key: "wmOlQPFzPER6YasT"
     }
   ];
 
@@ -92,55 +91,82 @@ async function seedUsers(locationIds) {
   const hashedPassword = await bcrypt.hash("password123", 10);
 
   const users = [
+  //Users for Longhorn Dental (locationIds[0])
     {
-      name: "Your Name",
-      dob: "1980-01-01",
-      email: "owner@example.com",
+      name: "Ethan Truong",
+      dob: "1982-05-01",
+      email: "ethan.ldtx@gmail.com",
       password: hashedPassword,
       role: "owner",
       location_id: locationIds[0]
     },
     {
-      name: "Admin User",
+      name: "Mary Jane",
       dob: "1985-05-15",
-      email: "admin@example.com",
+      email: "mary.jane@gmail.com",
       password: hashedPassword,
       role: "admin",
       location_id: locationIds[0]
     },
     {
-      name: "Dr. Dentist",
+      name: "Cuong Ho",
       dob: "1975-10-20",
-      email: "dentist@example.com",
+      email: "cuong.ho@gmail.com",
       password: hashedPassword,
-      role: "dentist",
+      role: "owner",
       location_id: locationIds[0]
     },
     {
-      name: "Staff Member",
+      name: "Beth Johnson",
       dob: "1990-03-25",
-      email: "staff@example.com",
+      email: "beth.johnson@gmail.com",
       password: hashedPassword,
       role: "staff",
       location_id: locationIds[0]
     },
     {
-      name: "Hygienist",
+      name: "Alan Smith",
       dob: "1988-07-12",
-      email: "hygienist@example.com",
+      email: "alan.smith@gmail.com",
       password: hashedPassword,
       role: "hygienist",
       location_id: locationIds[0]
     },
     {
-      name: "Second Owner",
+      name: "Greg Neil",
       dob: "1982-11-30",
-      email: "owner2@example.com",
+      email: "greg.neil@gmail.com",
       password: hashedPassword,
-      role: "owner",
-      location_id: locationIds[1]
+      role: "hygienist",
+      location_id: locationIds[0]
+    },
+    {
+      name: "Denise Nguyen",
+      dob: "1982-11-30",
+      email: "denise.nguyen@gmail.com",
+      password: hashedPassword,
+      role: "hygienist",
+      location_id: locationIds[0]
+    },
+    {
+      name: "Amber To",
+      dob: "1982-11-30",
+      email: "amber.to@gmail.com",
+      password: hashedPassword,
+      role: "staff",
+      location_id: locationIds[0]
     }
   ];
+  // //Users for Relaxation Dental (locationIds[1])
+  // const relaxationUsers = [
+  //   {
+  //     name: "Chase Kliment",
+  //     dob: "1982-10-24",
+  //     email: "chase.kliment@gmail.com",
+  //     password: hashedPassword,
+  //     role: "owner",
+  //     location_id: locationIds[1]
+  //   },
 
   const userIds = {};
 
@@ -158,25 +184,59 @@ async function seedUsers(locationIds) {
 
 async function seedMessages(userIds) {
   const messages = [
+    // Owner to Admin communication
     {
-      sender_id: userIds["owner@example.com"],
-      receiver_id: userIds["admin@example.com"],
-      message: "Welcome to the practice management system!"
+      sender_id: userIds["ethan.ldtx@gmail.com"],
+      receiver_id: userIds["mary.jane@gmail.com"],
+      message: "Mary, can you set up the OpenDental API connection for our office?"
     },
     {
-      sender_id: userIds["admin@example.com"],
-      receiver_id: userIds["owner@example.com"],
-      message: "Thanks! I'm getting everything set up now."
+      sender_id: userIds["mary.jane@gmail.com"],
+      receiver_id: userIds["ethan.ldtx@gmail.com"],
+      message: "I'll get that configured today. The customer key and developer key are already in the system."
+    },
+
+    // Between owners
+    {
+      sender_id: userIds["ethan.ldtx@gmail.com"],
+      receiver_id: userIds["cuong.ho@gmail.com"],
+      message: "We need to discuss the new equipment purchase at tomorrow's meeting."
     },
     {
-      sender_id: userIds["dentist@example.com"],
-      receiver_id: userIds["staff@example.com"],
-      message: "Please schedule a follow-up for Mrs. Johnson next week."
+      sender_id: userIds["cuong.ho@gmail.com"],
+      receiver_id: userIds["ethan.ldtx@gmail.com"],
+      message: "I'll prepare the budget report and options for review."
+    },
+
+    // Staff communications
+    {
+      sender_id: userIds["beth.johnson@gmail.com"],
+      receiver_id: userIds["alan.smith@gmail.com"],
+      message: "Alan, Mrs. Rodriguez needs a deep cleaning next week. What's your availability?"
     },
     {
-      sender_id: userIds["staff@example.com"],
-      receiver_id: userIds["dentist@example.com"],
-      message: "Appointment scheduled for Tuesday at 2pm."
+      sender_id: userIds["alan.smith@gmail.com"],
+      receiver_id: userIds["beth.johnson@gmail.com"],
+      message: "I can schedule her on Thursday at 2pm or Friday morning."
+    },
+
+    // Staff to owner
+    {
+      sender_id: userIds["amber.to@gmail.com"],
+      receiver_id: userIds["ethan.ldtx@gmail.com"],
+      message: "Dr. Truong, we have a supply order ready for approval."
+    },
+
+    // Hygienists communication
+    {
+      sender_id: userIds["greg.neil@gmail.com"],
+      receiver_id: userIds["denise.nguyen@gmail.com"],
+      message: "Can you cover my afternoon appointments next Friday? I have a continuing education course."
+    },
+    {
+      sender_id: userIds["denise.nguyen@gmail.com"],
+      receiver_id: userIds["greg.neil@gmail.com"],
+      message: "Yes, I can cover those appointments. Just make sure they're noted in my schedule."
     }
   ];
 
