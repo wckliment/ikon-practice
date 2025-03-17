@@ -133,3 +133,22 @@ exports.deleteMessage = (req, res) => {
     res.json({ success: true, message: "Message deleted" });
   });
 };
+
+// Get all messages for the current user across all conversations
+exports.getAllUserMessages = (req, res) => {
+  const currentUserId = req.user.userId; // Using req.user.userId based on your code pattern
+
+  console.log("DEBUG - Fetching all messages for user:", currentUserId);
+
+  // You'll need to add this method to your Message model
+  Message.getAllUserMessages(currentUserId, (err, results) => {
+    if (err) {
+      console.error("Error fetching all user messages:", err);
+      return res.status(500).json({ error: "Database error", details: err.message });
+    }
+
+    console.log(`DEBUG - Found ${results.length} messages for user ${currentUserId}`);
+    res.json(results);
+  });
+};
+

@@ -8,12 +8,13 @@ import {
   sendMessage,
   selectUser,
   clearSelectedUser,
-  togglePinUser // Added import
+  togglePinUser,
+  fetchAllMessages
 } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
   const dispatch = useDispatch();
-  const { users = [], messages = [], selectedUser, loading } = useSelector((state) => state.chat);
+  const { users = [], messages = [], allMessages = [], selectedUser, loading } = useSelector((state) => state.chat);
   const [newMessageText, setNewMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -24,6 +25,62 @@ const CommunicationHub = () => {
   const chatState = useSelector((state) => state.chat);
   console.log('Chat state from Redux:', chatState);
   console.log('Current user from Redux:', currentUser);
+
+  useEffect(() => {
+  if (users.length > 0) {
+    console.log('Checking user data structure:');
+    console.log(users[0]); // Log the first user to see its structure
+  }
+  }, [users]);
+
+  useEffect(() => {
+  console.log('All Messages from Redux:', allMessages);
+}, [allMessages]);
+
+  // Fetch all messages when component mounts
+  useEffect(() => {
+    console.log('Fetching all user messages');
+    dispatch(fetchAllMessages());
+  }, [dispatch]);
+
+const getLastMessageForUser = (userId) => {
+  // Filter messages that involve this user (as sender or receiver)
+  const userMessages = allMessages.filter(
+    msg => (msg.sender_id === userId && msg.receiver_id === currentUser.id) ||
+           (msg.sender_id === currentUser.id && msg.receiver_id === userId)
+  );
+
+  // Log each message with its content and timestamp
+  console.log(`Full messages for user ${userId}:`, userMessages.map(msg => ({
+    id: msg.id,
+    message: msg.message,
+    created_at: msg.created_at,
+    timestamp: new Date(msg.created_at).getTime(),
+    sender_id: msg.sender_id,
+    receiver_id: msg.receiver_id
+  })));
+
+  // Sort by created_at timestamp (newest first)
+  userMessages.sort((a, b) => {
+    const dateA = new Date(a.created_at).getTime();
+    const dateB = new Date(b.created_at).getTime();
+    console.log(`Comparing: ${a.message.substring(0, 20)} (${dateA}) vs ${b.message.substring(0, 20)} (${dateB})`);
+    return dateB - dateA;
+  });
+
+  // Log the sorted messages
+  console.log(`Sorted messages for user ${userId}:`, userMessages.map(msg => ({
+    message: msg.message,
+    created_at: msg.created_at,
+    timestamp: new Date(msg.created_at).getTime()
+  })));
+
+  if (userMessages.length > 0) {
+    console.log(`Selected preview message for ${userId}:`, userMessages[0].message);
+  }
+
+  return userMessages.length > 0 ? userMessages[0] : null;
+};
 
   // Fetch users on component mount
   useEffect(() => {
@@ -265,8 +322,18 @@ const CommunicationHub = () => {
                               </span>
                             </div>
                             <p className="text-xs text-gray-500 truncate">
-                              {user.last_message || 'No messages'}
-                            </p>
+  {(() => {
+    console.log('User ID:', user.id, 'All Messages Count:', allMessages.length);
+    const userMessages = allMessages.filter(
+      msg => (msg.sender_id === user.id && msg.receiver_id === currentUser.id) ||
+             (msg.sender_id === currentUser.id && msg.receiver_id === user.id)
+    );
+    console.log('Filtered messages for user', user.name, ':', userMessages);
+    return userMessages.length > 0
+      ? `${userMessages[0].message.substring(0, 30)}${userMessages[0].message.length > 30 ? '...' : ''}`
+      : 'No messages';
+  })()}
+</p>
                           </div>
                           {user.unread_count > 0 && (
                             <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
@@ -322,9 +389,19 @@ const CommunicationHub = () => {
                                 {user.last_message_time ? formatTime(user.last_message_time) : ''}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-500 truncate">
-                              {user.last_message || 'No messages'}
-                            </p>
+                          <p className="text-xs text-gray-500 truncate">
+  {(() => {
+    console.log('User ID:', user.id, 'All Messages Count:', allMessages.length);
+    const userMessages = allMessages.filter(
+      msg => (msg.sender_id === user.id && msg.receiver_id === currentUser.id) ||
+             (msg.sender_id === currentUser.id && msg.receiver_id === user.id)
+    );
+    console.log('Filtered messages for user', user.name, ':', userMessages);
+    return userMessages.length > 0
+      ? `${userMessages[0].message.substring(0, 30)}${userMessages[0].message.length > 30 ? '...' : ''}`
+      : 'No messages';
+  })()}
+</p>
                           </div>
                           {user.unread_count > 0 && (
                             <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">

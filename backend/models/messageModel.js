@@ -73,4 +73,25 @@ Message.delete = (messageId, callback) => {
   ikonDB.query(query, [messageId], callback);
 };
 
+// Get all messages for a user across all conversations
+Message.getAllUserMessages = (userId, callback) => {
+  const query = `
+    SELECT m.*,
+    sender.name as sender_name,
+    receiver.name as receiver_name
+    FROM messages m
+    JOIN users sender ON m.sender_id = sender.id
+    JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE m.sender_id = ? OR m.receiver_id = ?
+    ORDER BY m.created_at DESC
+  `;
+  // Change db.query to ikonDB.query
+  ikonDB.query(query, [userId, userId], (err, results) => {
+    if (err) {
+      return callback(err, null);
+    }
+    return callback(null, results);
+  });
+};
+
 module.exports = Message;

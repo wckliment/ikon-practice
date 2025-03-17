@@ -30,6 +30,21 @@ api.interceptors.request.use(
 );
 
 // Async thunks for API calls
+export const fetchAllMessages = createAsyncThunk(
+  'chat/fetchAllMessages',
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log('Making API request to: http://localhost:5000/api/messages/all');
+      const response = await api.get('/messages/all');
+      console.log('All user messages response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all user messages:', error);
+      return rejectWithValue(error.response?.data || 'Failed to fetch messages');
+    }
+  }
+);
+
 export const fetchUsers = createAsyncThunk(
   'chat/fetchUsers',
   async (_, { rejectWithValue }) => {
@@ -112,6 +127,7 @@ export const togglePinUser = createAsyncThunk(
 const initialState = {
   users: [],
   messages: [],
+  allMessages: [],
   selectedUser: null,
   loading: false,
   error: null
@@ -131,6 +147,20 @@ const chatSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // fetchAllMessages reducers
+      .addCase(fetchAllMessages.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllMessages.fulfilled, (state, action) => {
+        state.allMessages = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchAllMessages.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       // fetchUsers reducers
       .addCase(fetchUsers.pending, (state) => {
         state.loading = true;
@@ -190,7 +220,7 @@ const chatSlice = createSlice({
       .addCase(togglePinUser.rejected, (state, action) => {
         state.error = action.payload || { error: 'Failed to toggle pin status' };
         state.loading = false;
-      })
+      });
   }
 });
 

@@ -6,6 +6,9 @@ const authenticateUser = require("../middleware/authMiddleware");
 // Get all messages
 router.get("/", authenticateUser, messagesController.getAllMessages);
 
+// Get all messages for the current user
+router.get("/all", authenticateUser, messagesController.getAllUserMessages);
+
 // Get conversation for a specific user
 router.get("/user/:id", authenticateUser, messagesController.getUserConversation);
 
