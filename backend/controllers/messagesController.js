@@ -2,7 +2,7 @@ const Message = require("../models/messageModel");
 
 // Get all messages for the logged-in user
 exports.getAllMessages = (req, res) => {
-  const userId = req.user.id; // Get the ID of the logged-in user from the auth middleware
+  const userId = req.user.userId; // Changed from req.user.id
 
   // Use the existing getConversation method instead of getAllMessages
   Message.getConversation(userId, (err, results) => {
@@ -16,18 +16,50 @@ exports.getAllMessages = (req, res) => {
 
 // Get conversation for a specific user
 exports.getUserConversation = (req, res) => {
-  const userId = req.params.id;     // This is the selected user ID
-  const currentUserId = req.user.id; // This is the logged-in user's ID
+  const userId = req.params.id;
+  const currentUserId = req.user.userId; // Changed from req.user.id
 
-  console.log("Fetching conversation between current user ID:", currentUserId, "and selected user ID:", userId);
+  console.log("DEBUG - Fetching conversation between users:");
+  console.log("DEBUG - Current user ID (from token):", currentUserId, "Type:", typeof currentUserId);
+  console.log("DEBUG - Selected user ID (from params):", userId, "Type:", typeof userId);
 
-  // Modified to only get messages between these two specific users
-  Message.getConversationBetweenUsers(currentUserId, userId, (err, results) => {
+  // Convert IDs to ensure they're numbers for comparison
+  const numCurrentUserId = Number(currentUserId);
+  const numUserId = Number(userId);
+
+  Message.getConversationBetweenUsers(numCurrentUserId, numUserId, (err, results) => {
     if (err) {
       console.error("Error fetching conversation:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
     }
-    console.log("Conversation results:", results);
+
+    console.log("DEBUG - Conversation results count:", results.length);
+    if (results.length > 0) {
+      console.log("DEBUG - First message:", results[0]);
+    } else {
+      console.log("DEBUG - No messages found between users", numCurrentUserId, "and", numUserId);
+
+      // Let's run a direct query to double-check
+      const query = `
+        SELECT * FROM messages
+        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+      `;
+      const queryParams = [numCurrentUserId, numUserId, numUserId, numCurrentUserId];
+      console.log("DEBUG - Running direct query:", query, "with params:", queryParams);
+
+      // This is just for debugging - it won't affect the response
+      require("../config/db").query(query, queryParams, (queryErr, queryResults) => {
+        if (queryErr) {
+          console.error("DEBUG - Direct query error:", queryErr);
+        } else {
+          console.log("DEBUG - Direct query results count:", queryResults.length);
+          if (queryResults.length > 0) {
+            console.log("DEBUG - First direct query result:", queryResults[0]);
+          }
+        }
+      });
+    }
+
     res.json(results);
   });
 };

@@ -48,20 +48,21 @@ const CommunicationHub = () => {
     console.log('Messages updated:', messages);
   }, [messages]);
 
-  // Auto-select a user for testing
-  useEffect(() => {
-    if (users.length > 0 && !selectedUser) {
-      // Look for either user ID 7 (Dr. John Smith) or 11 (Chase Kliment)
-      const targetUser = users.find(u => u.id === 7 || u.id === 11);
-      if (targetUser) {
-        console.log('Auto-selecting user for testing:', targetUser);
-        dispatch(selectUser(targetUser));
-      } else {
-        console.log('Could not find user with ID 7 or 11');
-        console.log('Available users:', users);
-      }
+// Auto-select a user for testing
+useEffect(() => {
+  if (users.length > 0 && !selectedUser) {
+    // Look for the first user that is not the current user
+    const targetUser = users.find(u => u.id !== currentUser.id);
+
+    if (targetUser) {
+      console.log('Auto-selecting user for testing:', targetUser);
+      dispatch(selectUser(targetUser));
+    } else {
+      console.log('Could not find another user to select');
+      console.log('Available users:', users);
     }
-  }, [users, selectedUser, dispatch]);
+  }
+}, [users, selectedUser, dispatch, currentUser]);
 
   // Handle user selection
   const handleSelectUser = (user) => {
@@ -167,11 +168,11 @@ const CommunicationHub = () => {
 
   // Get pinned and regular users
   const pinnedUsers = Array.isArray(filteredUsers)
-    ? filteredUsers.filter(user => user.pinned)
-    : [];
-  const regularUsers = Array.isArray(filteredUsers)
-    ? filteredUsers.filter(user => !user.pinned)
-    : [];
+  ? filteredUsers.filter(user => user.pinned && user.id !== currentUser?.id)
+  : [];
+const regularUsers = Array.isArray(filteredUsers)
+  ? filteredUsers.filter(user => !user.pinned && user.id !== currentUser?.id)
+  : [];
 
   // Group messages by date
   const groupedMessages = groupMessagesByDate();
