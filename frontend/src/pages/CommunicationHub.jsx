@@ -224,12 +224,31 @@ const getLastMessageForUser = (userId) => {
       )
     : [];
 
-  // Get pinned and regular users
+  // Get pinned, patient check-in, and regular users
   const pinnedUsers = Array.isArray(filteredUsers)
     ? filteredUsers.filter(user => user.pinned && user.id !== currentUser?.id)
     : [];
+
+  // Patient check-in users - we'll filter them based on having messages with type 'patient-check-in'
+  const patientCheckInUsers = Array.isArray(filteredUsers)
+    ? filteredUsers.filter(user => {
+        // Find any messages related to patient check-ins for this user
+        const hasCheckInMessages = allMessages.some(msg =>
+          ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+           (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
+          msg.type === 'patient-check-in'
+        );
+        return !user.pinned && hasCheckInMessages && user.id !== currentUser?.id;
+      })
+    : [];
+
+  // Regular users (excluding pinned and patient check-in users)
   const regularUsers = Array.isArray(filteredUsers)
-    ? filteredUsers.filter(user => !user.pinned && user.id !== currentUser?.id)
+    ? filteredUsers.filter(user =>
+        !user.pinned &&
+        !patientCheckInUsers.some(pUser => pUser.id === user.id) &&
+        user.id !== currentUser?.id
+      )
     : [];
 
   // Group messages by date
@@ -287,6 +306,7 @@ const getLastMessageForUser = (userId) => {
                 />
               </div>
 
+              {/* Pinned Chats Section */}
               <div className="px-3 py-2">
                 <p className="text-xs font-semibold text-gray-500 flex items-center">
                   <span className="mr-1">📌</span> Pinned Chats
@@ -354,6 +374,73 @@ const getLastMessageForUser = (userId) => {
                       ))
                     ) : (
                       <div className="p-2 text-xs text-gray-500">No pinned chats</div>
+                    )
+                  )}
+                </div>
+
+                {/* Patient Check-ins Section */}
+                <div className="px-3 py-2 mt-2">
+                  <p className="text-xs font-semibold text-gray-500 flex items-center">
+                    <span className="mr-1">👤</span> Patient Check-ins
+                  </p>
+                </div>
+
+                {/* Patient Check-in Chats */}
+                <div className="px-2">
+                  {loading ? (
+                    <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
+                  ) : (
+                    patientCheckInUsers.length > 0 ? (
+                      patientCheckInUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer relative ${
+                            selectedUser?.id === user.id ? 'bg-blue-50' : ''
+                          }`}
+                          onClick={() => handleSelectUser(user)}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium text-xs">
+                            {getUserInitials(user.name)}
+                          </div>
+                          <div className="ml-2 flex-1 min-w-0">
+                            <div className="flex justify-between items-center">
+                              <p className={`font-medium text-sm truncate ${
+                                selectedUser?.id === user.id ? 'text-blue-600' : ''
+                              }`}>{user.name}</p>
+                              <span className="text-xs text-gray-500">
+                                {user.last_message_time ? formatTime(user.last_message_time) : ''}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">
+                              {(() => {
+                                const userMessages = allMessages.filter(
+                                  msg => ((msg.sender_id === user.id && msg.receiver_id === currentUser.id) ||
+                                         (msg.sender_id === currentUser.id && msg.receiver_id === user.id)) &&
+                                         msg.type === 'patient-check-in'
+                                );
+                                return userMessages.length > 0
+                                  ? `${userMessages[0].message.substring(0, 30)}${userMessages[0].message.length > 30 ? '...' : ''}`
+                                  : 'Patient checked in';
+                              })()}
+                            </p>
+                          </div>
+                          {user.unread_count > 0 && (
+                            <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
+                              {user.unread_count}
+                            </div>
+                          )}
+
+                          {/* Add pin button */}
+                          <button
+                            className="absolute right-2 top-2 text-gray-400 hover:text-amber-500 focus:outline-none"
+                            onClick={(e) => handleTogglePin(user, e)}
+                          >
+                            📌
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-2 text-xs text-gray-500">No patient check-ins</div>
                     )
                   )}
                 </div>
