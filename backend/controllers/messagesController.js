@@ -169,8 +169,15 @@ exports.getMessagesByType = (req, res) => {
 };
 
 // New endpoint: Get patient check-in messages for a user
+// New endpoint: Get patient check-in messages for a user
 exports.getPatientCheckIns = (req, res) => {
-  const userId = req.user.userId;
+  // Fix: Add fallback for when req.user is undefined
+  const userId = req.user?.userId || (req.params && req.params.id);
+
+  if (!userId) {
+    console.error("Error: User ID not found in request");
+    return res.status(400).json({ error: "User ID is required" });
+  }
 
   Message.getPatientCheckInsForUser(userId, (err, results) => {
     if (err) {

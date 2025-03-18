@@ -37,8 +37,34 @@ const CommunicationHub = () => {
   }, [users]);
 
   useEffect(() => {
-    console.log('All Messages from Redux:', allMessages);
-  }, [allMessages]);
+  console.log('All Messages from Redux:', allMessages);
+
+  // Add this new debug log
+  if (allMessages.length > 0 && currentUser) {
+    console.log("General messages with current user:",
+      allMessages.filter(msg =>
+        ((msg.sender_id === currentUser.id) || (msg.receiver_id === currentUser.id)) &&
+        msg.type === 'general'
+      )
+    );
+  }
+}, [allMessages, currentUser]);
+
+// Your existing debug useEffect
+useEffect(() => {
+  if (allMessages.length > 0 && currentUser) {
+    console.log("DEBUG - All users with messages:");
+    // Get unique user IDs from messages
+    const userIds = new Set();
+    allMessages.forEach(msg => {
+      if (msg.sender_id !== currentUser.id) userIds.add(msg.sender_id);
+      if (msg.receiver_id !== currentUser.id) userIds.add(msg.receiver_id);
+    });
+    console.log("Users who should appear:", Array.from(userIds));
+    console.log("Regular messages:", allMessages.filter(m => m.type !== 'patient-check-in'));
+    console.log("Patient check-in messages:", allMessages.filter(m => m.type === 'patient-check-in'));
+  }
+}, [allMessages, currentUser]);
 
   // Fetch patient check-in messages when component mounts
   useEffect(() => {
@@ -254,34 +280,30 @@ const handleSelectUser = (user, context = 'regular') => {
     : [];
 
   // Patient check-in users - we'll filter them based on having messages with type 'patient-check-in'
+// Patient check-in users - include any user with patient check-in messages
 const patientCheckInUsers = Array.isArray(filteredUsers)
   ? filteredUsers.filter(user => {
-      // Temporary test: Use allMessages instead of patientCheckIns
-      const hasCheckInMessages = allMessages.some(msg =>
+      if (user.pinned || user.id === currentUser?.id) return false;
+
+      return allMessages.some(msg =>
         ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
          (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
         msg.type === 'patient-check-in'
       );
-      return !user.pinned && hasCheckInMessages && user.id !== currentUser?.id;
     })
   : [];
 
-// Regular users (excluding pinned users)
+// Regular users (non-pinned users who have at least one regular message with the current user)
+// Regular users - include ANY user who has at least one general message
 const regularUsers = Array.isArray(filteredUsers)
   ? filteredUsers.filter(user => {
-      // First, exclude current user and pinned users
-      if (user.pinned || user.id === currentUser?.id) {
-        return false;
-      }
+      if (user.pinned || user.id === currentUser?.id) return false;
 
-      // Find all messages between this user and the current user
-      const userMessages = allMessages.filter(msg =>
-        (msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
-        (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)
+      return allMessages.some(msg =>
+        ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+         (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
+        msg.type === 'general'
       );
-
-      // Check if there's at least one non-patient-check-in message
-      return userMessages.some(msg => msg.type !== 'patient-check-in');
     })
   : [];
 
@@ -498,19 +520,20 @@ const regularUsers = Array.isArray(filteredUsers)
   selectedUser?.id === user.id ? 'text-blue-600' : ''
 }`}>{user.name}</p>
                               <span className="text-xs text-gray-500">
-                                {user.last_message_time ? formatTime(user.last_message_time) : ''}
-                              </span>
-                            </div>
-                          <p className="text-xs text-gray-500 truncate">
+  {user.last_message_time ? formatTime(user.last_message_time) : ''}
+</span>
+</div>
+<p className="text-xs text-gray-500 truncate">
   {(() => {
-    console.log('User ID:', user.id, 'All Messages Count:', allMessages.length);
-    const userMessages = allMessages.filter(
-      msg => (msg.sender_id === user.id && msg.receiver_id === currentUser.id) ||
-             (msg.sender_id === currentUser.id && msg.receiver_id === user.id)
+    // Filter to only get general messages
+    const generalMessages = allMessages.filter(
+      msg => ((msg.sender_id === user.id && msg.receiver_id === currentUser.id) ||
+             (msg.sender_id === currentUser.id && msg.receiver_id === user.id)) &&
+             msg.type === 'general'
     );
-    console.log('Filtered messages for user', user.name, ':', userMessages);
-    return userMessages.length > 0
-      ? `${userMessages[0].message.substring(0, 30)}${userMessages[0].message.length > 30 ? '...' : ''}`
+
+    return generalMessages.length > 0
+      ? `${generalMessages[0].message.substring(0, 30)}${generalMessages[0].message.length > 30 ? '...' : ''}`
       : 'No messages';
   })()}
 </p>
