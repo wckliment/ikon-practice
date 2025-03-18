@@ -24,4 +24,13 @@ router.put("/:id/read", authenticateUser, messagesController.markAsRead);
 // Delete message
 router.delete("/:id", authenticateUser, messagesController.deleteMessage);
 
+// Get messages by type
+router.get('/type/:type', messagesController.getMessagesByType);
+
+// Get patient check-in messages for the current user
+router.get('/patient-check-ins', messagesController.getPatientCheckIns);
+
+// Patient check-in route
+router.post('/patient-check-in', messagesController.createPatientCheckIn);
+
 module.exports = router;

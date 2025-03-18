@@ -45,6 +45,22 @@ export const fetchAllMessages = createAsyncThunk(
   }
 );
 
+// New: Fetch patient check-in messages
+export const fetchPatientCheckIns = createAsyncThunk(
+  'chat/fetchPatientCheckIns',
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log('Making API request to: http://localhost:5000/api/messages/patient-check-ins');
+      const response = await api.get('/messages/patient-check-ins');
+      console.log('Patient check-in messages response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching patient check-in messages:', error);
+      return rejectWithValue(error.response?.data || 'Failed to fetch patient check-ins');
+    }
+  }
+);
+
 export const fetchUsers = createAsyncThunk(
   'chat/fetchUsers',
   async (_, { rejectWithValue }) => {
@@ -77,18 +93,40 @@ export const fetchConversation = createAsyncThunk(
 
 export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
-  async ({ sender_id, receiver_id, message }, { rejectWithValue }) => {
+  async ({ sender_id, receiver_id, message, type = 'general' }, { rejectWithValue }) => {
     try {
-      console.log('Sending message to API:', { sender_id, receiver_id, message });
+      console.log('Sending message to API:', { sender_id, receiver_id, message, type });
       const response = await api.post('/messages', {
         sender_id,
         receiver_id,
-        message
+        message,
+        type
       });
       console.log('Send message response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error sending message:', error);
+      return rejectWithValue(error.response?.data || { error: 'Network error' });
+    }
+  }
+);
+
+// New: Send a patient check-in message
+export const sendPatientCheckIn = createAsyncThunk(
+  'chat/sendPatientCheckIn',
+  async ({ sender_id, receiver_id, message }, { rejectWithValue }) => {
+    try {
+      console.log('Sending patient check-in to API:', { sender_id, receiver_id, message });
+      const response = await api.post('/messages', {
+        sender_id,
+        receiver_id,
+        message,
+        type: 'patient-check-in'
+      });
+      console.log('Send patient check-in response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error sending patient check-in:', error);
       return rejectWithValue(error.response?.data || { error: 'Network error' });
     }
   }
@@ -123,11 +161,12 @@ export const togglePinUser = createAsyncThunk(
   }
 );
 
-// Initial state
+// Initial state - updated to include patientCheckIns
 const initialState = {
   users: [],
   messages: [],
   allMessages: [],
+  patientCheckIns: [], // New state for patient check-in messages
   selectedUser: null,
   loading: false,
   error: null
@@ -161,6 +200,20 @@ const chatSlice = createSlice({
         state.error = action.payload;
       })
 
+      // fetchPatientCheckIns reducers
+      .addCase(fetchPatientCheckIns.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPatientCheckIns.fulfilled, (state, action) => {
+        state.patientCheckIns = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchPatientCheckIns.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       // fetchUsers reducers
       .addCase(fetchUsers.pending, (state) => {
         state.loading = true;
@@ -189,17 +242,40 @@ const chatSlice = createSlice({
         state.loading = false;
       })
 
-      // sendMessage reducers
+      // sendMessage reducers - updated to handle message types
       .addCase(sendMessage.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         state.messages = [action.payload, ...state.messages];
+        state.allMessages = [action.payload, ...state.allMessages];
         state.loading = false;
+
+        // If it's a patient check-in message, add it to that collection
+        if (action.payload.type === 'patient-check-in') {
+          state.patientCheckIns = [action.payload, ...state.patientCheckIns];
+        }
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.error = action.payload || { error: 'Failed to send message' };
+        state.loading = false;
+      })
+
+      // sendPatientCheckIn reducers
+      .addCase(sendPatientCheckIn.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendPatientCheckIn.fulfilled, (state, action) => {
+        // Add to all message collections
+        state.messages = [action.payload, ...state.messages];
+        state.allMessages = [action.payload, ...state.allMessages];
+        state.patientCheckIns = [action.payload, ...state.patientCheckIns];
+        state.loading = false;
+      })
+      .addCase(sendPatientCheckIn.rejected, (state, action) => {
+        state.error = action.payload || { error: 'Failed to send patient check-in' };
         state.loading = false;
       })
 

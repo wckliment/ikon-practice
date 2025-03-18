@@ -111,4 +111,10 @@ User.getAllUsersWithPinStatus = (currentUserId, callback) => {
   ikonDB.query(query, [currentUserId], callback);
 };
 
+// Get all users except the specified user ID
+User.getAllExceptSender = (senderId, callback) => {
+  const query = "SELECT * FROM users WHERE id != ?";
+  ikonDB.query(query, [senderId], callback);
+};
+
 module.exports = User;

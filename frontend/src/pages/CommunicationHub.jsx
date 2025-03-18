@@ -9,17 +9,20 @@ import {
   selectUser,
   clearSelectedUser,
   togglePinUser,
-  fetchAllMessages
+  fetchAllMessages,
+  fetchPatientCheckIns
 } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
   const dispatch = useDispatch();
-  const { users = [], messages = [], allMessages = [], selectedUser, loading } = useSelector((state) => state.chat);
+  const { users = [], messages = [], allMessages = [], patientCheckIns = [], selectedUser, loading } = useSelector((state) => state.chat);
   const [newMessageText, setNewMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Get current logged-in user from Redux
   const { user: currentUser, isAuthenticated } = useSelector((state) => state.auth);
+
+  const [selectedUserContext, setSelectedUserContext] = useState(null); // 'patient-check-in' or 'regular'
 
   // Debug Redux state
   const chatState = useSelector((state) => state.chat);
@@ -27,15 +30,21 @@ const CommunicationHub = () => {
   console.log('Current user from Redux:', currentUser);
 
   useEffect(() => {
-  if (users.length > 0) {
-    console.log('Checking user data structure:');
-    console.log(users[0]); // Log the first user to see its structure
-  }
+    if (users.length > 0) {
+      console.log('Checking user data structure:');
+      console.log(users[0]); // Log the first user to see its structure
+    }
   }, [users]);
 
   useEffect(() => {
-  console.log('All Messages from Redux:', allMessages);
-}, [allMessages]);
+    console.log('All Messages from Redux:', allMessages);
+  }, [allMessages]);
+
+  // Fetch patient check-in messages when component mounts
+  useEffect(() => {
+    console.log('Fetching patient check-in messages');
+    dispatch(fetchPatientCheckIns());
+  }, [dispatch]);
 
   // Fetch all messages when component mounts
   useEffect(() => {
@@ -43,44 +52,50 @@ const CommunicationHub = () => {
     dispatch(fetchAllMessages());
   }, [dispatch]);
 
-const getLastMessageForUser = (userId) => {
-  // Filter messages that involve this user (as sender or receiver)
-  const userMessages = allMessages.filter(
-    msg => (msg.sender_id === userId && msg.receiver_id === currentUser.id) ||
-           (msg.sender_id === currentUser.id && msg.receiver_id === userId)
-  );
+  useEffect(() => {
+  console.log('Patient check-ins from Redux:', patientCheckIns);
+}, [patientCheckIns]);
 
-  // Log each message with its content and timestamp
-  console.log(`Full messages for user ${userId}:`, userMessages.map(msg => ({
-    id: msg.id,
-    message: msg.message,
-    created_at: msg.created_at,
-    timestamp: new Date(msg.created_at).getTime(),
-    sender_id: msg.sender_id,
-    receiver_id: msg.receiver_id
-  })));
+  const getLastMessageForUser = (userId) => {
+    // Filter messages that involve this user (as sender or receiver)
+    const userMessages = allMessages.filter(
+      msg => (msg.sender_id === userId && msg.receiver_id === currentUser.id) ||
+            (msg.sender_id === currentUser.id && msg.receiver_id === userId)
+    );
 
-  // Sort by created_at timestamp (newest first)
-  userMessages.sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    console.log(`Comparing: ${a.message.substring(0, 20)} (${dateA}) vs ${b.message.substring(0, 20)} (${dateB})`);
-    return dateB - dateA;
-  });
+    // Log each message with its content and timestamp
+    console.log(`Full messages for user ${userId}:`, userMessages.map(msg => ({
+      id: msg.id,
+      message: msg.message,
+      created_at: msg.created_at,
+      timestamp: new Date(msg.created_at).getTime(),
+      sender_id: msg.sender_id,
+      receiver_id: msg.receiver_id,
+      type: msg.type
+    })));
 
-  // Log the sorted messages
-  console.log(`Sorted messages for user ${userId}:`, userMessages.map(msg => ({
-    message: msg.message,
-    created_at: msg.created_at,
-    timestamp: new Date(msg.created_at).getTime()
-  })));
+    // Sort by created_at timestamp (newest first)
+    userMessages.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      console.log(`Comparing: ${a.message.substring(0, 20)} (${dateA}) vs ${b.message.substring(0, 20)} (${dateB})`);
+      return dateB - dateA;
+    });
 
-  if (userMessages.length > 0) {
-    console.log(`Selected preview message for ${userId}:`, userMessages[0].message);
-  }
+    // Log the sorted messages
+    console.log(`Sorted messages for user ${userId}:`, userMessages.map(msg => ({
+      message: msg.message,
+      created_at: msg.created_at,
+      timestamp: new Date(msg.created_at).getTime(),
+      type: msg.type
+    })));
 
-  return userMessages.length > 0 ? userMessages[0] : null;
-};
+    if (userMessages.length > 0) {
+      console.log(`Selected preview message for ${userId}:`, userMessages[0].message);
+    }
+
+    return userMessages.length > 0 ? userMessages[0] : null;
+  };
 
   // Fetch users on component mount
   useEffect(() => {
@@ -122,13 +137,14 @@ const getLastMessageForUser = (userId) => {
     }
   }, [users, selectedUser, dispatch, currentUser]);
 
-  // Handle user selection
-  const handleSelectUser = (user) => {
-    console.log('User selected manually:', user);
-    dispatch(selectUser(user));
-  };
+// Handle user selection
+const handleSelectUser = (user, context = 'regular') => {
+  console.log('User selected manually:', user, 'from context:', context);
+  dispatch(selectUser(user));
+  setSelectedUserContext(context);
+};
 
-  // Handle message submission
+  // Handle message submission - Updated to include message type
   const handleSendMessage = (e) => {
     e.preventDefault();
 
@@ -147,16 +163,24 @@ const getLastMessageForUser = (userId) => {
       return;
     }
 
+    // Check if the selected user is a patient with check-in messages
+    const isPatientCheckInUser = patientCheckInUsers.some(user => user.id === selectedUser.id);
+
+    // Use 'patient-check-in' type if continuing a patient check-in conversation
+    const messageType = isPatientCheckInUser ? 'patient-check-in' : 'general';
+
     console.log('Sending message:', {
       sender_id: currentUser.id,
       receiver_id: selectedUser.id,
-      message: newMessageText
+      message: newMessageText,
+      type: messageType
     });
 
     dispatch(sendMessage({
       sender_id: currentUser.id,
-      receiver_id: selectedUser.id,  // Changed from recipient_id to receiver_id
-      message: newMessageText        // Changed from content to message
+      receiver_id: selectedUser.id,
+      message: newMessageText,
+      type: messageType
     }));
 
     setNewMessageText("");
@@ -230,26 +254,36 @@ const getLastMessageForUser = (userId) => {
     : [];
 
   // Patient check-in users - we'll filter them based on having messages with type 'patient-check-in'
-  const patientCheckInUsers = Array.isArray(filteredUsers)
-    ? filteredUsers.filter(user => {
-        // Find any messages related to patient check-ins for this user
-        const hasCheckInMessages = allMessages.some(msg =>
-          ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
-           (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
-          msg.type === 'patient-check-in'
-        );
-        return !user.pinned && hasCheckInMessages && user.id !== currentUser?.id;
-      })
-    : [];
+const patientCheckInUsers = Array.isArray(filteredUsers)
+  ? filteredUsers.filter(user => {
+      // Temporary test: Use allMessages instead of patientCheckIns
+      const hasCheckInMessages = allMessages.some(msg =>
+        ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+         (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
+        msg.type === 'patient-check-in'
+      );
+      return !user.pinned && hasCheckInMessages && user.id !== currentUser?.id;
+    })
+  : [];
 
-  // Regular users (excluding pinned and patient check-in users)
-  const regularUsers = Array.isArray(filteredUsers)
-    ? filteredUsers.filter(user =>
-        !user.pinned &&
-        !patientCheckInUsers.some(pUser => pUser.id === user.id) &&
-        user.id !== currentUser?.id
-      )
-    : [];
+// Regular users (excluding pinned users)
+const regularUsers = Array.isArray(filteredUsers)
+  ? filteredUsers.filter(user => {
+      // First, exclude current user and pinned users
+      if (user.pinned || user.id === currentUser?.id) {
+        return false;
+      }
+
+      // Find all messages between this user and the current user
+      const userMessages = allMessages.filter(msg =>
+        (msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+        (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)
+      );
+
+      // Check if there's at least one non-patient-check-in message
+      return userMessages.some(msg => msg.type !== 'patient-check-in');
+    })
+  : [];
 
   // Group messages by date
   const groupedMessages = groupMessagesByDate();
@@ -327,7 +361,7 @@ const getLastMessageForUser = (userId) => {
                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer relative ${
   selectedUser?.id === user.id ? 'bg-blue-50' : ''
 }`}
-                          onClick={() => handleSelectUser(user)}
+                          onClick={() => handleSelectUser(user, 'regular')}
                         >
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
                             {getUserInitials(user.name)}
@@ -386,64 +420,55 @@ const getLastMessageForUser = (userId) => {
                 </div>
 
                 {/* Patient Check-in Chats */}
-                <div className="px-2">
-                  {loading ? (
-                    <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
-                  ) : (
-                    patientCheckInUsers.length > 0 ? (
-                      patientCheckInUsers.map((user) => (
-                        <div
-                          key={user.id}
-                          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer relative ${
-                            selectedUser?.id === user.id ? 'bg-blue-50' : ''
-                          }`}
-                          onClick={() => handleSelectUser(user)}
-                        >
-                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium text-xs">
-                            {getUserInitials(user.name)}
-                          </div>
-                          <div className="ml-2 flex-1 min-w-0">
-                            <div className="flex justify-between items-center">
-                              <p className={`font-medium text-sm truncate ${
-                                selectedUser?.id === user.id ? 'text-blue-600' : ''
-                              }`}>{user.name}</p>
-                              <span className="text-xs text-gray-500">
-                                {user.last_message_time ? formatTime(user.last_message_time) : ''}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 truncate">
-                              {(() => {
-                                const userMessages = allMessages.filter(
-                                  msg => ((msg.sender_id === user.id && msg.receiver_id === currentUser.id) ||
-                                         (msg.sender_id === currentUser.id && msg.receiver_id === user.id)) &&
-                                         msg.type === 'patient-check-in'
-                                );
-                                return userMessages.length > 0
-                                  ? `${userMessages[0].message.substring(0, 30)}${userMessages[0].message.length > 30 ? '...' : ''}`
-                                  : 'Patient checked in';
-                              })()}
-                            </p>
-                          </div>
-                          {user.unread_count > 0 && (
-                            <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                              {user.unread_count}
-                            </div>
-                          )}
-
-                          {/* Add pin button */}
-                          <button
-                            className="absolute right-2 top-2 text-gray-400 hover:text-amber-500 focus:outline-none"
-                            onClick={(e) => handleTogglePin(user, e)}
-                          >
-                            📌
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-2 text-xs text-gray-500">No patient check-ins</div>
-                    )
-                  )}
-                </div>
+<div className="px-2">
+  {loading ? (
+    <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
+  ) : (
+    patientCheckInUsers.length > 0 ? (
+      patientCheckInUsers.map((user) => (
+        <div
+          key={user.id}
+          className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer relative ${
+            selectedUser?.id === user.id ? 'bg-blue-50' : ''
+          }`}
+         onClick={() => handleSelectUser(user, 'patient-check-in')}
+        >
+          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium text-xs">
+            {getUserInitials(user.name)}
+          </div>
+          <div className="ml-2 flex-1 min-w-0">
+            <div className="flex justify-between items-center">
+              <p className={`font-medium text-sm truncate ${
+                selectedUser?.id === user.id ? 'text-blue-600' : ''
+              }`}>{user.name}</p>
+              <span className="text-xs text-gray-500">
+                {user.last_message_time ? formatTime(user.last_message_time) : ''}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 truncate">
+              {(() => {
+                const userCheckInMessages = patientCheckIns.filter(
+                  msg => (msg.sender_id === user.id && msg.receiver_id === currentUser.id) ||
+                         (msg.sender_id === currentUser.id && msg.receiver_id === user.id)
+                );
+                return userCheckInMessages.length > 0
+                  ? `${userCheckInMessages[0].message.substring(0, 30)}${userCheckInMessages[0].message.length > 30 ? '...' : ''}`
+                  : 'Patient checked in';
+              })()}
+            </p>
+          </div>
+          {user.unread_count > 0 && (
+            <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
+              {user.unread_count}
+            </div>
+          )}
+        </div>
+      ))
+    ) : (
+      <div className="p-2 text-xs text-gray-500">No patient check-ins</div>
+    )
+  )}
+</div>
 
                 {/* Recent Chats Header */}
                 <div className="px-3 py-2 mt-2">
@@ -462,7 +487,7 @@ const getLastMessageForUser = (userId) => {
                           className={`flex items-center p-2 hover:bg-gray-50 rounded-md cursor-pointer relative ${
   selectedUser?.id === user.id ? 'bg-blue-50' : ''
 }`}
-                          onClick={() => handleSelectUser(user)}
+                          onClick={() => handleSelectUser(user, 'regular')}
                         >
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
                             {getUserInitials(user.name)}
@@ -524,6 +549,11 @@ const getLastMessageForUser = (userId) => {
                       </div>
                       <div className="ml-2">
                         <p className="font-medium">{selectedUser.name}</p>
+                        {patientCheckInUsers.some(user => user.id === selectedUser.id) && (
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                            Patient Check-in
+                          </span>
+                        )}
                       </div>
                     </>
                   ) : (
@@ -559,18 +589,22 @@ const getLastMessageForUser = (userId) => {
                         <span className="text-xs text-gray-500">{formatDate(date)}</span>
                       </div>
 
-                      {/* Messages for this date */}
+                      {/* Messages for this date
                       {groupedMessages[date].map(message => {
                         console.log('Rendering message:', message);
                         const isSentByMe = message.sender_id === currentUser?.id;
+                        const isPatientCheckIn = message.type === 'patient-check-in';
 
                         return (
                           <div key={message.id}>
                             <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
                               <div className={`max-w-xs lg:max-w-md rounded-lg ${
-                                isSentByMe ? 'bg-green-100' : 'bg-blue-100'
+                                isSentByMe ? 'bg-green-100' : isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
                               } p-3 text-sm`}>
-                                <p>{message.message}</p>  {/* Using message.message instead of message.content */}
+                                {isPatientCheckIn && !isSentByMe && (
+                                  <div className="mb-1 text-xs text-green-700 font-medium">Patient Check-in</div>
+                                )}
+                                <p>{message.message}</p>
                               </div>
                             </div>
                             <div className="text-right text-xs text-gray-500">
@@ -578,7 +612,40 @@ const getLastMessageForUser = (userId) => {
                             </div>
                           </div>
                         );
-                      })}
+                      })} */}
+                      {/* Messages for this date */}
+{groupedMessages[date]
+  // Only show patient check-in messages if selected from that section
+  .filter(message => {
+    const isFromPatientCheckIns = patientCheckInUsers.some(user => user.id === selectedUser.id);
+    if (isFromPatientCheckIns) {
+      return message.type === 'patient-check-in';
+    }
+    return true; // Show all messages otherwise
+  })
+  .map(message => {
+    console.log('Rendering message:', message);
+    const isSentByMe = message.sender_id === currentUser?.id;
+    const isPatientCheckIn = message.type === 'patient-check-in';
+
+    return (
+      <div key={message.id}>
+        <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
+          <div className={`max-w-xs lg:max-w-md rounded-lg ${
+            isSentByMe ? 'bg-green-100' : isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
+          } p-3 text-sm`}>
+            {isPatientCheckIn && !isSentByMe && (
+              <div className="mb-1 text-xs text-green-700 font-medium">Patient Check-in</div>
+            )}
+            <p>{message.message}</p>
+          </div>
+        </div>
+        <div className="text-right text-xs text-gray-500">
+          {formatTime(message.created_at)}
+        </div>
+      </div>
+    );
+  })}
                     </div>
                   ))
                 )}
@@ -657,7 +724,8 @@ const getLastMessageForUser = (userId) => {
                         <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50">
                           <span>Send Link</span>
                         </button>
-                        <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50 col-span-2">
+
+  <button className="flex items-center justify-center text-sm border rounded-md py-2 hover:bg-gray-50 col-span-2">
                           <span>Schedule Appointment</span>
                         </button>
                       </div>
@@ -682,6 +750,14 @@ const getLastMessageForUser = (userId) => {
                               : 'No messages yet'}
                           </span>
                         </div>
+                        {patientCheckInUsers.some(user => user.id === selectedUser.id) && (
+                          <div className="flex items-start">
+                            <span className="text-gray-500 text-sm w-24">Status:</span>
+                            <span className="text-sm bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                              Patient Check-in
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

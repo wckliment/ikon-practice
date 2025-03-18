@@ -90,16 +90,16 @@ exports.markAsRead = (req, res) => {
   });
 };
 
-// Create new message
+// Create new message - Updated to include message type
 exports.createMessage = (req, res) => {
-  const { sender_id, receiver_id, message } = req.body;
+  const { sender_id, receiver_id, message, type = 'general' } = req.body;
 
   // Validate required fields
   if (!sender_id || !receiver_id || !message) {
     return res.status(400).json({ error: "Sender ID, receiver ID, and message are required" });
   }
 
-  Message.create(sender_id, receiver_id, message, (err, results) => {
+  Message.create(sender_id, receiver_id, message, type, (err, results) => {
     if (err) {
       console.error("Error creating message:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
@@ -114,6 +114,7 @@ exports.createMessage = (req, res) => {
       sender_id,
       receiver_id,
       message,
+      type,
       created_at: new Date()
     };
 
@@ -152,3 +153,89 @@ exports.getAllUserMessages = (req, res) => {
   });
 };
 
+// New endpoint: Get messages by type
+exports.getMessagesByType = (req, res) => {
+  const { type } = req.params;
+
+  Message.getMessagesByType(type, (err, results) => {
+    if (err) {
+      console.error(`Error fetching ${type} messages:`, err);
+      return res.status(500).json({ error: "Database error", details: err.message });
+    }
+
+    console.log(`DEBUG - Found ${results.length} messages of type ${type}`);
+    res.json(results);
+  });
+};
+
+// New endpoint: Get patient check-in messages for a user
+exports.getPatientCheckIns = (req, res) => {
+  const userId = req.user.userId;
+
+  Message.getPatientCheckInsForUser(userId, (err, results) => {
+    if (err) {
+      console.error("Error fetching patient check-in messages:", err);
+      return res.status(500).json({ error: "Database error", details: err.message });
+    }
+
+    console.log(`DEBUG - Found ${results.length} patient check-in messages for user ${userId}`);
+    res.json(results);
+  });
+};
+
+// Create a patient check-in and send to all users
+exports.createPatientCheckIn = (req, res) => {
+  const { patientName, appointmentTime, doctorName, sender_id } = req.body;
+
+  if (!patientName || !appointmentTime || !sender_id) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const message = `Patient ${patientName} has checked in for their ${appointmentTime} appointment with Dr. ${doctorName || 'Smith'}`;
+
+  console.log("DEBUG - Creating patient check-in from user:", sender_id);
+  console.log("DEBUG - Message:", message);
+
+  // Get all users except the sender
+  require("../models/userModel").getAllExceptSender(sender_id, (err, users) => {
+    if (err) {
+      console.error("Error fetching users:", err);
+      return res.status(500).json({ error: "Database error", details: err.message });
+    }
+
+    console.log(`DEBUG - Found ${users.length} recipients for patient check-in`);
+
+    // Create a message for each user
+    let processedCount = 0;
+    let errors = [];
+
+    users.forEach(user => {
+      Message.create(sender_id, user.id, message, 'patient-check-in', (msgErr, result) => {
+        processedCount++;
+
+        if (msgErr) {
+          console.error(`Error sending check-in to user ${user.id}:`, msgErr);
+          errors.push({ userId: user.id, error: msgErr.message });
+        } else {
+          console.log(`DEBUG - Sent check-in to user ${user.id}, message ID: ${result.insertId}`);
+        }
+
+        // When all messages are processed, send the response
+        if (processedCount === users.length) {
+          if (errors.length > 0) {
+            return res.status(207).json({
+              message: 'Some patient check-in messages failed to send',
+              errors,
+              successCount: processedCount - errors.length
+            });
+          }
+
+          return res.status(201).json({
+            message: 'Patient check-in messages sent successfully',
+            count: processedCount
+          });
+        }
+      });
+    });
+  });
+};

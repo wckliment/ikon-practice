@@ -61,10 +61,10 @@ Message.markAsRead = (messageId, callback) => {
   // ikonDB.query(query, [messageId], callback);
 };
 
-// Create new message
-Message.create = (senderID, receiverID, message, callback) => {
-  const query = "INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)";
-  ikonDB.query(query, [senderID, receiverID, message], callback);
+// Create new message (Updated to include type parameter)
+Message.create = (senderID, receiverID, message, type = 'general', callback) => {
+  const query = "INSERT INTO messages (sender_id, receiver_id, message, type) VALUES (?, ?, ?, ?)";
+  ikonDB.query(query, [senderID, receiverID, message, type], callback);
 };
 
 // Delete message
@@ -85,13 +85,42 @@ Message.getAllUserMessages = (userId, callback) => {
     WHERE m.sender_id = ? OR m.receiver_id = ?
     ORDER BY m.created_at DESC
   `;
-  // Change db.query to ikonDB.query
   ikonDB.query(query, [userId, userId], (err, results) => {
     if (err) {
       return callback(err, null);
     }
     return callback(null, results);
   });
+};
+
+// New method: Get messages by type
+Message.getMessagesByType = (type, callback) => {
+  const query = `
+    SELECT m.*,
+    sender.name as sender_name,
+    receiver.name as receiver_name
+    FROM messages m
+    JOIN users sender ON m.sender_id = sender.id
+    JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE m.type = ?
+    ORDER BY m.created_at DESC
+  `;
+  ikonDB.query(query, [type], callback);
+};
+
+// New method: Get patient check-in messages for user
+Message.getPatientCheckInsForUser = (userId, callback) => {
+  const query = `
+    SELECT m.*,
+    sender.name as sender_name,
+    receiver.name as receiver_name
+    FROM messages m
+    JOIN users sender ON m.sender_id = sender.id
+    JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE (m.sender_id = ? OR m.receiver_id = ?) AND m.type = 'patient-check-in'
+    ORDER BY m.created_at DESC
+  `;
+  ikonDB.query(query, [userId, userId], callback);
 };
 
 module.exports = Message;
