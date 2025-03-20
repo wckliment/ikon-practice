@@ -27,9 +27,9 @@ Message.getConversation = (userId, callback) => {
   ikonDB.query(query, [userId, userId], callback);
 };
 
-// Get messages between two specific users
-Message.getConversationBetweenUsers = (currentUserId, otherUserId, callback) => {
-  const query = `
+// Updated: Get messages between two specific users with optional type filter
+Message.getConversationBetweenUsers = (currentUserId, otherUserId, type = null, callback) => {
+  let query = `
     SELECT m.*,
     s.name as sender_name,
     r.name as receiver_name
@@ -37,9 +37,18 @@ Message.getConversationBetweenUsers = (currentUserId, otherUserId, callback) => 
     LEFT JOIN users s ON m.sender_id = s.id
     LEFT JOIN users r ON m.receiver_id = r.id
     WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
-    ORDER BY m.created_at DESC
   `;
-  ikonDB.query(query, [currentUserId, otherUserId, otherUserId, currentUserId], callback);
+
+  // Add type filter if provided
+  const queryParams = [currentUserId, otherUserId, otherUserId, currentUserId];
+  if (type) {
+    query += ` AND m.type = ?`;
+    queryParams.push(type);
+  }
+
+  query += ` ORDER BY m.created_at DESC`;
+
+  ikonDB.query(query, queryParams, callback);
 };
 
 // Get unread message count for a user

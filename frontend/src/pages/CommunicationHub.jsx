@@ -134,13 +134,18 @@ useEffect(() => {
     console.log('Users data received:', users);
   }, [users]);
 
-  // Fetch messages when a user is selected
-  useEffect(() => {
-    if (selectedUser) {
-      console.log('Fetching conversation for user:', selectedUser.id);
-      dispatch(fetchConversation(selectedUser.id));
-    }
-  }, [selectedUser, dispatch]);
+// Fetch messages when a user is selected
+useEffect(() => {
+  if (selectedUser) {
+    console.log('Fetching conversation for user:', selectedUser.id, 'context:', selectedUserContext);
+
+    // You might need to modify your fetchConversation action to include the type
+    dispatch(fetchConversation({
+      userId: selectedUser.id,
+      conversationType: selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general'
+    }));
+  }
+}, [selectedUser, selectedUserContext, dispatch]);
 
   // Log messages when they change
   useEffect(() => {
@@ -638,13 +643,14 @@ const regularUsers = Array.isArray(filteredUsers)
                       })} */}
                       {/* Messages for this date */}
 {groupedMessages[date]
-  // Only show patient check-in messages if selected from that section
   .filter(message => {
-    const isFromPatientCheckIns = patientCheckInUsers.some(user => user.id === selectedUser.id);
-    if (isFromPatientCheckIns) {
+    // Only show messages of the appropriate type based on context
+    if (selectedUserContext === 'patient-check-in') {
       return message.type === 'patient-check-in';
+    } else if (selectedUserContext === 'regular') {
+      return message.type === 'general';
     }
-    return true; // Show all messages otherwise
+    return true; // Fallback case
   })
   .map(message => {
     console.log('Rendering message:', message);

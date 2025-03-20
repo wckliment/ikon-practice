@@ -76,12 +76,15 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
+// UPDATED: Modified to accept an object with userId and conversationType
 export const fetchConversation = createAsyncThunk(
   'chat/fetchConversation',
-  async (userId, { rejectWithValue }) => {
+  async ({ userId, conversationType }, { rejectWithValue }) => {
     try {
-      console.log('Making API request to:', `${API_URL}/messages/user/${userId}`);
-      const response = await api.get(`/messages/user/${userId}`);
+      console.log('Making API request to:', `${API_URL}/messages/user/${userId}`, 'with type:', conversationType);
+      const response = await api.get(`/messages/user/${userId}`, {
+        params: { type: conversationType }
+      });
       console.log('Conversation response:', response.data);
       return response.data;
     } catch (error) {

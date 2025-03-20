@@ -17,17 +17,19 @@ exports.getAllMessages = (req, res) => {
 // Get conversation for a specific user
 exports.getUserConversation = (req, res) => {
   const userId = req.params.id;
-  const currentUserId = req.user.userId; // Changed from req.user.id
+  const currentUserId = req.user.userId;
+  const messageType = req.query.type; // Get the type from query params
 
   console.log("DEBUG - Fetching conversation between users:");
   console.log("DEBUG - Current user ID (from token):", currentUserId, "Type:", typeof currentUserId);
   console.log("DEBUG - Selected user ID (from params):", userId, "Type:", typeof userId);
+  console.log("DEBUG - Message type filter:", messageType);
 
   // Convert IDs to ensure they're numbers for comparison
   const numCurrentUserId = Number(currentUserId);
   const numUserId = Number(userId);
 
-  Message.getConversationBetweenUsers(numCurrentUserId, numUserId, (err, results) => {
+  Message.getConversationBetweenUsers(numCurrentUserId, numUserId, messageType, (err, results) => {
     if (err) {
       console.error("Error fetching conversation:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
@@ -37,27 +39,8 @@ exports.getUserConversation = (req, res) => {
     if (results.length > 0) {
       console.log("DEBUG - First message:", results[0]);
     } else {
-      console.log("DEBUG - No messages found between users", numCurrentUserId, "and", numUserId);
-
-      // Let's run a direct query to double-check
-      const query = `
-        SELECT * FROM messages
-        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
-      `;
-      const queryParams = [numCurrentUserId, numUserId, numUserId, numCurrentUserId];
-      console.log("DEBUG - Running direct query:", query, "with params:", queryParams);
-
-      // This is just for debugging - it won't affect the response
-      require("../config/db").query(query, queryParams, (queryErr, queryResults) => {
-        if (queryErr) {
-          console.error("DEBUG - Direct query error:", queryErr);
-        } else {
-          console.log("DEBUG - Direct query results count:", queryResults.length);
-          if (queryResults.length > 0) {
-            console.log("DEBUG - First direct query result:", queryResults[0]);
-          }
-        }
-      });
+      console.log("DEBUG - No messages found between users", numCurrentUserId, "and", numUserId,
+                  messageType ? `with type ${messageType}` : "");
     }
 
     res.json(results);
