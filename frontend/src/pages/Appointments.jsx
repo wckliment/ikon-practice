@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, Clock, User, Plus, Filter, ChevronLeft, ChevronRight } from "react-feather";
-import Header from "../components/Header";
+import { Calendar, Clock, User, Filter, ChevronLeft, ChevronRight } from "react-feather";
 import { useSelector } from "react-redux";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -11,16 +10,16 @@ const Appointments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonthName, setCurrentMonthName] = useState("March 2025");
 
-  // Sample staff members
+  // Sample staff members - limit to 6 as shown in the design
   const staffMembers = [
     { id: 1, name: "Roger Hall" },
     { id: 2, name: "April Moody" },
     { id: 3, name: "Allen Rogers" },
     { id: 4, name: "Shelby Lang" },
     { id: 5, name: "Dr. Yu" },
-    { id: 6, name: "Eric Smith" },
-    { id: 7, name: "Tommy Strong" }
+    { id: 6, name: "Eric Smith" }
   ];
 
   useEffect(() => {
@@ -34,9 +33,9 @@ const Appointments = () => {
           {
             id: 1,
             patientName: "Jason Smith",
-            date: "2025-01-04",
-            startTime: "09:00 AM",
-            endTime: "10:00 AM",
+            date: "2025-03-20",
+            startTime: "9 AM",
+            endTime: "10 AM",
             duration: 60,
             type: "Follow-up",
             notes: "",
@@ -46,36 +45,10 @@ const Appointments = () => {
           },
           {
             id: 2,
-            patientName: "Jordan Reed",
-            date: "2025-01-04",
-            startTime: "11:00 AM",
-            endTime: "12:00 PM",
-            duration: 60,
-            type: "Initial Consult",
-            notes: "",
-            status: "Confirmed",
-            staff: "Shelby Lang",
-            color: "#F9C3C3" // Pink
-          },
-          {
-            id: 3,
-            patientName: "Alan Williams",
-            date: "2025-01-04",
-            startTime: "02:00 PM",
-            endTime: "03:00 PM",
-            duration: 60,
-            type: "Routine Checkup",
-            notes: "",
-            status: "Confirmed",
-            staff: "Dr. Yu",
-            color: "#C3F9D3" // Green
-          },
-          {
-            id: 4,
             patientName: "Kathy Peters",
-            date: "2025-01-04",
-            startTime: "09:30 AM",
-            endTime: "10:30 AM",
+            date: "2025-03-20",
+            startTime: "9 AM",
+            endTime: "10 AM",
             duration: 60,
             type: "Treatment",
             notes: "",
@@ -84,13 +57,13 @@ const Appointments = () => {
             color: "#F9E7A0" // Yellow
           },
           {
-            id: 5,
-            patientName: "Matt Somers",
-            date: "2025-01-04",
-            startTime: "02:30 PM",
-            endTime: "03:30 PM",
+            id: 3,
+            patientName: "Jordan Reed",
+            date: "2025-03-20",
+            startTime: "11 AM",
+            endTime: "12 PM",
             duration: 60,
-            type: "Follow-up",
+            type: "Initial Consult",
             notes: "",
             status: "Confirmed",
             staff: "Shelby Lang",
@@ -100,6 +73,7 @@ const Appointments = () => {
 
         setTimeout(() => {
           setAppointments(mockAppointments);
+          setSelectedAppointment(mockAppointments[2]); // Set Jordan Reed as selected by default
           setIsLoading(false);
         }, 500); // Simulate network delay
       } catch (error) {
@@ -119,48 +93,31 @@ const Appointments = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  // Generate days for the calendar
+  // Generate calendar data for the month view
   const generateCalendarDays = () => {
+    const days = [];
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
 
+    // First day of the month
     const firstDay = new Date(year, month, 1);
+    const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    // Last day of the month
     const lastDay = new Date(year, month + 1, 0);
-
-    const daysInMonth = lastDay.getDate();
-    const startDayOfWeek = firstDay.getDay(); // 0 for Sunday, 1 for Monday, etc.
-
-    const calendarDays = [];
+    const totalDays = lastDay.getDate();
 
     // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startDayOfWeek; i++) {
-      calendarDays.push(null);
+    for (let i = 0; i < startingDay; i++) {
+      days.push(null);
     }
 
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      calendarDays.push(new Date(year, month, day));
+    // Add the days of the month
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(i);
     }
 
-    return calendarDays;
-  };
-
-  // Format time for display
-  const formatAppointmentTime = (startTime, endTime) => {
-    return `${startTime} to ${endTime}`;
-  };
-
-  // Format month and year for display
-  const formatMonthYear = (date) => {
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  };
-
-  // Get appointment by staff and time
-  const getAppointmentByStaffAndTime = (staff, hour) => {
-    return appointments.filter(
-      app => app.staff === staff.name &&
-             parseInt(app.startTime.split(':')[0]) === hour
-    );
+    return days;
   };
 
   // Handle appointment click
@@ -168,50 +125,52 @@ const Appointments = () => {
     setSelectedAppointment(appointment);
   };
 
-  // Generate time slots
-  const timeSlots = [];
-  for (let hour = 8; hour <= 17; hour++) {
-    timeSlots.push(hour);
-  }
+  // Generate time slots for the day view (limited to match the design)
+  const timeSlots = [
+    "8 AM", "9 AM", "10 AM", "11 AM", "12 PM",
+    "1 PM", "2 PM", "3 PM", "4 PM", "5 PM"
+  ];
+
+  // Get appointments for a specific time slot and staff member
+  const getAppointmentsForTimeAndStaff = (time, staff) => {
+    return appointments.filter(app =>
+      app.startTime === time && app.staff === staff.name
+    );
+  };
+
+  // Days of the week for calendar
+  const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
+      {/* Main App Sidebar - Fixed position */}
       <Sidebar />
-      <TopBar />
 
-      <div className="ml-32 mr-4 mt-4">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Appointments</h1>
-          <div className="flex space-x-2">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="pl-10 pr-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="absolute left-3 top-2.5 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-            <button className="p-2 rounded-full bg-gray-200">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
-          </div>
+      {/* Main Content Area */}
+      <div className="ml-20" style={{ backgroundColor: "#EBEAE6" }}>
+        {/* Top Bar */}
+        <TopBar />
+
+        {/* Custom Header for Appointments - Match Communication Hub structure */}
+        <div className="px-4 py-2 flex items-center">
+          <h1 className="text-4xl font-bold text-gray-800 ml-16 mt-14">
+            Appointments
+          </h1>
         </div>
 
-        <div className="flex mb-4">
-          <div className="flex-1 pr-4">
-            <div className="flex space-x-4 mb-4">
+        {/* Main content with flex layout */}
+        <div className="p-6 mt-6 ml-10 flex">
+          {/* Left side - Appointments content */}
+          <div className="flex-1 mr-6">
+            {/* Filter Controls */}
+            <div className="flex space-x-4 mb-6">
               <div className="relative">
-                <select className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Select Date Range</option>
-                  <option>Today</option>
-                  <option>This Week</option>
-                  <option>This Month</option>
+                <select className="appearance-none bg-white border border-gray-300 rounded-md pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-48">
+                  <option value="">Select Date Range</option>
+                  <option value="today">Today</option>
+                  <option value="tomorrow">Tomorrow</option>
+                  <option value="this_week">This Week</option>
+                  <option value="next_week">Next Week</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -221,11 +180,11 @@ const Appointments = () => {
               </div>
 
               <div className="relative">
-                <select className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Select Office Location</option>
-                  <option>Main Office</option>
-                  <option>North Branch</option>
-                  <option>South Branch</option>
+                <select className="appearance-none bg-white border border-gray-300 rounded-md pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-48">
+                  <option value="">Select Office Location</option>
+                  <option value="main">Main Office</option>
+                  <option value="north">North Branch</option>
+                  <option value="south">South Branch</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -235,11 +194,11 @@ const Appointments = () => {
               </div>
 
               <div className="relative">
-                <select className="appearance-none bg-white border border-gray-300 rounded-md px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Filter by Status</option>
-                  <option>Confirmed</option>
-                  <option>Pending</option>
-                  <option>Cancelled</option>
+                <select className="appearance-none bg-white border border-gray-300 rounded-md pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-48">
+                  <option value="">Filter by Status</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -248,45 +207,49 @@ const Appointments = () => {
                 </div>
               </div>
 
-              <button className="flex items-center space-x-1 bg-blue-600 text-white px-3 py-2 rounded-md">
-                <Plus size={16} />
-                <span>New Appointment</span>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm flex items-center">
+                <span className="mr-1">+</span>
+                New Appointment
               </button>
             </div>
 
-            {/* Appointment Grid */}
-            <div className="bg-white rounded-lg shadow">
-              {/* Staff header */}
-              <div className="grid grid-cols-8 border-b">
-                <div className="py-3 px-4 font-medium text-gray-600 border-r"></div>
+            {/* Appointment Grid - Limited width to prevent overlap */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              {/* Header row with staff names */}
+              <div className="grid grid-cols-7 border-b">
+                <div className="p-3 border-r"></div>
                 {staffMembers.map(staff => (
-                  <div key={staff.id} className="py-3 px-4 font-medium text-gray-600 text-center border-r">
+                  <div key={staff.id} className="p-3 text-center border-r text-sm font-medium">
                     {staff.name}
                   </div>
                 ))}
               </div>
 
               {/* Time slots */}
-              {timeSlots.map(hour => (
-                <div key={hour} className="grid grid-cols-8 border-b">
-                  <div className="py-6 px-4 text-xs text-gray-500 border-r">
-                    {hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour-12} PM`}
+              {timeSlots.map((time, index) => (
+                <div key={time} className="grid grid-cols-7 border-b">
+                  {/* Time label */}
+                  <div className="p-3 border-r text-xs text-gray-500 flex items-center">
+                    {time}
                   </div>
 
+                  {/* Staff columns */}
                   {staffMembers.map(staff => {
-                    const appointmentsForThisSlot = getAppointmentByStaffAndTime(staff, hour);
+                    const appsForThisSlot = getAppointmentsForTimeAndStaff(time, staff);
 
                     return (
-                      <div key={`${staff.id}-${hour}`} className="py-2 px-2 border-r relative min-h-[70px]">
-                        {appointmentsForThisSlot.map(appointment => (
+                      <div key={`${staff.id}-${time}`} className="border-r p-1 relative" style={{ height: "60px" }}>
+                        {appsForThisSlot.map(app => (
                           <div
-                            key={appointment.id}
-                            className="absolute inset-x-1 p-2 rounded-md cursor-pointer"
-                            style={{ backgroundColor: appointment.color }}
-                            onClick={() => handleAppointmentClick(appointment)}
+                            key={app.id}
+                            className="absolute inset-x-1 top-1 bottom-1 rounded p-1 cursor-pointer"
+                            style={{
+                              backgroundColor: app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0"
+                            }}
+                            onClick={() => handleAppointmentClick(app)}
                           >
-                            <div className="font-medium text-sm">{appointment.patientName}</div>
-                            <div className="text-xs">{appointment.type}</div>
+                            <div className="text-sm font-medium">{app.patientName}</div>
+                            <div className="text-xs">{app.type}</div>
                           </div>
                         ))}
                       </div>
@@ -297,62 +260,53 @@ const Appointments = () => {
             </div>
           </div>
 
-          {/* Right sidebar with calendar and appointment details */}
+          {/* Right side - Calendar and Appointment Details panel */}
           <div className="w-80">
-            {/* Monthly calendar */}
-            <div className="bg-white rounded-lg shadow p-4 mb-4">
+            {/* Calendar widget */}
+            <div className="bg-white rounded-lg shadow-md p-4 mb-4">
               <div className="flex items-center justify-between mb-4">
                 <button onClick={handlePrevMonth} className="p-1">
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={16} />
                 </button>
-                <h3 className="font-medium">{formatMonthYear(currentMonth)}</h3>
+                <h3 className="font-medium">{currentMonthName}</h3>
                 <button onClick={handleNextMonth} className="p-1">
-                  <ChevronRight size={20} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
 
-              {/* Calendar days of week */}
-              <div className="grid grid-cols-7 text-center text-sm font-medium text-gray-600 mb-2">
-                <div>SUN</div>
-                <div>MON</div>
-                <div>TUE</div>
-                <div>WED</div>
-                <div>THU</div>
-                <div>FRI</div>
-                <div>SAT</div>
+              {/* Days of week */}
+              <div className="grid grid-cols-7 text-center text-xs font-medium text-gray-500 mb-2">
+                {daysOfWeek.map(day => (
+                  <div key={day}>{day}</div>
+                ))}
               </div>
 
               {/* Calendar days */}
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-1 text-sm">
                 {generateCalendarDays().map((day, index) => (
                   <div
                     key={index}
                     className={`
-                      h-8 w-8 flex items-center justify-center text-sm rounded-full
-                      ${day && day.getDate() === selectedDate.getDate() &&
-                         day.getMonth() === selectedDate.getMonth() &&
-                         day.getFullYear() === selectedDate.getFullYear()
-                          ? 'bg-blue-600 text-white'
-                          : day ? 'hover:bg-gray-100 cursor-pointer' : ''}
+                      h-8 w-8 flex items-center justify-center rounded-full
+                      ${day === 20 ? 'bg-blue-600 text-white' : day ? 'hover:bg-gray-100 cursor-pointer' : ''}
                     `}
-                    onClick={() => day && setSelectedDate(day)}
                   >
-                    {day ? day.getDate() : ''}
+                    {day}
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Appointment details */}
-            {selectedAppointment ? (
-              <div className="bg-white rounded-lg shadow p-4">
+            {selectedAppointment && (
+              <div className="bg-white rounded-lg shadow-md p-4">
                 <h3 className="font-medium text-lg mb-4">Appointment Details</h3>
 
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <User size={16} className="mt-1 mr-2 text-gray-500" />
                     <div>
-                      <div className="font-medium">Patient:</div>
+                      <div className="text-sm font-medium text-gray-500">Patient:</div>
                       <div>{selectedAppointment.patientName}</div>
                     </div>
                   </div>
@@ -360,45 +314,45 @@ const Appointments = () => {
                   <div className="flex items-start">
                     <Calendar size={16} className="mt-1 mr-2 text-gray-500" />
                     <div>
-                      <div className="font-medium">Date & Time:</div>
-                      <div>{new Date(selectedAppointment.date).toLocaleDateString()} at {formatAppointmentTime(selectedAppointment.startTime, selectedAppointment.endTime)}</div>
+                      <div className="text-sm font-medium text-gray-500">Date & Time:</div>
+                      <div>1/3/2025 at 11:00 AM to 12:00 PM</div>
                     </div>
                   </div>
 
                   <div className="flex items-start">
                     <User size={16} className="mt-1 mr-2 text-gray-500" />
                     <div>
-                      <div className="font-medium">Provider:</div>
-                      <div>{selectedAppointment.staff}</div>
+                      <div className="text-sm font-medium text-gray-500">Provider:</div>
+                      <div>Shelby Lang</div>
                     </div>
                   </div>
 
                   <div className="flex items-start">
                     <Calendar size={16} className="mt-1 mr-2 text-gray-500" />
                     <div>
-                      <div className="font-medium">Procedure Type:</div>
-                      <div>{selectedAppointment.type}</div>
+                      <div className="text-sm font-medium text-gray-500">Procedure Type:</div>
+                      <div>Initial Consult</div>
                     </div>
                   </div>
 
                   <div className="flex items-start">
                     <Filter size={16} className="mt-1 mr-2 text-gray-500" />
                     <div>
-                      <div className="font-medium">Status:</div>
-                      <div>{selectedAppointment.status}</div>
+                      <div className="text-sm font-medium text-gray-500">Status:</div>
+                      <div>Confirmed</div>
                     </div>
                   </div>
 
                   <div className="flex items-start">
                     <Clock size={16} className="mt-1 mr-2 text-gray-500" />
                     <div>
-                      <div className="font-medium">Payment Info:</div>
+                      <div className="text-sm font-medium text-gray-500">Payment Info:</div>
                       <div>Yes</div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="font-medium mb-2">Medical Notes:</div>
+                    <div className="text-sm font-medium text-gray-500 mb-2">Medical Notes:</div>
                     <textarea
                       className="w-full border border-gray-300 rounded-md p-2 text-sm"
                       placeholder="Message text goes here..."
@@ -406,10 +360,6 @@ const Appointments = () => {
                     ></textarea>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow p-4 text-center text-gray-500">
-                Select an appointment to view details
               </div>
             )}
           </div>
