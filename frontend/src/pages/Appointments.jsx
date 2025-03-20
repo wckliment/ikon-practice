@@ -12,14 +12,16 @@ const Appointments = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentMonthName, setCurrentMonthName] = useState("March 2025");
 
-  // Sample staff members - limit to 6 as shown in the design
+  // All staff members (can add more without affecting layout)
   const staffMembers = [
     { id: 1, name: "Roger Hall" },
     { id: 2, name: "April Moody" },
     { id: 3, name: "Allen Rogers" },
     { id: 4, name: "Shelby Lang" },
     { id: 5, name: "Dr. Yu" },
-    { id: 6, name: "Eric Smith" }
+    { id: 6, name: "Eric Smith" },
+    { id: 7, name: "Tommy Strong" }, // Additional staff with horizontal scroll
+    { id: 8, name: "Lisa Johnson" }
   ];
 
   useEffect(() => {
@@ -158,10 +160,10 @@ const Appointments = () => {
           </h1>
         </div>
 
-        {/* Main content with flex layout */}
+        {/* Main content with flex layout - fix the right panel width */}
         <div className="p-6 mt-6 ml-10 flex">
-          {/* Left side - Appointments content */}
-          <div className="flex-1 mr-6">
+          {/* Left side - Appointments content with precise fit */}
+          <div className="flex-1">
             {/* Filter Controls */}
             <div className="flex space-x-4 mb-6">
               <div className="relative">
@@ -213,55 +215,63 @@ const Appointments = () => {
               </button>
             </div>
 
-            {/* Appointment Grid - Limited width to prevent overlap */}
+            {/* Appointment Grid - hard-coded width to force scroll */}
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              {/* Header row with staff names */}
-              <div className="grid grid-cols-7 border-b">
-                <div className="p-3 border-r"></div>
-                {staffMembers.map(staff => (
-                  <div key={staff.id} className="p-3 text-center border-r text-sm font-medium">
-                    {staff.name}
-                  </div>
-                ))}
+              <div className="overflow-x-auto" style={{ width: "100%", maxWidth: "780px" }}>
+                <table style={{ width: "1120px", tableLayout: "fixed" }}>
+                  {/* Header row with staff names */}
+                  <thead>
+                    <tr>
+                      <th style={{ width: "80px" }} className="p-3 border text-left sticky left-0 bg-white z-10"></th>
+                      {staffMembers.map((staff, index) => (
+                        <th key={staff.id} style={{ width: "130px" }} className="p-3 text-center border text-sm font-medium">
+                          {staff.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  {/* Time slots */}
+                  <tbody>
+                    {timeSlots.map((time, index) => (
+                      <tr key={time} className="border-b">
+                        {/* Time label - sticky left column */}
+                        <td className="p-3 border-r text-xs text-gray-500 sticky left-0 bg-white z-10">
+                          {time}
+                        </td>
+
+                        {/* Staff columns */}
+                        {staffMembers.map(staff => {
+                          const appsForThisSlot = getAppointmentsForTimeAndStaff(time, staff);
+
+                          return (
+                            <td key={`${staff.id}-${time}`} className="border-r p-1 relative h-16">
+                              {appsForThisSlot.map(app => (
+                                <div
+                                  key={app.id}
+                                  className="absolute inset-x-1 top-1 bottom-1 rounded p-1 cursor-pointer"
+                                  style={{
+                                    backgroundColor: app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0"
+                                  }}
+                                  onClick={() => handleAppointmentClick(app)}
+                                >
+                                  <div className="text-sm font-medium">{app.patientName}</div>
+                                  <div className="text-xs">{app.type}</div>
+                                </div>
+                              ))}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-
-              {/* Time slots */}
-              {timeSlots.map((time, index) => (
-                <div key={time} className="grid grid-cols-7 border-b">
-                  {/* Time label */}
-                  <div className="p-3 border-r text-xs text-gray-500 flex items-center">
-                    {time}
-                  </div>
-
-                  {/* Staff columns */}
-                  {staffMembers.map(staff => {
-                    const appsForThisSlot = getAppointmentsForTimeAndStaff(time, staff);
-
-                    return (
-                      <div key={`${staff.id}-${time}`} className="border-r p-1 relative" style={{ height: "60px" }}>
-                        {appsForThisSlot.map(app => (
-                          <div
-                            key={app.id}
-                            className="absolute inset-x-1 top-1 bottom-1 rounded p-1 cursor-pointer"
-                            style={{
-                              backgroundColor: app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0"
-                            }}
-                            onClick={() => handleAppointmentClick(app)}
-                          >
-                            <div className="text-sm font-medium">{app.patientName}</div>
-                            <div className="text-xs">{app.type}</div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
             </div>
           </div>
 
-          {/* Right side - Calendar and Appointment Details panel */}
-          <div className="w-80">
+          {/* Right side with specific spacing */}
+          <div className="w-80 ml-6">
             {/* Calendar widget */}
             <div className="bg-white rounded-lg shadow-md p-4 mb-4">
               <div className="flex items-center justify-between mb-4">
