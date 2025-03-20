@@ -575,14 +575,18 @@ const regularUsers = Array.isArray(filteredUsers)
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
                         {getUserInitials(selectedUser.name)}
                       </div>
-                      <div className="ml-2">
-                        <p className="font-medium">{selectedUser.name}</p>
-                        {patientCheckInUsers.some(user => user.id === selectedUser.id) && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                            Patient Check-in
-                          </span>
-                        )}
-                      </div>
+                     <div className="ml-2">
+  <p className="font-medium">{selectedUser.name}</p>
+  {selectedUserContext === 'patient-check-in' ? (
+    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+      Patient Check-in
+    </span>
+  ) : (
+    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+      Recent Conversation
+    </span>
+  )}
+</div>
                     </>
                   ) : (
                     <p className="text-gray-500">Select a user to start chatting</p>
