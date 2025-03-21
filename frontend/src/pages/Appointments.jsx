@@ -136,9 +136,10 @@ const Appointments = () => {
 
   // Generate time slots for the day view (limited to match the design)
   const timeSlots = [
-    "8 AM", "9 AM", "10 AM", "11 AM", "12 PM",
-    "1 PM", "2 PM", "3 PM", "4 PM", "5 PM"
+    "7 AM", "8 AM", "9 AM", "10 AM", "11 AM", "12 PM",
+    "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM"
   ];
+
 
   // Get appointments for a specific time slot and staff member
   const getAppointmentsForTimeAndStaff = (time, staff) => {
@@ -156,13 +157,14 @@ const Appointments = () => {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="ml-20" style={{ backgroundColor: "#EBEAE6" }}>
-        {/* Top Bar */}
-        <TopBar />
+    <div className="ml-20" style={{ backgroundColor: "#EBEAE6" }}>
+  {/* Top Bar */}
+  <TopBar />
 
-        {/* Custom Header for Appointments - Match Communication Hub structure */}
-        <div className="px-4 py-2 flex items-center">
-          <h1 className="text-4xl font-bold text-gray-800 ml-16 mt-14">
+
+   {/* Custom Header for Appointments - Adjusted position */}
+        <div className="px-4 pt-0 pb-2 ml-16">
+          <h1 className="text-4xl font-bold text-gray-800">
             Appointments
           </h1>
         </div>

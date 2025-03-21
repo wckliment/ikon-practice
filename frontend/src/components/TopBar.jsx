@@ -3,7 +3,8 @@ import { Search, Bell } from "react-feather"; // Feather icons
 
 const TopBar = () => {
   return (
-    <div className="fixed top-16 right-8 flex items-center space-x-6 z-50 w-auto">
+    // Removed "fixed" class but maintained other styling
+    <div className="top-16 right-8 flex items-center space-x-6 z-10 w-auto pt-4 pr-8 justify-end">
       {/* Search Bar */}
       <div className="relative">
         <div className="flex items-center bg-white rounded-full shadow px-4 py-2 w-64 h-12">
@@ -26,4 +27,3 @@ const TopBar = () => {
 };
 
 export default TopBar;
-

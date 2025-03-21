@@ -27,7 +27,7 @@ const Dashboard = () => {
         <Header />
 
         {/* First Row - KPI Cards - Updated grid-cols-4 for 4 cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">
           {/* Account Balances */}
           <KPICard
             title="Account Balances"
