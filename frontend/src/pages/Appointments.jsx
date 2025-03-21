@@ -160,10 +160,10 @@ const Appointments = () => {
           </h1>
         </div>
 
-        {/* Main content with flex layout - fix the right panel width */}
+        {/* Main content with flex layout - fixed to eliminate white space */}
         <div className="p-6 mt-6 ml-10 flex">
-          {/* Left side - Appointments content with precise fit */}
-          <div className="flex-1">
+          {/* Left side - Appointments content with proper sizing */}
+          <div className="flex-1 mr-6" style={{ minWidth: 0 }}>  {/* minWidth: 0 helps flex items properly */}
             {/* Filter Controls */}
             <div className="flex space-x-4 mb-6">
               <div className="relative">
@@ -215,10 +215,10 @@ const Appointments = () => {
               </button>
             </div>
 
-            {/* Appointment Grid - hard-coded width to force scroll */}
+            {/* Appointment Grid - corrected widths to eliminate white space */}
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="overflow-x-auto" style={{ width: "100%", maxWidth: "780px" }}>
-                <table style={{ width: "1120px", tableLayout: "fixed" }}>
+              <div className="overflow-x-auto" style={{ width: "100%" }}>
+                <table style={{ minWidth: "100%", tableLayout: "fixed" }}>
                   {/* Header row with staff names */}
                   <thead>
                     <tr>
@@ -270,8 +270,8 @@ const Appointments = () => {
             </div>
           </div>
 
-          {/* Right side with specific spacing */}
-          <div className="w-80 ml-6">
+          {/* Right side with specific sizing */}
+          <div className="w-80">
             {/* Calendar widget */}
             <div className="bg-white rounded-lg shadow-md p-4 mb-4">
               <div className="flex items-center justify-between mb-4">
