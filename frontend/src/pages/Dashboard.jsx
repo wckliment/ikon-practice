@@ -19,7 +19,7 @@ const Dashboard = () => {
       <Sidebar />
 
       {/* Dashboard Content */}
-      <div className="flex-1 flex flex-col p-6 ml-[10rem] relative">
+      <div className="flex-1 flex flex-col p-6 ml-[7.5rem] relative">
         {/* TopBar */}
         <TopBar />
 
