@@ -12,7 +12,7 @@ const Appointments = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentMonthName, setCurrentMonthName] = useState("March 2025");
 
-  // All staff members (can add more without affecting layout)
+  // Extended staff members list to test horizontal scrolling
   const staffMembers = [
     { id: 1, name: "Roger Hall" },
     { id: 2, name: "April Moody" },
@@ -20,8 +20,15 @@ const Appointments = () => {
     { id: 4, name: "Shelby Lang" },
     { id: 5, name: "Dr. Yu" },
     { id: 6, name: "Eric Smith" },
-    { id: 7, name: "Tommy Strong" }, // Additional staff with horizontal scroll
-    { id: 8, name: "Lisa Johnson" }
+    { id: 7, name: "Tommy Strong" },
+    { id: 8, name: "Lisa Johnson" },
+    // Additional test staff members
+    { id: 9, name: "Maria Garcia" },
+    { id: 10, name: "James Wilson" },
+    { id: 11, name: "Dr. Chen" },
+    { id: 12, name: "Robert Taylor" },
+    { id: 13, name: "Sarah Miller" },
+    { id: 14, name: "David Brown" }
   ];
 
   useEffect(() => {
@@ -215,10 +222,10 @@ const Appointments = () => {
               </button>
             </div>
 
-            {/* Appointment Grid - corrected widths to eliminate white space */}
+            {/* Appointment Grid - with horizontal scrolling for additional staff */}
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="overflow-x-auto" style={{ width: "100%" }}>
-                <table style={{ minWidth: "100%", tableLayout: "fixed" }}>
+                <table style={{ width: "max-content", minWidth: "100%", tableLayout: "fixed" }}>
                   {/* Header row with staff names */}
                   <thead>
                     <tr>
