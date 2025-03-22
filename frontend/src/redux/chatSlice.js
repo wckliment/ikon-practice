@@ -164,6 +164,57 @@ export const togglePinUser = createAsyncThunk(
   }
 );
 
+// NEW: Create a new chat action
+export const createNewChat = createAsyncThunk(
+  'chat/createNewChat',
+  async ({ userId, type = 'general' }, { dispatch, getState }) => {
+    try {
+      console.log('Creating new chat with user ID:', userId, 'type:', type);
+
+      const { auth } = getState();
+
+      if (!auth.isAuthenticated || !auth.user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Find the user in the users list
+      const { chat } = getState();
+      const user = chat.users.find(u => u.id === userId);
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // First, select the user
+      dispatch(selectUser(user));
+
+      // Create conversation context by sending an initial message
+      if (type === 'patient-check-in') {
+        // You could create a special initial message for patient check-ins
+        await dispatch(sendMessage({
+          sender_id: auth.user.id,
+          receiver_id: userId,
+          message: "Patient check-in initiated",
+          type: 'patient-check-in'
+        }));
+      } else {
+        // For general chats, we may not need an initial message
+        // but we'll fetch the conversation if it exists
+        await dispatch(fetchConversation({
+          userId,
+          conversationType: 'general'
+        }));
+      }
+
+      // Return the user and type for the fulfilled case
+      return { user, type };
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+      throw error;
+    }
+  }
+);
+
 // Initial state - updated to include patientCheckIns
 const initialState = {
   users: [],
@@ -299,6 +350,22 @@ const chatSlice = createSlice({
       .addCase(togglePinUser.rejected, (state, action) => {
         state.error = action.payload || { error: 'Failed to toggle pin status' };
         state.loading = false;
+      })
+
+      // NEW: createNewChat reducers
+      .addCase(createNewChat.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createNewChat.fulfilled, (state, action) => {
+        state.loading = false;
+        state.selectedUser = action.payload.user;
+        // Note: We don't need to update messages here since the fetchConversation
+        // or sendMessage thunks dispatched inside createNewChat will handle that
+      })
+      .addCase(createNewChat.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to create new chat';
       });
   }
 });
