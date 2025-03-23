@@ -911,22 +911,34 @@ console.log("User filtering details:", {
                           <span className="text-gray-500 text-sm w-24">DOB:</span>
                           <span className="text-sm">{selectedUser.dob ? formatDate(selectedUser.dob) : 'N/A'}</span>
                         </div>
-                        <div className="flex items-start">
-                          <span className="text-gray-500 text-sm w-24">Last Message:</span>
-                          <span className="text-sm">
-                            {messages.length > 0
-                              ? `${formatDate(messages[0].created_at)}, "${messages[0].message?.substring(0, 20)}${messages[0].message?.length > 20 ? '...' : ''}"`
-                              : 'No messages yet'}
-                          </span>
-                        </div>
-                        {patientCheckInUsers.some(user => user.id === selectedUser.id) && (
-                          <div className="flex items-start">
-                            <span className="text-gray-500 text-sm w-24">Status:</span>
-                            <span className="text-sm bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                              Patient Check-in
-                            </span>
-                          </div>
-                        )}
+        <div className="flex items-start">
+  <span className="text-gray-500 text-sm w-24">Last Message:</span>
+  <span className="text-sm">
+    {messages.length > 0 && messages.filter(msg =>
+      selectedUserContext === 'patient-check-in' ?
+        msg.type === 'patient-check-in' :
+        (msg.type === 'general' || msg.type === null || msg.type === undefined)
+    ).length > 0 ?
+      (() => {
+        const filteredMessages = messages.filter(msg =>
+          selectedUserContext === 'patient-check-in' ?
+            msg.type === 'patient-check-in' :
+            (msg.type === 'general' || msg.type === null || msg.type === undefined)
+        );
+        return `${formatDate(filteredMessages[0].created_at)}, "${filteredMessages[0].message?.substring(0, 20)}${filteredMessages[0].message?.length > 20 ? '...' : ''}"`;
+      })() :
+      'No messages yet'
+    }
+  </span>
+</div>
+{selectedUserContext === 'patient-check-in' && (
+  <div className="flex items-start">
+    <span className="text-gray-500 text-sm w-24">Status:</span>
+    <span className="text-sm bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+      Patient Check-in
+    </span>
+  </div>
+)}
                       </div>
                     </div>
                   </div>
