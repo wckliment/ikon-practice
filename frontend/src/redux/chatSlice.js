@@ -4,26 +4,78 @@ import axios from 'axios';
 // API base URL - use full URL with port
 const API_URL = 'http://localhost:5000/api';
 
-// Add auth token to requests
-const getAuthToken = () => {
-  return localStorage.getItem('token');
-};
-
-// Create axios instance with auth headers
+// Create axios instance with auth headers including token from the start
+const token = localStorage.getItem('token');
+console.log('Initial token:', token);
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : undefined
   }
 });
 
-// Add interceptor to include token in every request
+// Add debugging interceptor to see what's actually being sent
 api.interceptors.request.use(
   (config) => {
-    const token = getAuthToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    console.log('Request config:', config);
+    console.log('Request headers:', config.headers);
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add a final interceptor to check the complete request config
+api.interceptors.request.use(
+  (config) => {
+    console.log('Final request config:', config);
+    console.log('Final headers:', config.headers);
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Function to check if token is expired - ADD THIS HERE
+const isTokenExpired = (token) => {
+  if (!token) return true;
+
+  try {
+    // Extract the expiration time
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    const { exp } = JSON.parse(jsonPayload);
+
+    // Get current time
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    console.log('Token expiration time:', exp);
+    console.log('Current time:', currentTime);
+    console.log('Is token expired:', exp < currentTime);
+
+    // Check if token is expired
+    return exp < currentTime;
+  } catch (e) {
+    console.error('Error checking token expiration:', e);
+    return true;
+  }
+};
+
+// Add interceptor to check token expiration
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+
+    if (token && isTokenExpired(token)) {
+      console.log('Token is expired, cancelling request');
+      // You could dispatch a logout action here or redirect to login
+      // For now, we'll just reject the request with a custom error
+      return Promise.reject({ response: { data: { error: 'Token expired' } } });
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -34,6 +86,15 @@ export const fetchAllMessages = createAsyncThunk(
   'chat/fetchAllMessages',
   async (_, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        // You would typically redirect to login or call a refresh token endpoint
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Making API request to: http://localhost:5000/api/messages/all');
       const response = await api.get('/messages/all');
       console.log('All user messages response:', response.data);
@@ -49,6 +110,14 @@ export const fetchPatientCheckIns = createAsyncThunk(
   'chat/fetchPatientCheckIns',
   async (_, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Making API request to: http://localhost:5000/api/messages/patient-check-ins');
       const response = await api.get('/messages/patient-check-ins');
       console.log('Patient check-in messages response data:', response.data);
@@ -73,12 +142,33 @@ export const fetchUsers = createAsyncThunk(
   'chat/fetchUsers',
   async (_, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Making API request to:', `${API_URL}/users`);
-      const response = await api.get('/users');
+      console.log('Using token directly in request:', token);
+
+      const response = await axios.get(`${API_URL}/users`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
       console.log('API response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
+      if (error.response) {
+        console.log('Error response data:', error.response.data);
+        console.log('Error response status:', error.response.status);
+        console.log('Error response headers:', error.response.headers);
+      }
       return rejectWithValue(error.response?.data || { error: 'Network error' });
     }
   }
@@ -89,6 +179,14 @@ export const fetchConversation = createAsyncThunk(
   'chat/fetchConversation',
   async ({ userId, conversationType }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Making API request to:', `${API_URL}/messages/user/${userId}`, 'with type:', conversationType);
       const response = await api.get(`/messages/user/${userId}`, {
         params: { type: conversationType }
@@ -106,6 +204,14 @@ export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
   async ({ sender_id, receiver_id, message, type = 'general' }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Sending message to API:', { sender_id, receiver_id, message, type });
       const response = await api.post('/messages', {
         sender_id,
@@ -127,6 +233,14 @@ export const sendPatientCheckIn = createAsyncThunk(
   'chat/sendPatientCheckIn',
   async ({ sender_id, receiver_id, message }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Sending patient check-in to API:', { sender_id, receiver_id, message });
       const response = await api.post('/messages', {
         sender_id,
@@ -148,6 +262,14 @@ export const createPatientCheckIn = createAsyncThunk(
   'chat/createPatientCheckIn',
   async ({ patientName, appointmentTime, doctorName, sender_id, additionalMessage }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Creating patient check-in:', { patientName, appointmentTime, doctorName, sender_id });
 
       const response = await api.post('/messages/patient-check-in', {
@@ -171,6 +293,14 @@ export const markMessageAsRead = createAsyncThunk(
   'chat/markMessageAsRead',
   async (messageId, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       const response = await api.put(`/messages/${messageId}/read`);
       return { messageId, ...response.data };
     } catch (error) {
@@ -185,6 +315,14 @@ export const togglePinUser = createAsyncThunk(
   'chat/togglePinUser',
   async ({ userId, isPinned }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log(`${isPinned ? 'Pinning' : 'Unpinning'} user:`, userId);
       const response = await api.patch(`/users/${userId}/pin`, { isPinned });
       console.log('Toggle pin response:', response.data);
@@ -200,6 +338,14 @@ export const createNewChat = createAsyncThunk(
   'chat/createNewChat',
   async ({ userId, type = 'general', message = null }, { dispatch, getState }) => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
       console.log('Creating new chat with type:', type, userId ? `and user ID: ${userId}` : 'for all users');
 
       const { auth } = getState();

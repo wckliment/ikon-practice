@@ -26,12 +26,48 @@ const CommunicationHub = () => {
   const [selectedUserContext, setSelectedUserContext] = useState(null); // 'patient-check-in' or 'regular'
   const [selectedPatientCheckIns, setSelectedPatientCheckIns] = useState(false);
 
+  // Add debugging for token
+  console.log("Current token:", localStorage.getItem('token'));
+
   // Fetch initial data when component mounts
   useEffect(() => {
     dispatch(fetchUsers());
     dispatch(fetchAllMessages());
     dispatch(fetchPatientCheckIns());
   }, [dispatch]);
+
+  useEffect(() => {
+  const testAuth = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch('http://localhost:5000/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log("Test auth status:", response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Test auth response:", data);
+      } else {
+        console.log("Auth failed with status:", response.status);
+      }
+    } catch (err) {
+      console.error("Test auth error:", err);
+    }
+  };
+
+  testAuth();
+}, []); // Empty dependency array means this runs once on mount
+
+  // Add this useEffect after your existing useEffect hooks
+useEffect(() => {
+  if (allMessages.length > 0) {
+    console.log("All message types:", [...new Set(allMessages.map(msg => msg.type))]);
+    console.log("General messages count:", allMessages.filter(msg => msg.type === 'general' || msg.type === null).length);
+    console.log("Patient check-in messages count:", allMessages.filter(msg => msg.type === 'patient-check-in').length);
+  }
+}, [allMessages]);
 
   // Temporary fix: populate patientCheckIns from allMessages if empty
   useEffect(() => {
@@ -278,21 +314,21 @@ const CommunicationHub = () => {
       })
     : [];
 
-  // Regular users with general messages
-  const regularUsers = Array.isArray(filteredUsers)
-    ? filteredUsers.filter(user => {
-        if (user.pinned || user.id === currentUser?.id) return false;
+ // Regular users with general messages
+const regularUsers = Array.isArray(filteredUsers)
+  ? filteredUsers.filter(user => {
+      if (user.pinned || user.id === currentUser?.id) return false;
 
-        // Check if there are any general messages between this user and the current user
-        const hasGeneralMessages = allMessages.some(msg =>
-          ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
-           (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
-          (msg.type === 'general' || msg.type === null)
-        );
+      // The problem is likely here in this filter
+      const hasGeneralMessages = allMessages.some(msg =>
+        ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+         (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
+        (msg.type === 'general' || msg.type === null)
+      );
 
-        return hasGeneralMessages;
-      })
-    : [];
+      return hasGeneralMessages;
+    })
+  : [];
 
   // Group messages by date
   const groupedMessages = groupMessagesByDate();
