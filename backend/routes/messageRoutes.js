@@ -30,6 +30,28 @@ router.get('/type/:type', messagesController.getMessagesByType);
 // Get patient check-in messages for the current user
 router.get('/patient-check-ins', messagesController.getPatientCheckIns);
 
+// Debug endpoint - Get all patient check-in messages
+router.get('/debug/patient-check-ins', authenticateUser, (req, res) => {
+  const query = `
+    SELECT m.*,
+    sender.name as sender_name,
+    receiver.name as receiver_name,
+    m.type as message_type
+    FROM messages m
+    JOIN users sender ON m.sender_id = sender.id
+    LEFT JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE m.type = 'patient-check-in'
+    ORDER BY m.created_at DESC
+  `;
+
+  ikonDB.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ count: results.length, results });
+  });
+});
+
 // Patient check-in route
 router.post('/patient-check-in', messagesController.createPatientCheckIn);
 

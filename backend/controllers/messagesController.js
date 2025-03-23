@@ -151,16 +151,26 @@ exports.getMessagesByType = (req, res) => {
   });
 };
 
-// New endpoint: Get patient check-in messages for a user
-// New endpoint: Get patient check-in messages for a user
+// Get patient check-in messages
 exports.getPatientCheckIns = (req, res) => {
-  // Fix: Add fallback for when req.user is undefined
-  const userId = req.user?.userId || (req.params && req.params.id);
+  let userId;
+
+  // Check different possible sources for the user ID
+  if (req.user && req.user.userId) {
+    userId = req.user.userId;
+  } else if (req.params && req.params.id) {
+    userId = req.params.id;
+  } else if (req.query && req.query.userId) {
+    userId = req.query.userId;
+  }
 
   if (!userId) {
-    console.error("Error: User ID not found in request");
-    return res.status(400).json({ error: "User ID is required" });
+    console.error("Warning: User ID not found in request, using default");
+    // Use current user's ID if available, otherwise default to broadcast messages
+    userId = req.user?.userId || -1;
   }
+
+  console.log(`DEBUG - Fetching patient check-ins for user ${userId}`);
 
   Message.getPatientCheckInsForUser(userId, (err, results) => {
     if (err) {
@@ -169,11 +179,15 @@ exports.getPatientCheckIns = (req, res) => {
     }
 
     console.log(`DEBUG - Found ${results.length} patient check-in messages for user ${userId}`);
+    if (results.length > 0) {
+      console.log("Sample message:", results[0]);
+    }
+
     res.json(results);
   });
 };
 
-// Create a patient check-in and send to all users
+// Create a patient check-in - Modified to use NULL for broadcast messages
 exports.createPatientCheckIn = (req, res) => {
   const { patientName, appointmentTime, doctorName, sender_id } = req.body;
 
@@ -183,49 +197,21 @@ exports.createPatientCheckIn = (req, res) => {
 
   const message = `Patient ${patientName} has checked in for their ${appointmentTime} appointment with Dr. ${doctorName || 'Smith'}`;
 
-  console.log("DEBUG - Creating patient check-in from user:", sender_id);
+  console.log("DEBUG - Creating patient check-in broadcast message");
   console.log("DEBUG - Message:", message);
 
-  // Get all users except the sender
-  require("../models/userModel").getAllExceptSender(sender_id, (err, users) => {
+  // Use NULL instead of BROADCAST_ID (-1)
+  Message.create(sender_id, null, message, 'patient-check-in', (err, result) => {
     if (err) {
-      console.error("Error fetching users:", err);
+      console.error("Error creating patient check-in:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
     }
 
-    console.log(`DEBUG - Found ${users.length} recipients for patient check-in`);
+    console.log(`DEBUG - Created patient check-in message ID: ${result.insertId}`);
 
-    // Create a message for each user
-    let processedCount = 0;
-    let errors = [];
-
-    users.forEach(user => {
-      Message.create(sender_id, user.id, message, 'patient-check-in', (msgErr, result) => {
-        processedCount++;
-
-        if (msgErr) {
-          console.error(`Error sending check-in to user ${user.id}:`, msgErr);
-          errors.push({ userId: user.id, error: msgErr.message });
-        } else {
-          console.log(`DEBUG - Sent check-in to user ${user.id}, message ID: ${result.insertId}`);
-        }
-
-        // When all messages are processed, send the response
-        if (processedCount === users.length) {
-          if (errors.length > 0) {
-            return res.status(207).json({
-              message: 'Some patient check-in messages failed to send',
-              errors,
-              successCount: processedCount - errors.length
-            });
-          }
-
-          return res.status(201).json({
-            message: 'Patient check-in messages sent successfully',
-            count: processedCount
-          });
-        }
-      });
+    return res.status(201).json({
+      message: 'Patient check-in message created successfully',
+      messageId: result.insertId
     });
   });
 };

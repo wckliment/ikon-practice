@@ -45,14 +45,22 @@ export const fetchAllMessages = createAsyncThunk(
   }
 );
 
-// New: Fetch patient check-in messages
 export const fetchPatientCheckIns = createAsyncThunk(
   'chat/fetchPatientCheckIns',
   async (_, { rejectWithValue }) => {
     try {
       console.log('Making API request to: http://localhost:5000/api/messages/patient-check-ins');
       const response = await api.get('/messages/patient-check-ins');
-      console.log('Patient check-in messages response:', response.data);
+      console.log('Patient check-in messages response data:', response.data);
+
+      // If response.data is empty but we expect data
+      if (Array.isArray(response.data) && response.data.length === 0) {
+        console.log('No patient check-ins returned from API, trying debug endpoint...');
+        // Try the debug endpoint as a fallback
+        const debugResponse = await api.get('/messages/debug/patient-check-ins');
+        console.log('Debug endpoint response:', debugResponse.data);
+      }
+
       return response.data;
     } catch (error) {
       console.error('Error fetching patient check-in messages:', error);
@@ -135,6 +143,30 @@ export const sendPatientCheckIn = createAsyncThunk(
   }
 );
 
+// Add new action for Patient Check-In creation
+export const createPatientCheckIn = createAsyncThunk(
+  'chat/createPatientCheckIn',
+  async ({ patientName, appointmentTime, doctorName, sender_id, additionalMessage }, { rejectWithValue }) => {
+    try {
+      console.log('Creating patient check-in:', { patientName, appointmentTime, doctorName, sender_id });
+
+      const response = await api.post('/messages/patient-check-in', {
+        patientName,
+        appointmentTime,
+        doctorName,
+        sender_id,
+        additionalMessage
+      });
+
+      console.log('Patient check-in response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating patient check-in:', error);
+      return rejectWithValue(error.response?.data || { error: 'Failed to create patient check-in' });
+    }
+  }
+);
+
 export const markMessageAsRead = createAsyncThunk(
   'chat/markMessageAsRead',
   async (messageId, { rejectWithValue }) => {
@@ -164,12 +196,11 @@ export const togglePinUser = createAsyncThunk(
   }
 );
 
-// NEW: Create a new chat action
 export const createNewChat = createAsyncThunk(
   'chat/createNewChat',
-  async ({ userId, type = 'general' }, { dispatch, getState }) => {
+  async ({ userId, type = 'general', message = null }, { dispatch, getState }) => {
     try {
-      console.log('Creating new chat with user ID:', userId, 'type:', type);
+      console.log('Creating new chat with type:', type, userId ? `and user ID: ${userId}` : 'for all users');
 
       const { auth } = getState();
 
@@ -177,6 +208,25 @@ export const createNewChat = createAsyncThunk(
         throw new Error('User not authenticated');
       }
 
+      // For patient check-ins (no specific user)
+      if (type === 'patient-check-in' && !userId) {
+        if (!message) {
+          throw new Error('Patient check-in requires a message');
+        }
+
+        // Send the patient check-in message
+        await dispatch(sendMessage({
+          sender_id: auth.user.id,
+          receiver_id: null, // Null receiver means broadcast to applicable users
+          message: message,
+          type: 'patient-check-in'
+        }));
+
+        // Return a null user but keep the type for the fulfilled case
+        return { user: null, type };
+      }
+
+      // For general chats (specific user)
       // Find the user in the users list
       const { chat } = getState();
       const user = chat.users.find(u => u.id === userId);
@@ -188,23 +238,12 @@ export const createNewChat = createAsyncThunk(
       // First, select the user
       dispatch(selectUser(user));
 
-      // Create conversation context by sending an initial message
-      if (type === 'patient-check-in') {
-        // You could create a special initial message for patient check-ins
-        await dispatch(sendMessage({
-          sender_id: auth.user.id,
-          receiver_id: userId,
-          message: "Patient check-in initiated",
-          type: 'patient-check-in'
-        }));
-      } else {
-        // For general chats, we may not need an initial message
-        // but we'll fetch the conversation if it exists
-        await dispatch(fetchConversation({
-          userId,
-          conversationType: 'general'
-        }));
-      }
+      // For general chats, we may not need an initial message
+      // but we'll fetch the conversation if it exists
+      await dispatch(fetchConversation({
+        userId,
+        conversationType: 'general'
+      }));
 
       // Return the user and type for the fulfilled case
       return { user, type };
@@ -331,6 +370,24 @@ const chatSlice = createSlice({
       .addCase(sendPatientCheckIn.rejected, (state, action) => {
         state.error = action.payload || { error: 'Failed to send patient check-in' };
         state.loading = false;
+      })
+
+      // createPatientCheckIn reducers
+      .addCase(createPatientCheckIn.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createPatientCheckIn.fulfilled, (state, action) => {
+        state.loading = false;
+        // Check if the response includes messages or a count of messages sent
+        if (action.payload && action.payload.count) {
+          console.log(`Successfully sent ${action.payload.count} patient check-in messages`);
+        }
+        // We'll rely on fetchPatientCheckIns to update the state with the new messages
+      })
+      .addCase(createPatientCheckIn.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || { error: 'Failed to create patient check-in' };
       })
 
       // togglePinUser reducers

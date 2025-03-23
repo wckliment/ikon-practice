@@ -94,12 +94,7 @@ Message.getAllUserMessages = (userId, callback) => {
     WHERE m.sender_id = ? OR m.receiver_id = ?
     ORDER BY m.created_at DESC
   `;
-  ikonDB.query(query, [userId, userId], (err, results) => {
-    if (err) {
-      return callback(err, null);
-    }
-    return callback(null, results);
-  });
+  ikonDB.query(query, [userId, userId], callback);
 };
 
 // New method: Get messages by type
@@ -117,18 +112,25 @@ Message.getMessagesByType = (type, callback) => {
   ikonDB.query(query, [type], callback);
 };
 
-// New method: Get patient check-in messages for user
+
+// Get patient check-in messages for user
 Message.getPatientCheckInsForUser = (userId, callback) => {
   const query = `
     SELECT m.*,
     sender.name as sender_name,
-    receiver.name as receiver_name
+    CASE
+      WHEN m.receiver_id IS NULL THEN 'All Users'
+      ELSE receiver.name
+    END as receiver_name
     FROM messages m
     JOIN users sender ON m.sender_id = sender.id
-    JOIN users receiver ON m.receiver_id = receiver.id
-    WHERE (m.sender_id = ? OR m.receiver_id = ?) AND m.type = 'patient-check-in'
+    LEFT JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE m.type = 'patient-check-in'
+    AND (m.receiver_id IS NULL OR m.receiver_id = ? OR m.sender_id = ?)
     ORDER BY m.created_at DESC
   `;
+
+  console.log(`DEBUG - Running patient check-in query for user ${userId}`);
   ikonDB.query(query, [userId, userId], callback);
 };
 

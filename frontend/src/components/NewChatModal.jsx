@@ -4,6 +4,10 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat, allUsers, currentUserId }
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [chatType, setChatType] = useState('general'); // 'general' or 'patient-check-in'
+  const [checkInMessage, setCheckInMessage] = useState(''); // New state for patient check-in message
+  const [patientName, setPatientName] = useState(''); // New state for patient name
+  const [appointmentTime, setAppointmentTime] = useState(''); // New state for appointment time
+  const [doctorName, setDoctorName] = useState(''); // New state for doctor name
 
   // Filter out current user and filter by search query
   const filteredUsers = allUsers
@@ -19,6 +23,10 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat, allUsers, currentUserId }
       setSearchQuery('');
       setSelectedUserId(null);
       setChatType('general');
+      setCheckInMessage('');
+      setPatientName('');
+      setAppointmentTime('');
+      setDoctorName('');
     }
   }, [isOpen]);
 
@@ -33,12 +41,30 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat, allUsers, currentUserId }
   };
 
   const handleCreateChat = () => {
-    if (!selectedUserId) return;
+    // For patient check-ins, use the specialized endpoint
+    if (chatType === 'patient-check-in') {
+      if (!patientName || !appointmentTime) {
+        return; // Don't proceed if required fields are missing
+      }
 
-    onCreateChat({
-      userId: selectedUserId,
-      type: chatType
-    });
+      onCreateChat({
+        type: 'patient-check-in',
+        data: {
+          patientName,
+          appointmentTime,
+          doctorName,
+          message: checkInMessage
+        }
+      });
+    } else if (selectedUserId) {
+      // For general chats, require a selected user
+      onCreateChat({
+        userId: selectedUserId,
+        type: 'general'
+      });
+    } else {
+      return; // Don't proceed if no user selected for general chat
+    }
 
     onClose();
   };
@@ -75,49 +101,115 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat, allUsers, currentUserId }
                   type="radio"
                   className="h-4 w-4 text-green-600 mr-2"
                   checked={chatType === 'patient-check-in'}
-                  onChange={() => setChatType('patient-check-in')}
+                  onChange={() => {
+                    setChatType('patient-check-in');
+                    setSelectedUserId(null); // Clear selected user when switching to patient check-in
+                  }}
                 />
                 <span className="text-sm">Patient Check-in</span>
               </label>
             </div>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select User</label>
-            <input
-              type="text"
-              placeholder="Search users..."
-              className="w-full p-2 border rounded-md text-sm mb-2"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          {/* Different UI based on chat type */}
+          {chatType === 'general' ? (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Select User</label>
+              <input
+                type="text"
+                placeholder="Search users..."
+                className="w-full p-2 border rounded-md text-sm mb-2"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
 
-            <div className="max-h-60 overflow-y-auto border rounded-md">
-              {filteredUsers.length === 0 ? (
-                <div className="p-3 text-center text-sm text-gray-500">No users found</div>
-              ) : (
-                filteredUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className={`flex items-center p-2 hover:bg-gray-50 cursor-pointer ${
-                      selectedUserId === user.id ? 'bg-blue-50' : ''
-                    }`}
-                    onClick={() => setSelectedUserId(user.id)}
-                  >
-                    <div className={`w-8 h-8 rounded-full ${
-                      chatType === 'patient-check-in' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
-                    } flex items-center justify-center font-medium text-xs`}>
-                      {getUserInitials(user.name)}
+              <div className="max-h-60 overflow-y-auto border rounded-md">
+                {filteredUsers.length === 0 ? (
+                  <div className="p-3 text-center text-sm text-gray-500">No users found</div>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className={`flex items-center p-2 hover:bg-gray-50 cursor-pointer ${
+                        selectedUserId === user.id ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => setSelectedUserId(user.id)}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-xs">
+                        {getUserInitials(user.name)}
+                      </div>
+                      <div className="ml-2">
+                        <p className="font-medium text-sm">{user.name}</p>
+                        <p className="text-xs text-gray-500">{user.email || user.role || ''}</p>
+                      </div>
                     </div>
-                    <div className="ml-2">
-                      <p className="font-medium text-sm">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.email || user.role || ''}</p>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mb-4">
+              <div className="p-3 bg-green-50 rounded-md text-sm text-green-800 mb-3">
+                <p className="font-medium mb-1">Patient Check-in</p>
+                <p>This message will be sent to all staff members.</p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Patient Name*
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter patient name"
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Appointment Time*
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2:30 PM"
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={appointmentTime}
+                    onChange={(e) => setAppointmentTime(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Doctor Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter doctor name"
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={doctorName}
+                    onChange={(e) => setDoctorName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Additional Notes (optional)
+                  </label>
+                  <textarea
+                    placeholder="Enter any additional information..."
+                    className="w-full p-2 border rounded-md text-sm h-20 resize-none"
+                    value={checkInMessage}
+                    onChange={(e) => setCheckInMessage(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t flex justify-end">
@@ -130,11 +222,15 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat, allUsers, currentUserId }
           <button
             onClick={handleCreateChat}
             className={`px-4 py-2 rounded-md text-sm text-white ${
-              selectedUserId ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'
+              (chatType === 'general' && !selectedUserId) ||
+              (chatType === 'patient-check-in' && (!patientName || !appointmentTime))
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
             }`}
-            disabled={!selectedUserId}
+            disabled={(chatType === 'general' && !selectedUserId) ||
+                     (chatType === 'patient-check-in' && (!patientName || !appointmentTime))}
           >
-            Start Chat
+            {chatType === 'patient-check-in' ? 'Send Check-in' : 'Start Chat'}
           </button>
         </div>
       </div>
