@@ -5,6 +5,7 @@ import Signup from "./routes/Signup";
 import Dashboard from "./pages/Dashboard";
 import CommunicationHub from "./pages/CommunicationHub";
 import Appointments from "./pages/Appointments";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/communication-hub" element={<CommunicationHub />} />
         <Route path="/appointments" element={<Appointments />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </Router>
   );
