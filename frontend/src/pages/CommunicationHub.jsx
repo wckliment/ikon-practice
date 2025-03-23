@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -25,16 +25,51 @@ const CommunicationHub = () => {
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [selectedUserContext, setSelectedUserContext] = useState(null); // 'patient-check-in' or 'regular'
   const [selectedPatientCheckIns, setSelectedPatientCheckIns] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Add debugging for token
   console.log("Current token:", localStorage.getItem('token'));
 
-  // Fetch initial data when component mounts
-  useEffect(() => {
-    dispatch(fetchUsers());
-    dispatch(fetchAllMessages());
-    dispatch(fetchPatientCheckIns());
-  }, [dispatch]);
+
+
+// Fetch initial data when component mounts
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      console.log("Starting to fetch data...");
+      // Using Promise.all to wait for all async actions to complete
+      await Promise.all([
+        dispatch(fetchUsers()),
+        dispatch(fetchAllMessages()),
+        dispatch(fetchPatientCheckIns())
+      ]);
+
+      console.log("All data fetched successfully");
+      setDataLoaded(true);
+    } catch (error) {
+      console.error("Error fetching initial data:", error);
+    }
+  };
+
+  fetchData();
+}, [dispatch]);
+
+    // Add this as a separate useEffect - not nested inside the previous one
+useEffect(() => {
+  if (dataLoaded && users.length > 0 && allMessages.length > 0) {
+    console.log("Data loaded, forcing re-render");
+
+    // Use a one-time flag to prevent infinite loops
+    if (!window.hasForceRendered) {
+      window.hasForceRendered = true;
+
+      // Force component to re-filter and re-render
+      const current = searchQuery || '';
+      setSearchQuery(current + ' ');
+      setTimeout(() => setSearchQuery(current), 10);
+    }
+  }
+}, [dataLoaded, users.length, allMessages.length]);
 
   useEffect(() => {
   const testAuth = async () => {
@@ -102,6 +137,19 @@ useEffect(() => {
       }));
     }
   }, [selectedUser, selectedUserContext, dispatch]);
+
+  // Add this new useEffect after your existing ones
+useEffect(() => {
+  if (!loading && allMessages.length > 0 && users.length > 0) {
+    console.log("Processing user lists with:", {
+      usersCount: users.length,
+      messagesCount: allMessages.length
+    });
+
+    // Force a re-render to ensure lists are populated
+    setSearchQuery(searchQuery => searchQuery);
+  }
+}, [loading, allMessages, users]);
 
   // Function to render the patient check-in section in the sidebar
   const patientCheckInSection = () => {
@@ -295,40 +343,64 @@ useEffect(() => {
       )
     : [];
 
-  // Get pinned, patient check-in, and regular users
-  const pinnedUsers = Array.isArray(filteredUsers)
+// Get pinned, patient check-in, and regular users
+const pinnedUsers = useMemo(() => {
+  return Array.isArray(filteredUsers)
     ? filteredUsers.filter(user => user.pinned && user.id !== currentUser?.id)
     : [];
+}, [filteredUsers, currentUser?.id]);
 
-  // Filter patient check-in users - only include direct messages
-  const patientCheckInUsers = Array.isArray(filteredUsers)
-    ? filteredUsers.filter(user => {
-        if (user.pinned || user.id === currentUser?.id) return false;
+// Filter patient check-in users - only include direct messages
+const patientCheckInUsers = useMemo(() => {
+  if (!Array.isArray(filteredUsers) || !Array.isArray(allMessages)) {
+    return [];
+  }
 
-        return allMessages.some(msg =>
-          // Look for direct patient check-ins (exclude broadcast messages)
-          (msg.type === 'patient-check-in' &&
-           ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
-            (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)))
-        );
-      })
-    : [];
+  return filteredUsers.filter(user => {
+    if (user.pinned || user.id === currentUser?.id) return false;
 
- // Regular users with general messages
-const regularUsers = Array.isArray(filteredUsers)
-  ? filteredUsers.filter(user => {
-      if (user.pinned || user.id === currentUser?.id) return false;
+    return allMessages.some(msg =>
+      (msg.type === 'patient-check-in') &&
+      ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+       (msg.sender_id === currentUser?.id && msg.receiver_id === user.id))
+    );
+  });
+}, [filteredUsers, allMessages, currentUser?.id]);
 
-      // The problem is likely here in this filter
-      const hasGeneralMessages = allMessages.some(msg =>
-        ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
-         (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
-        (msg.type === 'general' || msg.type === null)
-      );
+// Regular users with general messages
+const regularUsers = useMemo(() => {
+  console.log("Computing regularUsers with:", {
+    filteredUsersLength: filteredUsers?.length || 0,
+    allMessagesLength: allMessages?.length || 0
+  });
 
-      return hasGeneralMessages;
-    })
-  : [];
+  if (!Array.isArray(filteredUsers) || !Array.isArray(allMessages) || allMessages.length === 0) {
+    return [];
+  }
+
+  return filteredUsers.filter(user => {
+    // Skip pinned users and current user
+    if (user.pinned || user.id === currentUser?.id) return false;
+
+    // Log information about each user being filtered
+    const userMessages = allMessages.filter(msg =>
+      (msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+      (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)
+    );
+
+    console.log(`User ${user.id} (${user.name}) has ${userMessages.length} messages`);
+
+    // For debugging, include all users for now
+    return true; // Temporarily include all users to see if that's the issue
+
+    // Original condition
+    // return allMessages.some(msg =>
+    //   ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
+    //    (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
+    //   (msg.type === 'general' || msg.type === null || msg.type === undefined)
+    // );
+  });
+}, [filteredUsers, allMessages, currentUser?.id]);
 
   // Group messages by date
   const groupedMessages = groupMessagesByDate();
@@ -344,6 +416,30 @@ const regularUsers = Array.isArray(filteredUsers)
       isPinned: !user.pinned
     }));
   };
+
+  // Add this right before the return statement
+console.log("Rendering Communication Hub with:", {
+  usersCount: users.length,
+  messagesCount: allMessages.length,
+  regularUsersCount: regularUsers.length,
+  pinnedUsersCount: pinnedUsers.length,
+  patientCheckInUsersCount: patientCheckInUsers.length,
+  loading
+});
+
+  // Add this new log right after the one above
+console.log("User filtering details:", {
+  filteredUsers: filteredUsers.length,
+  currentUserId: currentUser?.id,
+  messageTypes: allMessages.length > 0 ? [...new Set(allMessages.map(msg => msg.type))] : [],
+  messagesByUserCount: Object.entries(
+    allMessages.reduce((acc, msg) => {
+      const key = `${msg.sender_id}-${msg.receiver_id}`;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {})
+  )
+});
 
   return (
     <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>

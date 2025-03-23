@@ -4,16 +4,30 @@ import axios from 'axios';
 // API base URL - use full URL with port
 const API_URL = 'http://localhost:5000/api';
 
-// Create axios instance with auth headers including token from the start
-const token = localStorage.getItem('token');
-console.log('Initial token:', token);
+// Create axios instance
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : undefined
+    'Content-Type': 'application/json'
   }
 });
+
+// Add request interceptor to dynamically add the token to each request
+api.interceptors.request.use(
+  (config) => {
+    // Get the current token from localStorage for each request
+    const token = localStorage.getItem('token');
+    console.log('Using token for request:', token);
+
+    // Add the token to the headers if it exists
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Add debugging interceptor to see what's actually being sent
 api.interceptors.request.use(
@@ -151,15 +165,8 @@ export const fetchUsers = createAsyncThunk(
       }
 
       console.log('Making API request to:', `${API_URL}/users`);
-      console.log('Using token directly in request:', token);
-
-      const response = await axios.get(`${API_URL}/users`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
+      // Use the api instance instead of axios directly to ensure token is included
+      const response = await api.get('/users');
       console.log('API response:', response.data);
       return response.data;
     } catch (error) {
@@ -174,6 +181,7 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
+// The rest of the file remains unchanged
 // UPDATED: Modified to accept an object with userId and conversationType
 export const fetchConversation = createAsyncThunk(
   'chat/fetchConversation',
@@ -336,7 +344,7 @@ export const togglePinUser = createAsyncThunk(
 
 export const createNewChat = createAsyncThunk(
   'chat/createNewChat',
-  async ({ userId, type = 'general', message = null }, { dispatch, getState }) => {
+  async ({ userId, type = 'general', message = null }, { dispatch, getState, rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
 
