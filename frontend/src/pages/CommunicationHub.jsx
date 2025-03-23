@@ -26,6 +26,7 @@ const CommunicationHub = () => {
   const [selectedUserContext, setSelectedUserContext] = useState(null); // 'patient-check-in' or 'regular'
   const [selectedPatientCheckIns, setSelectedPatientCheckIns] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [localMessages, setLocalMessages] = useState([]); // Add this new state for temporary messages
 
   // Add debugging for token
   console.log("Current token:", localStorage.getItem('token'));
@@ -196,34 +197,64 @@ useEffect(() => {
     setSelectedPatientCheckIns(false);
   };
 
-  // Handle message submission
-  const handleSendMessage = (e) => {
-    e.preventDefault();
+// Update handleSendMessage to ensure UI updates immediately
+const handleSendMessage = (e) => {
+  e.preventDefault();
 
-    if (!isAuthenticated) {
-      alert("You must be logged in to send messages");
-      return;
-    }
+  if (!isAuthenticated) {
+    alert("You must be logged in to send messages");
+    return;
+  }
 
-    if (!selectedUser || !newMessageText.trim() || !currentUser.id) {
-      return;
-    }
+  if (!selectedUser || !newMessageText.trim() || !currentUser.id) {
+    return;
+  }
 
-    // Check if the selected user is a patient with check-in messages
-    const isPatientCheckInUser = patientCheckInUsers.some(user => user.id === selectedUser.id);
+  // Use 'patient-check-in' type if continuing a patient check-in conversation
+  const messageType = selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general';
 
-    // Use 'patient-check-in' type if continuing a patient check-in conversation
-    const messageType = isPatientCheckInUser ? 'patient-check-in' : 'general';
-
-    dispatch(sendMessage({
-      sender_id: currentUser.id,
-      receiver_id: selectedUser.id,
-      message: newMessageText,
-      type: messageType
-    }));
-
-    setNewMessageText("");
+  // Create a temporary message to display immediately
+  const tempMessage = {
+    id: `temp-${Date.now()}`,
+    sender_id: currentUser.id,
+    receiver_id: selectedUser.id,
+    message: newMessageText,
+    created_at: new Date().toISOString(),
+    type: messageType,
+    is_temporary: true
   };
+
+  // Add the temporary message to the localMessages array
+  setLocalMessages(prev => [tempMessage, ...prev]);
+
+  // Dispatch the action to send the message
+  dispatch(sendMessage({
+    sender_id: currentUser.id,
+    receiver_id: selectedUser.id,
+    message: newMessageText,
+    type: messageType
+  })).then(() => {
+    // After the message is sent successfully, clear the temporary messages
+    // and fetch the updated conversation
+    setLocalMessages([]);
+    dispatch(fetchConversation({
+      userId: selectedUser.id,
+      conversationType: messageType
+    }));
+  }).catch(error => {
+    console.error("Error sending message:", error);
+    // Keep the temporary message but mark it as failed
+    setLocalMessages(prev =>
+      prev.map(msg =>
+        msg.id === tempMessage.id
+          ? { ...msg, failed: true }
+          : msg
+      )
+    );
+  });
+
+  setNewMessageText("");
+};
 
   // Handle creating a new chat
   const handleCreateChat = (params) => {
@@ -747,78 +778,108 @@ console.log("User filtering details:", {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {loading ? (
-                  <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
-                ) : selectedPatientCheckIns ? (
-                  // Display broadcast patient check-ins
-                  patientCheckIns.filter(msg => msg.receiver_id === null).map(checkIn => (
-                    <div key={checkIn.id} className="mb-4">
-                      <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded-md">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-medium text-sm">
-                            {checkIn.sender_name} <span className="text-xs text-gray-500">checked in a patient</span>
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {formatTime(checkIn.created_at)}
-                          </span>
-                        </div>
-                        <p className="text-sm">{checkIn.message}</p>
-                      </div>
-                      <div className="text-right text-xs text-gray-500">
-                        {formatDate(checkIn.created_at)}
-                      </div>
-                    </div>
-                  ))
-                ) : !selectedUser ? (
-                  <div className="p-3 text-center text-sm text-gray-500">Select a user to view messages</div>
-                ) : messages.length === 0 ? (
-                  <div className="p-3 text-center text-sm text-gray-500">No messages yet. Start a conversation!</div>
-                ) : (
-                  messagesByDate.map(date => (
-                    <div key={date}>
-                      {/* Date Header */}
-                      <div className="py-2 px-4 text-center">
-                        <span className="text-xs text-gray-500">{formatDate(date)}</span>
-                      </div>
+             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+  {loading ? (
+    <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
+  ) : selectedPatientCheckIns ? (
+    // Display broadcast patient check-ins
+    patientCheckIns.filter(msg => msg.receiver_id === null).map(checkIn => (
+      <div key={checkIn.id} className="mb-4">
+        <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded-md">
+          <div className="flex justify-between items-center mb-1">
+            <span className="font-medium text-sm">
+              {checkIn.sender_name} <span className="text-xs text-gray-500">checked in a patient</span>
+            </span>
+            <span className="text-xs text-gray-500">
+              {formatTime(checkIn.created_at)}
+            </span>
+          </div>
+          <p className="text-sm">{checkIn.message}</p>
+        </div>
+        <div className="text-right text-xs text-gray-500">
+          {formatDate(checkIn.created_at)}
+        </div>
+      </div>
+    ))
+  ) : !selectedUser ? (
+    <div className="p-3 text-center text-sm text-gray-500">Select a user to view messages</div>
+  ) : (localMessages.length === 0 && messages.length === 0) ? (
+    <div className="p-3 text-center text-sm text-gray-500">No messages yet. Start a conversation!</div>
+  ) : (
+    // Create a combined messages array for grouping by date
+    (() => {
+      const combinedMessages = localMessages.length > 0 ?
+        [...localMessages, ...messages.filter(m => !localMessages.some(lm => lm.id === m.id))] :
+        messages;
 
-                      {/* Messages for this date */}
-                      {groupedMessages[date]
-                        .filter(message => {
-                          // Only show messages of the appropriate type based on context
-                          if (selectedUserContext === 'patient-check-in') {
-                            return message.type === 'patient-check-in';
-                          } else if (selectedUserContext === 'regular') {
-                            return message.type === 'general' || message.type === null;
-                          }
-                          return true; // Fallback case
-                        })
-                        .map(message => {
-                          const isSentByMe = message.sender_id === currentUser?.id;
-                          const isPatientCheckIn = message.type === 'patient-check-in';
+      // Group the combined messages by date
+      const combinedGroupedMessages = {};
+      combinedMessages.forEach(message => {
+        const date = new Date(message.created_at);
+        const dateStr = date.toDateString();
 
-                          return (
-                            <div key={message.id}>
-                              <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
-                                <div className={`max-w-xs lg:max-w-md rounded-lg ${
-                                  isSentByMe ? 'bg-green-100' : isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
-                                } p-3 text-sm`}>
-                                  {isPatientCheckIn && !isSentByMe && (
-                                    <div className="mb-1 text-xs text-green-700 font-medium">Patient Check-in</div>
-                                  )}
-                                  <p>{message.message}</p>
-                                </div>
-                              </div>
-                              <div className="text-right text-xs text-gray-500">
-                                {formatTime(message.created_at)}
-                              </div>
-                            </div>
-                          );
-                        })}
+        if (!combinedGroupedMessages[dateStr]) {
+          combinedGroupedMessages[dateStr] = [];
+        }
+
+        combinedGroupedMessages[dateStr].push(message);
+      });
+
+      // Get dates sorted
+      const combinedMessagesByDate = Object.keys(combinedGroupedMessages)
+        .sort((a, b) => new Date(b) - new Date(a));
+
+      return combinedMessagesByDate.map(date => (
+        <div key={date}>
+          {/* Date Header */}
+          <div className="py-2 px-4 text-center">
+            <span className="text-xs text-gray-500">{formatDate(date)}</span>
+          </div>
+
+          {/* Messages for this date */}
+          {combinedGroupedMessages[date]
+            .filter(message => {
+              // Only show messages of the appropriate type based on context
+              if (selectedUserContext === 'patient-check-in') {
+                return message.type === 'patient-check-in';
+              } else if (selectedUserContext === 'regular') {
+                return message.type === 'general' || message.type === null;
+              }
+              return true; // Fallback case
+            })
+            .map(message => {
+              const isSentByMe = message.sender_id === currentUser?.id;
+              const isPatientCheckIn = message.type === 'patient-check-in';
+              const isTemporary = message.is_temporary;
+
+              return (
+                <div key={message.id}>
+                  <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
+                    <div className={`max-w-xs lg:max-w-md rounded-lg ${
+                      isSentByMe ?
+                        isTemporary ? 'bg-green-50' : 'bg-green-100' :
+                        isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
+                    } p-3 text-sm`}>
+                      {isPatientCheckIn && !isSentByMe && (
+                        <div className="mb-1 text-xs text-green-700 font-medium">Patient Check-in</div>
+                      )}
+                      <p>{message.message}</p>
+                      {isTemporary && (
+                        <div className="text-xs text-gray-400 mt-1">Sending...</div>
+                      )}
                     </div>
-                  ))
-                )}
-              </div>
+                  </div>
+                  <div className="text-right text-xs text-gray-500">
+                    {formatTime(message.created_at)}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      ));
+    })()
+  )}
+</div>
 
               {/* Message Input */}
               <div className="p-3 border-t">
