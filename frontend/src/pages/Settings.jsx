@@ -34,7 +34,7 @@ const Settings = () => {
 
   // State for showing new user form
   const [showNewUserForm, setShowNewUserForm] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "staff", location_id: null });
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "staff", location_id: null, dob: "" });
 
   // State for practice information
   const [practiceInfo, setPracticeInfo] = useState({
@@ -150,30 +150,34 @@ const Settings = () => {
     }
   }, [userRole, activeTab]);
 
-  // Handler for inviting new user
-  const handleInviteUser = async () => {
-    try {
-      // Ensure location_id is included
-      const userData = {
-        ...newUser,
-        location_id: selectedLocationFilter || null
-      };
 
-      await dispatch(inviteUser(userData)).unwrap();
-      setNewUser({ name: "", email: "", role: "staff", location_id: null });
-      setShowNewUserForm(false);
+const handleInviteUser = async () => {
+  try {
+    console.log("Sending invitation with data:", newUser);
 
-      // Refresh the user list
-      if (selectedLocationFilter) {
-        dispatch(fetchUsersByLocation(selectedLocationFilter));
-      } else {
-        dispatch(fetchUsers());
-      }
-    } catch (error) {
-      console.error("Failed to invite user:", error);
-      // You could add error state here to show an error message
+    // Ensure location_id is included
+    const userData = {
+      ...newUser,
+      location_id: newUser.location_id || selectedLocationFilter || null
+    };
+
+    await dispatch(inviteUser(userData)).unwrap();
+    setNewUser({ name: "", email: "", role: "staff", location_id: null });
+    setShowNewUserForm(false);
+
+    // Refresh the user list
+    if (selectedLocationFilter) {
+      dispatch(fetchUsersByLocation(selectedLocationFilter));
+    } else {
+      dispatch(fetchUsers());
     }
-  };
+  } catch (error) {
+    console.error("Failed to invite user:", error);
+    alert("Failed to invite user: " + (error.message || "Unknown error"));
+  }
+};
+
+
 
   // Handler for updating practice info
   const handleUpdatePractice = () => {
@@ -381,6 +385,17 @@ const Settings = () => {
                     onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                   />
                 </div>
+
+                      {/* Add the DOB field here */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+        <input
+          type="date"
+          className="w-full p-2 border border-gray-300 rounded-md"
+          value={newUser.dob || ''}
+          onChange={(e) => setNewUser({...newUser, dob: e.target.value})}
+        />
+      </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                   <select
@@ -392,8 +407,8 @@ const Settings = () => {
                     <option value="owner">Owner</option>
                     <option value="dentist">Dentist</option>
                     <option value="hygienist">Hygienist</option>
-                    <option value="front desk">Front Desk</option>
                     <option value="staff">Staff</option>
+                    <option value="office manager">Office Manager</option>
                   </select>
                 </div>
 <div>

@@ -35,12 +35,36 @@ export const fetchUsersWithoutLocation = createAsyncThunk("settings/fetchUsersWi
   return response.data;
 });
 
-export const inviteUser = createAsyncThunk("settings/inviteUser", async (userData, { getState }) => {
-  const headers = getAuthHeader(getState);
-  // This might need to be adjusted based on your auth routes
-  const response = await axios.post("/api/auth/register", userData, { headers });
-  return response.data;
-});
+export const inviteUser = createAsyncThunk("settings/inviteUser",
+  async (userData, { getState, rejectWithValue }) => {
+    try {
+      console.log("inviteUser action called with:", userData);
+      const headers = getAuthHeader(getState);
+
+      // Make sure all required fields are present
+      const completeUserData = {
+        name: userData.name,
+        email: userData.email,
+        role: userData.role || "staff",
+        location_id: userData.location_id || null,
+        dob: userData.dob || null, // Use DOB from the form
+        password: "password123" // Standard test password
+      };
+
+      console.log("Sending complete user data:", completeUserData);
+
+      const response = await axios.post("/api/auth/register", completeUserData, { headers });
+      console.log("Response received:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error in inviteUser action:", error);
+      if (error.response && error.response.data) {
+        console.error("Error details:", error.response.data);
+      }
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
 export const updateUserLocation = createAsyncThunk("settings/updateUserLocation", async ({userId, locationId}, { getState }) => {
   const headers = getAuthHeader(getState);

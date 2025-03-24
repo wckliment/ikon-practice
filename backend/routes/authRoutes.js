@@ -13,7 +13,7 @@ router.post(
     body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
     body("role")
       .toLowerCase() // Convert role to lowercase before storing
-      .isIn(["admin", "dentist", "staff", "hygienist", "owner"])
+      .isIn(["admin", "dentist", "staff", "hygienist", "owner", "office manager"])
       .withMessage("Role must be Admin, Dentist, Staff, Hygienist, or Owner"),
   ],
   (req, res, next) => {
