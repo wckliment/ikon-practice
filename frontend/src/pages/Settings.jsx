@@ -396,16 +396,16 @@ const Settings = () => {
                     <option value="staff">Staff</option>
                   </select>
                 </div>
-              <div>
+<div>
   <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
   <select
     className="w-full p-2 border border-gray-300 rounded-md"
     value={newUser.location_id || ''}
     onChange={(e) => setNewUser({...newUser, location_id: e.target.value ? Number(e.target.value) : null})}
-    disabled={locationsStatus !== 'succeeded' || !Array.isArray(locations) || locations.length === 0}
+    disabled={userLocationsStatus !== 'succeeded' || !Array.isArray(userLocations) || userLocations.length === 0}
   >
     <option value="">No Location</option>
-    {Array.isArray(locations) && locations.length > 0 && locations.map((location) => (
+    {Array.isArray(userLocations) && userLocations.length > 0 && userLocations.map((location) => (
       <option key={location.id} value={location.id}>
         {location.name}
       </option>
