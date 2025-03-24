@@ -262,7 +262,6 @@ const { data: usersByLocation = [], status: usersByLocationStatus } = useSelecto
   return (
     <div className="p-8 ml-24 max-w-6xl">
       <h1 className="text-3xl font-bold mb-8">Settings</h1>
-
       {/* Admin Notice for non-admin users */}
       {userRole !== 'admin' && userRole !== 'owner' && (
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">

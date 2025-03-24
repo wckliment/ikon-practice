@@ -1,86 +1,106 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-// Async thunks for API calls
-export const fetchUsers = createAsyncThunk("settings/fetchUsers", async () => {
-  const response = await axios.get("/users");
+// Helper function to get auth token from the store
+const getAuthHeader = (getState) => {
+  const token = getState().auth.token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+export const fetchUsers = createAsyncThunk("settings/fetchUsers", async (_, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.get("/api/users", { headers });
   return response.data;
 });
 
-export const fetchUsersByLocation = createAsyncThunk("settings/fetchUsersByLocation", async (locationId) => {
-  const response = await axios.get(`/users/location/${locationId}`);
+export const fetchUsersByLocation = createAsyncThunk("settings/fetchUsersByLocation", async (locationId, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.get(`/api/users/location/${locationId}`, { headers });
   return response.data;
 });
 
-export const fetchUsersWithoutLocation = createAsyncThunk("settings/fetchUsersWithoutLocation", async () => {
-  const response = await axios.get("/users/no-location");
+export const fetchUsersWithoutLocation = createAsyncThunk("settings/fetchUsersWithoutLocation", async (_, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.get("/api/users/no-location", { headers });
   return response.data;
 });
 
-export const inviteUser = createAsyncThunk("settings/inviteUser", async (userData) => {
-  // You may need to create this endpoint
-  const response = await axios.post("/auth/register", userData);
+export const inviteUser = createAsyncThunk("settings/inviteUser", async (userData, { getState }) => {
+  const headers = getAuthHeader(getState);
+  // This might need to be adjusted based on your auth routes
+  const response = await axios.post("/api/auth/register", userData, { headers });
   return response.data;
 });
 
-export const updateUserLocation = createAsyncThunk("settings/updateUserLocation", async ({userId, locationId}) => {
-  const response = await axios.put(`/users/${userId}/location`, { locationId });
+export const updateUserLocation = createAsyncThunk("settings/updateUserLocation", async ({userId, locationId}, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.put(`/api/users/${userId}/location`, { locationId }, { headers });
   return { userId, locationId };
 });
 
-export const fetchPracticeInfo = createAsyncThunk("settings/fetchPracticeInfo", async () => {
-  const response = await axios.get("/api/practice");
+export const fetchPracticeInfo = createAsyncThunk("settings/fetchPracticeInfo", async (_, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.get("/api/practice", { headers });
   return response.data;
 });
 
-export const updatePracticeInfo = createAsyncThunk("settings/updatePracticeInfo", async (practiceData) => {
-  const response = await axios.put("/api/practice", practiceData);
+export const updatePracticeInfo = createAsyncThunk("settings/updatePracticeInfo", async (practiceData, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.put("/api/practice", practiceData, { headers });
   return response.data;
 });
 
-export const fetchLocations = createAsyncThunk("settings/fetchLocations", async () => {
-  const response = await axios.get("/api/locations");
+export const fetchLocations = createAsyncThunk("settings/fetchLocations", async (_, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.get("/api/locations", { headers });
   return response.data;
 });
 
-export const updateLocation = createAsyncThunk("settings/updateLocation", async ({ id, locationData }) => {
-  const response = await axios.put(`/api/locations/${id}`, locationData);
+export const updateLocation = createAsyncThunk("settings/updateLocation", async ({ id, locationData }, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.put(`/api/locations/${id}`, locationData, { headers });
   return response.data;
 });
 
-export const createLocation = createAsyncThunk("settings/createLocation", async (locationData) => {
-  const response = await axios.post("/api/locations", locationData);
+export const createLocation = createAsyncThunk("settings/createLocation", async (locationData, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.post("/api/locations", locationData, { headers });
   return response.data;
 });
 
-export const deleteLocation = createAsyncThunk("settings/deleteLocation", async (id) => {
-  await axios.delete(`/api/locations/${id}`);
+export const deleteLocation = createAsyncThunk("settings/deleteLocation", async (id, { getState }) => {
+  const headers = getAuthHeader(getState);
+  await axios.delete(`/api/locations/${id}`, { headers });
   return id;
 });
 
 export const updateOpenDentalKeys = createAsyncThunk(
   "settings/updateOpenDentalKeys",
-  async ({ locationId, customerKey, developerKey }) => {
+  async ({ locationId, customerKey, developerKey }, { getState }) => {
+    const headers = getAuthHeader(getState);
     const response = await axios.put(`/api/locations/${locationId}/openDentalKeys`, {
       openDentalCustomerKey: customerKey,
       openDentalDeveloperKey: developerKey
-    });
+    }, { headers });
     return response.data;
   }
 );
 
-export const fetchApiKeys = createAsyncThunk("settings/fetchApiKeys", async () => {
-  const response = await axios.get("/api/apikeys");
+export const fetchApiKeys = createAsyncThunk("settings/fetchApiKeys", async (_, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.get("/api/apikeys", { headers });
   return response.data;
 });
 
-export const generateApiKey = createAsyncThunk("settings/generateApiKey", async (keyType) => {
-  const response = await axios.post("/api/apikeys", { type: keyType });
+export const generateApiKey = createAsyncThunk("settings/generateApiKey", async (keyType, { getState }) => {
+  const headers = getAuthHeader(getState);
+  const response = await axios.post("/api/apikeys", { type: keyType }, { headers });
   return response.data;
 });
 
-export const revokeApiKey = createAsyncThunk("settings/revokeApiKey", async (id) => {
-  await axios.delete(`/api/apikeys/${id}`);
+export const revokeApiKey = createAsyncThunk("settings/revokeApiKey", async (id, { getState }) => {
+  const headers = getAuthHeader(getState);
+  await axios.delete(`/api/apikeys/${id}`, { headers });
   return id;
 });
 
