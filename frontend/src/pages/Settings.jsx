@@ -4,20 +4,34 @@ import {
   Users, Home, Key, Settings as SettingsIcon,
   Plus, Edit2, Trash2, Check, X, Copy
 } from "react-feather";
-import axios from "axios"; // Assuming you're using axios for API calls
+import {
+  fetchUsers,
+  fetchUsersByLocation,
+  fetchLocations,
+  inviteUser,
+  updateUserLocation,
+  updateLocation,
+  updateOpenDentalKeys,
+  generateApiKey,
+  revokeApiKey,
+  updateSystemPreferences
+} from "../redux/settingsSlice";
 
 const Settings = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
+const { data: users = [], status: usersStatus, error: usersError } = useSelector((state) => state.settings.users);
+const { data: usersByLocation = [], status: usersByLocationStatus } = useSelector((state) => state.settings.usersByLocation);
+  const { data: locations = [], status: locationsStatus } = useSelector((state) => state.settings.locations);
+  const { data: apiKeys, status: apiKeysStatus } = useSelector((state) => state.settings.apiKeys);
+  const systemPreferences = useSelector((state) => state.settings.systemPreferences);
+
   const [activeTab, setActiveTab] = useState("keys");
   const [userRole, setUserRole] = useState("admin"); // Default to admin for development
 
-  // State for user management
-  const [users, setUsers] = useState([
-    { id: 1, name: "Dr. John Doe", email: "john@ikonpractice.com", role: "Admin", status: "Active" },
-    { id: 2, name: "Jane Smith", email: "jane@ikonpractice.com", role: "Dentist", status: "Active" },
-    { id: 3, name: "Mike Johnson", email: "mike@ikonpractice.com", role: "Front Desk", status: "Invited" }
-  ]);
+  // State for showing new user form
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [newUser, setNewUser] = useState({ name: "", email: "", role: "staff", location_id: null });
 
   // State for practice information
   const [practiceInfo, setPracticeInfo] = useState({
@@ -31,42 +45,6 @@ const Settings = () => {
     website: "www.brightsmile.com"
   });
 
-  // State for locations
-  const [locations, setLocations] = useState([
-    {
-      id: 1,
-      name: "Main Office",
-      address: "123 Main St, Suite 100",
-      city: "San Francisco",
-      state: "CA",
-      zip: "94105",
-      phone: "(415) 555-1234",
-      openDentalCustomerKey: "",
-      openDentalDeveloperKey: ""
-    },
-    {
-      id: 2,
-      name: "Downtown Branch",
-      address: "456 Market St",
-      city: "San Francisco",
-      state: "CA",
-      zip: "94103",
-      phone: "(415) 555-5678",
-      openDentalCustomerKey: "",
-      openDentalDeveloperKey: ""
-    }
-  ]);
-
-  // State for API keys
-  const [apiKeys, setApiKeys] = useState([
-    { id: 1, name: "Production API Key", key: "pk_live_12345abcde", type: "Production", created: "Jan 15, 2025" },
-    { id: 2, name: "Test API Key", key: "pk_test_67890fghij", type: "Test", created: "Jan 10, 2025" }
-  ]);
-
-  // State for showing new user form
-  const [showNewUserForm, setShowNewUserForm] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "Staff" });
-
   // State for editing practice info
   const [editingPractice, setEditingPractice] = useState(false);
   const [editedPractice, setEditedPractice] = useState({...practiceInfo});
@@ -75,8 +53,11 @@ const Settings = () => {
   const [editingLocation, setEditingLocation] = useState(false);
   const [editedLocation, setEditedLocation] = useState(null);
 
+  // State for location filtering (users table)
+  const [selectedLocationFilter, setSelectedLocationFilter] = useState(null);
+
   // State for OpenDental integration
-  const [selectedLocation, setSelectedLocation] = useState(locations[0]?.id || null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const [openDentalKeys, setOpenDentalKeys] = useState({
     customerKey: "",
     developerKey: ""
@@ -87,18 +68,38 @@ const Settings = () => {
   // State for copied API key
   const [copiedKey, setCopiedKey] = useState(null);
 
+  // Fetch data when component mounts
+  useEffect(() => {
+    dispatch(fetchUsers());
+    dispatch(fetchLocations());
+  }, [dispatch]);
+
+  // Fetch users by location when filter changes
+  useEffect(() => {
+    if (selectedLocationFilter) {
+      dispatch(fetchUsersByLocation(selectedLocationFilter));
+    }
+  }, [dispatch, selectedLocationFilter]);
+
   // Effect to load OpenDental keys for selected location
   useEffect(() => {
-    if (selectedLocation) {
+    if (selectedLocation && locations.length > 0) {
       const location = locations.find(loc => loc.id === selectedLocation);
       if (location) {
         setOpenDentalKeys({
-          customerKey: location.openDentalCustomerKey || "",
-          developerKey: location.openDentalDeveloperKey || ""
+          customerKey: location.customer_key || "",
+          developerKey: location.developer_key || ""
         });
       }
     }
   }, [selectedLocation, locations]);
+
+  // Set initial selected location when locations are loaded
+  useEffect(() => {
+    if (locations.length > 0 && !selectedLocation) {
+      setSelectedLocation(locations[0].id);
+    }
+  }, [locations, selectedLocation]);
 
   // Effect to set user role from Redux state
   useEffect(() => {
@@ -142,11 +143,28 @@ const Settings = () => {
   }, [userRole, activeTab]);
 
   // Handler for inviting new user
-  const handleInviteUser = () => {
-    const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
-    setUsers([...users, {...newUser, id: newId, status: "Invited"}]);
-    setNewUser({ name: "", email: "", role: "Staff" });
-    setShowNewUserForm(false);
+  const handleInviteUser = async () => {
+    try {
+      // Ensure location_id is included
+      const userData = {
+        ...newUser,
+        location_id: selectedLocationFilter || null
+      };
+
+      await dispatch(inviteUser(userData)).unwrap();
+      setNewUser({ name: "", email: "", role: "staff", location_id: null });
+      setShowNewUserForm(false);
+
+      // Refresh the user list
+      if (selectedLocationFilter) {
+        dispatch(fetchUsersByLocation(selectedLocationFilter));
+      } else {
+        dispatch(fetchUsers());
+      }
+    } catch (error) {
+      console.error("Failed to invite user:", error);
+      // You could add error state here to show an error message
+    }
   };
 
   // Handler for updating practice info
@@ -155,7 +173,7 @@ const Settings = () => {
     setEditingPractice(false);
 
     // Here you would make an API call to update the practice information
-    // Example: axios.put('/api/practice', editedPractice);
+    // Example: dispatch(updatePracticeInfo(editedPractice));
   };
 
   // Handler for editing location
@@ -165,31 +183,22 @@ const Settings = () => {
   };
 
   // Handler for updating location
-  const handleUpdateLocation = () => {
-    const updatedLocations = locations.map(loc =>
-      loc.id === editedLocation.id ? editedLocation : loc
-    );
-    setLocations(updatedLocations);
-    setEditingLocation(false);
-
-    // Here you would make an API call to update the location
-    // Example: axios.put(`/api/locations/${editedLocation.id}`, editedLocation);
+  const handleUpdateLocation = async () => {
+    try {
+      await dispatch(updateLocation({ id: editedLocation.id, locationData: editedLocation })).unwrap();
+      setEditingLocation(false);
+    } catch (error) {
+      console.error("Failed to update location:", error);
+    }
   };
 
   // Handler for generating new API key
-  const handleGenerateKey = (type) => {
-    const newId = apiKeys.length > 0 ? Math.max(...apiKeys.map(k => k.id)) + 1 : 1;
-    const newKey = {
-      id: newId,
-      name: `${type} API Key`,
-      key: `pk_${type.toLowerCase()}_${Math.random().toString(36).substring(2, 12)}`,
-      type: type,
-      created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    };
-    setApiKeys([...apiKeys, newKey]);
-
-    // Here you would make an API call to create the new API key
-    // Example: axios.post('/api/apikeys', newKey);
+  const handleGenerateKey = async (type) => {
+    try {
+      await dispatch(generateApiKey(type)).unwrap();
+    } catch (error) {
+      console.error("Failed to generate API key:", error);
+    }
   };
 
   // Handler for copying API key to clipboard
@@ -200,12 +209,12 @@ const Settings = () => {
   };
 
   // Handler for revoking API key
-  const handleRevokeKey = (keyId) => {
-    const updatedKeys = apiKeys.filter(key => key.id !== keyId);
-    setApiKeys(updatedKeys);
-
-    // Here you would make an API call to revoke the API key
-    // Example: axios.delete(`/api/apikeys/${keyId}`);
+  const handleRevokeKey = async (keyId) => {
+    try {
+      await dispatch(revokeApiKey(keyId)).unwrap();
+    } catch (error) {
+      console.error("Failed to revoke API key:", error);
+    }
   };
 
   // Handler for testing OpenDental connection
@@ -214,29 +223,13 @@ const Settings = () => {
     setConnectionStatus(null);
 
     try {
-      // This is where you would make an actual API call to test the connection
-      // For now, we'll simulate an API call with a timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await dispatch(updateOpenDentalKeys({
+        locationId: selectedLocation,
+        customerKey: openDentalKeys.customerKey,
+        developerKey: openDentalKeys.developerKey
+      })).unwrap();
 
-      // Simulate a successful connection
       setConnectionStatus('success');
-
-      // Update the location with the new keys
-      const updatedLocations = locations.map(loc => {
-        if (loc.id === selectedLocation) {
-          return {
-            ...loc,
-            openDentalCustomerKey: openDentalKeys.customerKey,
-            openDentalDeveloperKey: openDentalKeys.developerKey
-          };
-        }
-        return loc;
-      });
-
-      setLocations(updatedLocations);
-
-      // In a real implementation, you would make an API call to update the database
-      // Example: await axios.put(`/api/locations/${selectedLocation}/opendentalkeys`, openDentalKeys);
     } catch (error) {
       console.error('Connection test failed:', error);
       setConnectionStatus('error');
@@ -255,6 +248,10 @@ const Settings = () => {
   const iconStyle = {
     strokeWidth: 1.25,
   };
+
+  // Get users to display based on location filter
+  const displayUsers = selectedLocationFilter ? usersByLocation : users;
+  const isLoadingUsers = selectedLocationFilter ? usersByLocationStatus === 'loading' : usersStatus === 'loading';
 
   return (
     <div className="p-8 ml-24 max-w-6xl">
@@ -335,6 +332,25 @@ const Settings = () => {
             </button>
           </div>
 
+          {/* Location Filter */}
+        {locationsStatus === 'succeeded' && Array.isArray(locations) && locations.length > 0 && (
+  <div className="mb-6">
+    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Location</label>
+    <select
+      className="w-full p-2 border border-gray-300 rounded-md"
+      value={selectedLocationFilter || ''}
+      onChange={(e) => setSelectedLocationFilter(e.target.value ? Number(e.target.value) : null)}
+    >
+      <option value="">All Locations</option>
+      {locations.map((location) => (
+        <option key={location.id} value={location.id}>
+          {location.name}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
+
           {/* New User Form */}
           {showNewUserForm && (
             <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
@@ -365,14 +381,30 @@ const Settings = () => {
                     value={newUser.role}
                     onChange={(e) => setNewUser({...newUser, role: e.target.value})}
                   >
-                    <option value="Admin">Admin</option>
-                    <option value="Owner">Owner</option>
-                    <option value="Dentist">Dentist</option>
-                    <option value="Hygienist">Hygienist</option>
-                    <option value="Front Desk">Front Desk</option>
-                    <option value="Staff">Staff</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
+                    <option value="dentist">Dentist</option>
+                    <option value="hygienist">Hygienist</option>
+                    <option value="front desk">Front Desk</option>
+                    <option value="staff">Staff</option>
                   </select>
                 </div>
+              <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+  <select
+    className="w-full p-2 border border-gray-300 rounded-md"
+    value={newUser.location_id || ''}
+    onChange={(e) => setNewUser({...newUser, location_id: e.target.value ? Number(e.target.value) : null})}
+    disabled={locationsStatus !== 'succeeded' || !Array.isArray(locations) || locations.length === 0}
+  >
+    <option value="">No Location</option>
+    {Array.isArray(locations) && locations.length > 0 && locations.map((location) => (
+      <option key={location.id} value={location.id}>
+        {location.name}
+      </option>
+    ))}
+  </select>
+</div>
               </div>
               <div className="flex justify-end space-x-3">
                 <button
@@ -393,42 +425,53 @@ const Settings = () => {
 
           {/* Users Table */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.role}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                        ${user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                      <button className="text-red-600 hover:text-red-900">Remove</button>
-                    </td>
+            {isLoadingUsers ? (
+              <div className="p-6 text-center">Loading users...</div>
+            ) : usersError ? (
+              <div className="p-6 text-center text-red-500">Error: {usersError}</div>
+            ) : (
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+               <tbody className="divide-y divide-gray-200">
+  {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
+    displayUsers.map((user) => (
+      <tr key={user.id}>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm font-medium text-gray-900">{user.name}</div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-500">{user.email}</div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-500 capitalize">{user.role}</div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-500">{user.location_name || 'No Location'}</div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <button className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+          <button className="text-red-600 hover:text-red-900">Remove</button>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+        No users found{selectedLocationFilter ? " for this location" : ""}.
+      </td>
+    </tr>
+  )}
+</tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -583,33 +626,53 @@ const Settings = () => {
               </button>
             </div>
 
+            {/* Locations Loading State */}
+            {locationsStatus === 'loading' && (
+              <div className="text-center p-6">Loading locations...</div>
+            )}
+
+            {/* Locations Error State */}
+            {locationsStatus === 'failed' && (
+              <div className="text-center p-6 text-red-500">
+                Failed to load locations. Please try again.
+              </div>
+            )}
+
             {/* Locations List */}
-            <div className="space-y-4">
-              {locations.map(location => (
-                <div key={location.id} className="bg-white rounded-lg border border-gray-200 p-5">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-medium">{location.name}</h3>
-                      <p className="text-gray-600 mt-1">{location.address}, {location.city}, {location.state} {location.zip}</p>
-                      <p className="text-gray-600 mt-1">{location.phone}</p>
+            {locationsStatus === 'succeeded' && (
+              <div className="space-y-4">
+                {locations.length > 0 ? (
+                  locations.map(location => (
+                    <div key={location.id} className="bg-white rounded-lg border border-gray-200 p-5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-lg font-medium">{location.name}</h3>
+                          <p className="text-gray-600 mt-1">{location.address}, {location.city}, {location.state} {location.zip}</p>
+                          <p className="text-gray-600 mt-1">{location.phone}</p>
+                        </div>
+                        <div className="flex">
+                          <button
+                            className="text-blue-600 hover:text-blue-900 mr-3 flex items-center"
+                            onClick={() => handleEditLocation(location)}
+                          >
+                            <Edit2 size={16} className="mr-1" />
+                            Edit
+                          </button>
+                          <button className="text-red-600 hover:text-red-900 flex items-center">
+                            <Trash2 size={16} className="mr-1" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex">
-                      <button
-                        className="text-blue-600 hover:text-blue-900 mr-3 flex items-center"
-                        onClick={() => handleEditLocation(location)}
-                      >
-                        <Edit2 size={16} className="mr-1" />
-                        Edit
-                      </button>
-                      <button className="text-red-600 hover:text-red-900 flex items-center">
-                        <Trash2 size={16} className="mr-1" />
-                        Delete
-                      </button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center p-6 text-gray-500">
+                    No locations found. Add your first location to get started.
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Edit Location Modal */}
             {editingLocation && editedLocation && (
@@ -636,14 +699,14 @@ const Settings = () => {
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                      <input
-                        type="text"
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        value={editedLocation.address}
-                        onChange={(e) => setEditedLocation({...editedLocation, address: e.target.value})}
-                      />
-                    </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+  <input
+    type="text"
+    className="w-full p-2 border border-gray-300 rounded-md"
+    value={editedLocation.address}
+    onChange={(e) => setEditedLocation({...editedLocation, address: e.target.value})}
+  />
+</div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                       <input
@@ -693,47 +756,57 @@ const Settings = () => {
         </div>
       )}
 
-      {/* API & Integration Tab */}
-      {activeTab === "keys" && (
-        <div>
-          {/* OpenDental Integration Section */}
-          <div className="mb-10">
-            <h2 className="text-xl font-semibold mb-6">OpenDental Integration</h2>
+{/* API & Integration Tab */}
+{activeTab === "keys" && (
+  <div>
+    {/* OpenDental Integration Section */}
+    <div className="mb-10">
+      <h2 className="text-xl font-semibold mb-6">OpenDental Integration</h2>
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="mb-6">
+          <p className="mb-3 text-gray-600">
+            Connect your practice to OpenDental by entering your customer key and developer key.
+            These keys can be generated from your OpenDental software.
+          </p>
+          <div className="text-blue-600 hover:text-blue-800">
+            <a
+              href="https://www.opendental.com/site/apikeyguideline.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium flex items-center"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              How to generate OpenDental API keys
+            </a>
+          </div>
+        </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="mb-6">
-                <p className="mb-3 text-gray-600">
-                  Connect your practice to OpenDental by entering your customer key and developer key.
-                  These keys can be generated from your OpenDental software.
-                </p>
-                <a
-                  href="https://www.opendental.com/site/apikeyguideline.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  How to generate OpenDental API keys
-                </a>
-              </div>
-
-              {/* Location Selector */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Practice Location</label>
-                <select
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(Number(e.target.value))}
-                >
-                  {locations.map(location => (
-                    <option key={location.id} value={location.id}>
-                      {location.name} - {location.address}, {location.city}
-                    </option>
-                  ))}
-                </select>
-              </div>
+           {/* Location Selector */}
+<div className="mb-6">
+  <label className="block text-sm font-medium text-gray-700 mb-2">Select Practice Location</label>
+  {locationsStatus === 'loading' ? (
+    <div className="text-sm text-gray-500">Loading locations...</div>
+  ) : locationsStatus === 'failed' ? (
+    <div className="text-sm text-red-500">Failed to load locations</div>
+  ) : !locations || !Array.isArray(locations) || locations.length === 0 ? (
+    <div className="text-sm text-gray-500">No locations available. Please add a location first.</div>
+  ) : (
+    <select
+      className="w-full p-2 border border-gray-300 rounded-md"
+      value={selectedLocation || ''}
+      onChange={(e) => setSelectedLocation(e.target.value ? Number(e.target.value) : null)}
+    >
+      <option value="" disabled>Select a location</option>
+      {locations.map(location => (
+        <option key={location.id} value={location.id}>
+          {location.name} - {location.address}, {location.city}
+        </option>
+      ))}
+    </select>
+  )}
+</div>
 
               {/* API Key Input Fields */}
               <div className="grid grid-cols-1 gap-4 mb-6">
@@ -745,6 +818,7 @@ const Settings = () => {
                     value={openDentalKeys.customerKey}
                     onChange={(e) => setOpenDentalKeys({...openDentalKeys, customerKey: e.target.value})}
                     placeholder="Enter your OpenDental Customer Key"
+                    disabled={!selectedLocation}
                   />
                 </div>
                 <div>
@@ -755,6 +829,7 @@ const Settings = () => {
                     value={openDentalKeys.developerKey}
                     onChange={(e) => setOpenDentalKeys({...openDentalKeys, developerKey: e.target.value})}
                     placeholder="Enter your OpenDental Developer Key"
+                    disabled={!selectedLocation}
                   />
                 </div>
               </div>
@@ -776,9 +851,9 @@ const Settings = () => {
                   )}
                 </div>
                 <button
-                  className={testingConnection ? `${secondaryButtonStyle} opacity-75 cursor-not-allowed` : primaryButtonStyle}
+                  className={(!selectedLocation || testingConnection) ? `${secondaryButtonStyle} opacity-75 cursor-not-allowed` : primaryButtonStyle}
                   onClick={handleTestConnection}
-                  disabled={testingConnection}
+                  disabled={!selectedLocation || testingConnection}
                 >
                   {testingConnection ? 'Testing Connection...' : 'Test & Save Connection'}
                 </button>
@@ -813,60 +888,71 @@ const Settings = () => {
                   Never share your production keys with unauthorized individuals.
                 </p>
               </div>
-              <table className="min-w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {apiKeys.map((apiKey) => (
-                    <tr key={apiKey.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{apiKey.name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{apiKey.key}</code>
-                          <button
-                            className="ml-2 text-gray-500 hover:text-gray-700"
-                            onClick={() => handleCopyKey(apiKey.key)}
-                            title="Copy to clipboard"
-                          >
-                            {copiedKey === apiKey.key ? (
-                              <Check size={16} className="text-green-500" />
-                            ) : (
-                              <Copy size={16} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                          ${apiKey.type === 'Production' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                          {apiKey.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{apiKey.created}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          className="text-red-600 hover:text-red-900 flex items-center ml-auto"
-                          onClick={() => handleRevokeKey(apiKey.id)}
-                        >
-                          <Trash2 size={14} className="mr-1" />
-                          Revoke
-                        </button>
-                      </td>
+
+              {apiKeysStatus === 'loading' ? (
+                <div className="p-6 text-center">Loading API keys...</div>
+              ) : apiKeysStatus === 'failed' ? (
+                <div className="p-6 text-center text-red-500">Failed to load API keys</div>
+              ) : apiKeys && apiKeys.length > 0 ? (
+                <table className="min-w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {apiKeys.map((apiKey) => (
+                      <tr key={apiKey.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{apiKey.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{apiKey.key}</code>
+                            <button
+                              className="ml-2 text-gray-500 hover:text-gray-700"
+                              onClick={() => handleCopyKey(apiKey.key)}
+                              title="Copy to clipboard"
+                            >
+                              {copiedKey === apiKey.key ? (
+                                <Check size={16} className="text-green-500" />
+                              ) : (
+                                <Copy size={16} />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                            ${apiKey.type === 'Production' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                            {apiKey.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{apiKey.created}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            className="text-red-600 hover:text-red-900 flex items-center ml-auto"
+                            onClick={() => handleRevokeKey(apiKey.id)}
+                          >
+                            <Trash2 size={14} className="mr-1" />
+                            Revoke
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-6 text-center text-gray-500">
+                  No API keys found. Generate a key to get started.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -883,18 +969,26 @@ const Settings = () => {
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Theme</label>
-                <select className="w-full p-2 border border-gray-300 rounded-md">
-                  <option>Light</option>
-                  <option>Dark</option>
-                  <option>System Default</option>
+                <select
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={systemPreferences.theme}
+                  onChange={(e) => dispatch(updateSystemPreferences({ theme: e.target.value }))}
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">System Default</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Dashboard Layout</label>
-                <select className="w-full p-2 border border-gray-300 rounded-md">
-                  <option>Standard</option>
-                  <option>Compact</option>
-                  <option>Expanded</option>
+                <select
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={systemPreferences.dashboardLayout}
+                  onChange={(e) => dispatch(updateSystemPreferences({ dashboardLayout: e.target.value }))}
+                >
+                  <option value="standard">Standard</option>
+                  <option value="compact">Compact</option>
+                  <option value="expanded">Expanded</option>
                 </select>
               </div>
             </div>
@@ -909,7 +1003,13 @@ const Settings = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Opening Time</label>
-                  <select className="w-full p-2 border border-gray-300 rounded-md">
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={systemPreferences.businessHours.open}
+                    onChange={(e) => dispatch(updateSystemPreferences({
+                      businessHours: { ...systemPreferences.businessHours, open: e.target.value }
+                    }))}
+                  >
                     <option>8:00 AM</option>
                     <option>8:30 AM</option>
                     <option>9:00 AM</option>
@@ -919,7 +1019,13 @@ const Settings = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Closing Time</label>
-                  <select className="w-full p-2 border border-gray-300 rounded-md">
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={systemPreferences.businessHours.close}
+                    onChange={(e) => dispatch(updateSystemPreferences({
+                      businessHours: { ...systemPreferences.businessHours, close: e.target.value }
+                    }))}
+                  >
                     <option>4:00 PM</option>
                     <option>4:30 PM</option>
                     <option>5:00 PM</option>
@@ -938,11 +1044,20 @@ const Settings = () => {
                     <h5 className="font-medium">Default Appointment Duration</h5>
                     <p className="text-sm text-gray-500">Standard time slot for new appointments</p>
                   </div>
-                  <select className="p-2 border border-gray-300 rounded-md w-24">
-                    <option>15 min</option>
-                    <option>30 min</option>
-                    <option>45 min</option>
-                    <option>60 min</option>
+                  <select
+                    className="p-2 border border-gray-300 rounded-md w-24"
+                    value={systemPreferences.appointmentSettings.defaultDuration}
+                    onChange={(e) => dispatch(updateSystemPreferences({
+                      appointmentSettings: {
+                        ...systemPreferences.appointmentSettings,
+                        defaultDuration: Number(e.target.value)
+                      }
+                    }))}
+                  >
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="45">45 min</option>
+                    <option value="60">60 min</option>
                   </select>
                 </div>
 
@@ -951,12 +1066,21 @@ const Settings = () => {
                     <h5 className="font-medium">Booking Notice</h5>
                     <p className="text-sm text-gray-500">Minimum time before an appointment can be booked</p>
                   </div>
-                  <select className="p-2 border border-gray-300 rounded-md w-32">
-                    <option>No notice</option>
-                    <option>1 hour</option>
-                    <option>4 hours</option>
-                    <option>24 hours</option>
-                    <option>48 hours</option>
+                  <select
+                    className="p-2 border border-gray-300 rounded-md w-32"
+                    value={systemPreferences.appointmentSettings.bookingNotice}
+                    onChange={(e) => dispatch(updateSystemPreferences({
+                      appointmentSettings: {
+                        ...systemPreferences.appointmentSettings,
+                        bookingNotice: Number(e.target.value)
+                      }
+                    }))}
+                  >
+                    <option value="0">No notice</option>
+                    <option value="1">1 hour</option>
+                    <option value="4">4 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="48">48 hours</option>
                   </select>
                 </div>
 
@@ -967,9 +1091,21 @@ const Settings = () => {
                   </div>
                   <label className="flex items-center cursor-pointer">
                     <div className="relative">
-                      <input type="checkbox" className="sr-only" defaultChecked />
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={systemPreferences.appointmentSettings.allowOnlineBooking}
+                        onChange={(e) => dispatch(updateSystemPreferences({
+                          appointmentSettings: {
+                            ...systemPreferences.appointmentSettings,
+                            allowOnlineBooking: e.target.checked
+                          }
+                        }))}
+                      />
                       <div className="block bg-gray-200 w-14 h-8 rounded-full"></div>
-                      <div className="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform translate-x-6"></div>
+                      <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition transform ${
+                        systemPreferences.appointmentSettings.allowOnlineBooking ? 'translate-x-6' : ''
+                      }`}></div>
                     </div>
                   </label>
                 </div>

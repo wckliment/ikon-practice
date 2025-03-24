@@ -3,13 +3,29 @@ import axios from "axios";
 
 // Async thunks for API calls
 export const fetchUsers = createAsyncThunk("settings/fetchUsers", async () => {
-  const response = await axios.get("/api/users");
+  const response = await axios.get("/users");
+  return response.data;
+});
+
+export const fetchUsersByLocation = createAsyncThunk("settings/fetchUsersByLocation", async (locationId) => {
+  const response = await axios.get(`/users/location/${locationId}`);
+  return response.data;
+});
+
+export const fetchUsersWithoutLocation = createAsyncThunk("settings/fetchUsersWithoutLocation", async () => {
+  const response = await axios.get("/users/no-location");
   return response.data;
 });
 
 export const inviteUser = createAsyncThunk("settings/inviteUser", async (userData) => {
-  const response = await axios.post("/api/users/invite", userData);
+  // You may need to create this endpoint
+  const response = await axios.post("/auth/register", userData);
   return response.data;
+});
+
+export const updateUserLocation = createAsyncThunk("settings/updateUserLocation", async ({userId, locationId}) => {
+  const response = await axios.put(`/users/${userId}/location`, { locationId });
+  return { userId, locationId };
 });
 
 export const fetchPracticeInfo = createAsyncThunk("settings/fetchPracticeInfo", async () => {
@@ -75,6 +91,11 @@ const initialState = {
     status: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
     error: null
   },
+  usersByLocation: {
+    data: [],
+    status: "idle",
+    error: null
+  },
   practiceInfo: {
     data: null,
     status: "idle",
@@ -131,8 +152,42 @@ const settingsSlice = createSlice({
         state.users.status = "failed";
         state.users.error = action.error.message;
       })
+
+      // Users by location
+      .addCase(fetchUsersByLocation.pending, (state) => {
+        state.usersByLocation.status = "loading";
+      })
+      .addCase(fetchUsersByLocation.fulfilled, (state, action) => {
+        state.usersByLocation.status = "succeeded";
+        state.usersByLocation.data = action.payload;
+      })
+      .addCase(fetchUsersByLocation.rejected, (state, action) => {
+        state.usersByLocation.status = "failed";
+        state.usersByLocation.error = action.error.message;
+      })
+
+      // Users without location
+      .addCase(fetchUsersWithoutLocation.fulfilled, (state, action) => {
+        state.usersByLocation.status = "succeeded";
+        state.usersByLocation.data = action.payload;
+      })
+
       .addCase(inviteUser.fulfilled, (state, action) => {
         state.users.data.push(action.payload);
+      })
+
+      .addCase(updateUserLocation.fulfilled, (state, action) => {
+        // Update user location in both user lists
+        const { userId, locationId } = action.payload;
+
+        // Update in users list
+        const userIndex = state.users.data.findIndex(user => user.id === userId);
+        if (userIndex !== -1) {
+          state.users.data[userIndex].location_id = locationId;
+        }
+
+        // Remove from usersByLocation if they were moved to a different location
+        state.usersByLocation.data = state.usersByLocation.data.filter(user => user.id !== userId);
       });
 
     // Practice Info
