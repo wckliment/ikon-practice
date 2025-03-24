@@ -24,7 +24,13 @@ const { data: users = [], status: usersStatus, error: usersError } = useSelector
 const { data: usersByLocation = [], status: usersByLocationStatus } = useSelector((state) => state.settings.usersByLocation);
   const { data: locations = [], status: locationsStatus } = useSelector((state) => state.settings.locations);
   const { data: apiKeys, status: apiKeysStatus } = useSelector((state) => state.settings.apiKeys);
-  const systemPreferences = useSelector((state) => state.settings.systemPreferences);
+    const systemPreferences = useSelector((state) => state.settings.systemPreferences);
+
+     // Add these console logs here
+  console.log("Users from Redux:", users);
+  console.log("User status:", usersStatus);
+  console.log("Locations from Redux:", locations);
+  console.log("API Keys from Redux:", apiKeys);
 
   const [activeTab, setActiveTab] = useState("keys");
   const [userRole, setUserRole] = useState("admin"); // Default to admin for development
