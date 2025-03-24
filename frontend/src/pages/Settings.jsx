@@ -14,23 +14,20 @@ import {
   updateOpenDentalKeys,
   generateApiKey,
   revokeApiKey,
-  updateSystemPreferences
+  updateSystemPreferences,
+  fetchUserLocations
 } from "../redux/settingsSlice";
 
 const Settings = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
-const { data: users = [], status: usersStatus, error: usersError } = useSelector((state) => state.settings.users);
-const { data: usersByLocation = [], status: usersByLocationStatus } = useSelector((state) => state.settings.usersByLocation);
+  const { data: users = [], status: usersStatus, error: usersError } = useSelector((state) => state.settings.users);
+  const { data: userLocations = [], status: userLocationsStatus } = useSelector((state) => state.settings.userLocations);
+  const { data: usersByLocation = [], status: usersByLocationStatus } = useSelector((state) => state.settings.usersByLocation);
   const { data: locations = [], status: locationsStatus } = useSelector((state) => state.settings.locations);
   const { data: apiKeys, status: apiKeysStatus } = useSelector((state) => state.settings.apiKeys);
-    const systemPreferences = useSelector((state) => state.settings.systemPreferences);
+  const systemPreferences = useSelector((state) => state.settings.systemPreferences);
 
-     // Add these console logs here
-  console.log("Users from Redux:", users);
-  console.log("User status:", usersStatus);
-  console.log("Locations from Redux:", locations);
-  console.log("API Keys from Redux:", apiKeys);
 
   const [activeTab, setActiveTab] = useState("keys");
   const [userRole, setUserRole] = useState("admin"); // Default to admin for development
@@ -75,10 +72,13 @@ const { data: usersByLocation = [], status: usersByLocationStatus } = useSelecto
   const [copiedKey, setCopiedKey] = useState(null);
 
   // Fetch data when component mounts
-  useEffect(() => {
-    dispatch(fetchUsers());
-    dispatch(fetchLocations());
-  }, [dispatch]);
+ useEffect(() => {
+  dispatch(fetchUsers());
+  dispatch(fetchLocations());
+  if (user && user.id) {
+    dispatch(fetchUserLocations(user.id)); // Pass the user.id here
+  }
+}, [dispatch, user]);
 
   // Fetch users by location when filter changes
   useEffect(() => {
@@ -124,6 +124,8 @@ const { data: usersByLocation = [], status: usersByLocationStatus } = useSelecto
       return () => clearTimeout(timer);
     }
   }, [copiedKey]);
+
+
 
   // Tab access by role
   const roleTabAccess = {
@@ -337,8 +339,8 @@ const { data: usersByLocation = [], status: usersByLocationStatus } = useSelecto
             </button>
           </div>
 
-          {/* Location Filter */}
-        {locationsStatus === 'succeeded' && Array.isArray(locations) && locations.length > 0 && (
+       {/* Location Filter */}
+{userLocationsStatus === 'succeeded' && Array.isArray(userLocations) && userLocations.length > 0 && (
   <div className="mb-6">
     <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Location</label>
     <select
@@ -347,7 +349,7 @@ const { data: usersByLocation = [], status: usersByLocationStatus } = useSelecto
       onChange={(e) => setSelectedLocationFilter(e.target.value ? Number(e.target.value) : null)}
     >
       <option value="">All Locations</option>
-      {locations.map((location) => (
+      {userLocations.map((location) => (
         <option key={location.id} value={location.id}>
           {location.name}
         </option>

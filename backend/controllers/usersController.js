@@ -79,7 +79,16 @@ exports.togglePinStatus = (req, res) => {
   });
 };
 
-// Add this to usersController.js
+exports.getUserLocations = (req, res) => {
+  const userId = req.params.id;
+
+  User.getUserLocations(userId, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    res.json(results);
+  });
+};
+
+
 exports.getAllUsersWithPinStatus = (req, res) => {
   const currentUserId = req.user.userId;
 

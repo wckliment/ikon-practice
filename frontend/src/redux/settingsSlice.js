@@ -19,6 +19,16 @@ export const fetchUsersByLocation = createAsyncThunk("settings/fetchUsersByLocat
   return response.data;
 });
 
+export const fetchUserLocations = createAsyncThunk(
+  "settings/fetchUserLocations",
+  async (_, { getState }) => {
+    const headers = getAuthHeader(getState);
+    const userId = getState().auth.user.id; // Get userId from state
+    const response = await axios.get(`/api/users/${userId}/locations`, { headers });
+    return response.data;
+  }
+);
+
 export const fetchUsersWithoutLocation = createAsyncThunk("settings/fetchUsersWithoutLocation", async (_, { getState }) => {
   const headers = getAuthHeader(getState);
   const response = await axios.get("/api/users/no-location", { headers });
@@ -126,6 +136,11 @@ const initialState = {
     status: "idle",
     error: null
   },
+  userLocations: {
+    data: [],
+    status: "idle",
+    error: null
+  },
   apiKeys: {
     data: [],
     status: "idle",
@@ -171,6 +186,19 @@ const settingsSlice = createSlice({
       .addCase(fetchUsers.rejected, (state, action) => {
         state.users.status = "failed";
         state.users.error = action.error.message;
+      })
+
+      // User locations
+      .addCase(fetchUserLocations.pending, (state) => {
+        state.userLocations.status = "loading";
+      })
+      .addCase(fetchUserLocations.fulfilled, (state, action) => {
+        state.userLocations.status = "succeeded";
+        state.userLocations.data = action.payload;
+      })
+      .addCase(fetchUserLocations.rejected, (state, action) => {
+        state.userLocations.status = "failed";
+        state.userLocations.error = action.error.message;
       })
 
       // Users by location

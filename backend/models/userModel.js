@@ -117,4 +117,31 @@ User.getAllExceptSender = (senderId, callback) => {
   ikonDB.query(query, [senderId], callback);
 };
 
+// Get locations associated with a user
+User.getUserLocations = (userId, callback) => {
+  // First, get the user's role and location_id
+  const userQuery = `
+    SELECT role, location_id
+    FROM users
+    WHERE id = ?
+  `;
+
+  ikonDB.query(userQuery, [userId], (err, userResults) => {
+    if (err) return callback(err, null);
+
+    // If no user found
+    if (!userResults.length) return callback(null, []);
+
+    const userLocationId = userResults[0].location_id;
+
+    // All users, regardless of role, should only see locations they're associated with
+    if (userLocationId) {
+      const specificLocationQuery = "SELECT * FROM locations WHERE id = ?";
+      ikonDB.query(specificLocationQuery, [userLocationId], callback);
+    } else {
+      callback(null, []); // User has no location assigned
+    }
+  });
+};
+
 module.exports = User;
