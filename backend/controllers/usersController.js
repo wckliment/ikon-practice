@@ -1,10 +1,23 @@
 const User = require("../models/userModel");
 
-// ✅ Get all users
 exports.getAllUsers = (req, res) => {
   User.getAllUsers((err, results) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    res.json(results);
+    if (err) {
+      console.error('Error in getAllUsers:', err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    // Log the raw results to see what's coming back
+    console.log('Raw Users Results:', results);
+
+    // Optional: Transform results to ensure location info
+    const processedUsers = results.map(user => ({
+      ...user,
+      location_name: user.location_name || 'No Location',
+      location_id: user.location_id || null
+    }));
+
+    res.json(processedUsers);
   });
 };
 
@@ -35,10 +48,32 @@ exports.updateUserLocation = (req, res) => {
 // ✅ Get users by location
 exports.getUsersByLocation = (req, res) => {
   const locationId = req.params.locationId;
-  User.getUsersByLocation(locationId, (err, results) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    res.json(results);
-  });
+
+  console.log('Attempting to fetch users for location:', locationId);
+
+  // Ensure error handling is robust
+  try {
+    User.getUsersByLocation(locationId, (err, results) => {
+      if (err) {
+        console.error('Database error when fetching users by location:', err);
+        return res.status(500).json({
+          error: "Database error",
+          details: err.message
+        });
+      }
+
+      console.log('Users found for location:', results);
+
+      // If no users found, return an empty array instead of an error
+      res.json(results || []);
+    });
+  } catch (error) {
+    console.error('Unexpected error in getUsersByLocation:', error);
+    res.status(500).json({
+      error: "Unexpected server error",
+      details: error.message
+    });
+  }
 };
 
 // ✅ Get users without a location

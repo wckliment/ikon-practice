@@ -38,15 +38,33 @@ User.create = (name, dob, email, password, role, location_id, callback) => {
 };
 
 // ✅ Update user's location
-User.updateLocation = (userId, locationId, callback) => {
-  const query = "UPDATE users SET location_id = ? WHERE id = ?";
-  ikonDB.query(query, [locationId, userId], callback);
-};
-
-// ✅ Get users by location (active only)
 User.getUsersByLocation = (locationId, callback) => {
-  const query = "SELECT id, name, dob, email, role, created_at FROM users WHERE location_id = ? AND (active = TRUE OR active IS NULL)";
-  ikonDB.query(query, [locationId], callback);
+  console.log('MODEL: Fetching users for location ID:', locationId);
+
+  const query = `
+    SELECT
+      u.id,
+      u.name,
+      u.dob,
+      u.email,
+      u.role,
+      u.created_at,
+      l.name AS location_name,
+      l.id AS location_id 
+    FROM users u
+    LEFT JOIN locations l ON u.location_id = l.id
+    WHERE u.location_id = ? AND (u.active = TRUE OR u.active IS NULL)
+  `;
+
+  ikonDB.query(query, [locationId], (err, results) => {
+    if (err) {
+      console.error('Error in getUsersByLocation query:', err);
+      return callback(err, null);
+    }
+
+    console.log('MODEL: Users found for location:', results);
+    callback(null, results);
+  });
 };
 
 // ✅ Get users without a location

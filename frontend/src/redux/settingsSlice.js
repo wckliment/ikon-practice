@@ -7,10 +7,22 @@ const getAuthHeader = (getState) => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// Fetch users
+
 export const fetchUsers = createAsyncThunk("settings/fetchUsers", async (_, { getState }) => {
   const headers = getAuthHeader(getState);
   const response = await axios.get("/api/users", { headers });
-  return response.data;
+
+  console.log('Fetched users:', response.data);
+
+  // Ensure each user has location information
+  const processedUsers = response.data.map(user => ({
+    ...user,
+    location_name: user.location_name || 'No Location',
+    location_id: user.location_id || null
+  }));
+
+  return processedUsers;
 });
 
 export const updateUser = createAsyncThunk(
@@ -43,11 +55,31 @@ export const removeUser = createAsyncThunk(
 );
 
 
-export const fetchUsersByLocation = createAsyncThunk("settings/fetchUsersByLocation", async (locationId, { getState }) => {
-  const headers = getAuthHeader(getState);
-  const response = await axios.get(`/api/users/location/${locationId}`, { headers });
-  return response.data;
-});
+export const fetchUsersByLocation = createAsyncThunk(
+  "settings/fetchUsersByLocation",
+  async (locationId, { getState, rejectWithValue }) => {
+    try {
+      const headers = getAuthHeader(getState);
+      console.log('THUNK: Fetching users for location ID:', locationId);
+
+      const response = await axios.get(`/api/users/location/${locationId}`, { headers });
+
+      console.log('THUNK: Users fetched:', response.data);
+
+      // Ensure location details are processed
+      const processedUsers = response.data.map(user => ({
+        ...user,
+        location_name: user.location_name || 'No Location',
+        location_id: user.location_id || locationId
+      }));
+
+      return processedUsers;
+    } catch (error) {
+      console.error('THUNK: Error fetching users by location:', error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
 export const fetchUserLocations = createAsyncThunk(
   "settings/fetchUserLocations",
@@ -293,10 +325,15 @@ const settingsSlice = createSlice({
       .addCase(fetchUsers.pending, (state) => {
         state.users.status = "loading";
       })
-      .addCase(fetchUsers.fulfilled, (state, action) => {
-        state.users.status = "succeeded";
-        state.users.data = action.payload;
-      })
+    // In settingsSlice.js, when processing users
+.addCase(fetchUsers.fulfilled, (state, action) => {
+  state.users.status = "succeeded";
+  state.users.data = action.payload.map(user => ({
+    ...user,
+    location_name: user.location_name || user.location || 'No Location',
+    location_id: user.location_id || user.location_id || null
+  }));
+})
       .addCase(fetchUsers.rejected, (state, action) => {
         state.users.status = "failed";
         state.users.error = action.error.message;
@@ -372,9 +409,18 @@ const settingsSlice = createSlice({
         state.usersByLocation.status = "loading";
       })
       .addCase(fetchUsersByLocation.fulfilled, (state, action) => {
-        state.usersByLocation.status = "succeeded";
-        state.usersByLocation.data = action.payload;
-      })
+  state.usersByLocation.status = "succeeded";
+
+  // Ensure location details are preserved
+  const processedUsers = action.payload.map(user => ({
+    ...user,
+    location_name: user.location_name || user.location || 'No Location',
+    location_id: user.location_id || user.location_id || null
+  }));
+
+  state.usersByLocation.data = processedUsers;
+})
+
       .addCase(fetchUsersByLocation.rejected, (state, action) => {
         state.usersByLocation.status = "failed";
         state.usersByLocation.error = action.error.message;

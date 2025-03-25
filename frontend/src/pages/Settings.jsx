@@ -104,6 +104,22 @@ useEffect(() => {
   }
 }, [dispatch, user]);
 
+
+  // New useEffect for fetching users based on location filter
+useEffect(() => {
+  console.log('DEBUG: Current user:', user);
+  console.log('DEBUG: Selected Location Filter:', selectedLocationFilter);
+  console.log('DEBUG: User Location ID:', user?.location_id);
+
+  if (selectedLocationFilter) {
+    console.log('Dispatching fetchUsersByLocation with:', selectedLocationFilter);
+    dispatch(fetchUsersByLocation(selectedLocationFilter));
+  } else {
+    console.log('Dispatching fetchUsers');
+    dispatch(fetchUsers());
+  }
+}, [dispatch, selectedLocationFilter, user]);
+
   // Fetch users by location when filter changes
   useEffect(() => {
     if (selectedLocationFilter) {
@@ -548,66 +564,95 @@ const handleRemoveUser = async () => {
                 </div>
               )}
 
-              {/* Users Table */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                {isLoadingUsers ? (
-                  <div className="p-6 text-center">Loading users...</div>
-                ) : usersError ? (
-                  <div className="p-6 text-center text-red-500">Error: {usersError}</div>
-                ) : (
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
-                        displayUsers.map((user) => (
-                          <tr key={user.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-500">{user.email}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-500 capitalize">{user.role}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-500">{user.location_name || 'No Location'}</div>
-                            </td>
-                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-  <button
-    className="text-blue-600 hover:text-blue-900 mr-3"
-    onClick={() => handleEditUser(user)}
-  >
-    Edit
-  </button>
-  <button
-    className="text-red-600 hover:text-red-900"
-    onClick={() => handleRemoveUserConfirm(user)}
-  >
-    Remove
-  </button>
-</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
-                            No users found{selectedLocationFilter ? " for this location" : ""}.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+         {/* Users Table */}
+<div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+  {isLoadingUsers ? (
+    <div className="p-6 text-center">Loading users...</div>
+  ) : usersError ? (
+    <div className="p-6 text-center text-red-500">Error: {usersError}</div>
+  ) : (
+    <table className="min-w-full">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {/* Debug: Log display users and their details */}
+        {(() => {
+          console.log('Display Users:', displayUsers);
+          console.log('Display Users Length:', displayUsers.length);
+          return null;
+        })()}
+
+  {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
+  displayUsers.map((user) => {
+    // Explicit location logging with more detailed information
+    console.log(`User ${user.name} Location Details:`, {
+      location_name: user.location_name,
+      location_id: user.location_id,
+      location: user.location,
+      full_user_object: user
+    });
+
+    return (
+      <tr key={user.id}>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm font-medium text-gray-900">{user.name}</div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-500">{user.email}</div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-500 capitalize">{user.role}</div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-500">
+            {/* Multiple fallback options for location */}
+            {user.location_name || user.location || user.location_id || 'No Location'}
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <button
+            className="text-blue-600 hover:text-blue-900 mr-3"
+            onClick={() => handleEditUser(user)}
+          >
+            Edit
+          </button>
+          <button
+            className="text-red-600 hover:text-red-900"
+            onClick={() => handleRemoveUserConfirm(user)}
+          >
+            Remove
+          </button>
+        </td>
+      </tr>
+    );
+  })
+) : (
+          <tr>
+            <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+              No users found{selectedLocationFilter ? " for this location" : ""}.
+              {(() => {
+                console.log('Debug - No Users Scenario:', {
+                  displayUsers,
+                  selectedLocationFilter,
+                  usersStatus: usersStatus,
+                  usersByLocationStatus: usersByLocationStatus
+                });
+                return null;
+              })()}
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  )}
+</div>
 
               {/* Edit User Modal */}
 {editingUser && editedUser && (
