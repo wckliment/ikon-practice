@@ -106,11 +106,27 @@ export const updateUserLocation = createAsyncThunk("settings/updateUserLocation"
   return { userId, locationId };
 });
 
-export const fetchPracticeInfo = createAsyncThunk("settings/fetchPracticeInfo", async (_, { getState }) => {
-  const headers = getAuthHeader(getState);
-  const response = await axios.get("/api/practice", { headers });
-  return response.data;
-});
+export const fetchPracticeInfo = createAsyncThunk(
+  "settings/fetchPracticeInfo",
+  async (_, { getState }) => {
+    const headers = getAuthHeader(getState);
+    const user = getState().auth.user;
+
+    console.log('Fetching practice info for location:', user?.location_id, user?.location_name);
+
+    // Make sure to include the locationId as a query parameter
+    const response = await axios.get("/api/practice", {
+      headers,
+      params: {
+        locationId: user?.location_id,
+        locationName: user?.location_name
+      }
+    });
+
+    console.log('Practice API response:', response.data);
+    return response.data;
+  }
+);
 
 export const updatePracticeInfo = createAsyncThunk("settings/updatePracticeInfo", async (practiceData, { getState }) => {
   const headers = getAuthHeader(getState);
@@ -391,26 +407,26 @@ const settingsSlice = createSlice({
     // Practice Info
     builder
       .addCase(fetchPracticeInfo.pending, (state) => {
-        state.practiceInfo.status = "loading";
-      })
-      .addCase(fetchPracticeInfo.fulfilled, (state, action) => {
-        state.practiceInfo.status = "succeeded";
-        state.practiceInfo.data = action.payload;
-      })
-      .addCase(fetchPracticeInfo.rejected, (state, action) => {
-        state.practiceInfo.status = "failed";
-        state.practiceInfo.error = action.error.message;
-      })
-      .addCase(updatePracticeInfo.fulfilled, (state, action) => {
-        state.practiceInfo.data = action.payload;
-      });
+  console.log('Practice info fetch pending');
+  state.practiceInfo.status = "loading";
+})
+.addCase(fetchPracticeInfo.fulfilled, (state, action) => {
+  console.log('Practice info fetch successful:', action.payload);
+  state.practiceInfo.status = "succeeded";
+  state.practiceInfo.data = action.payload;
+})
+.addCase(fetchPracticeInfo.rejected, (state, action) => {
+  console.log('Practice info fetch failed:', action.error);
+  state.practiceInfo.status = "failed";
+  state.practiceInfo.error = action.error.message;
+})
 
     // Locations
     builder
       .addCase(fetchLocations.pending, (state) => {
         state.locations.status = "loading";
       })
-      
+
       .addCase(fetchLocations.fulfilled, (state, action) => {
   state.locations.status = "succeeded";
 

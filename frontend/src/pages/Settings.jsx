@@ -58,7 +58,7 @@ const [editedPractice, setEditedPractice] = useState({});
   const [editedLocation, setEditedLocation] = useState(null);
 
   // State for location filtering (users table)
-  const [selectedLocationFilter, setSelectedLocationFilter] = useState(null);
+  const [selectedLocationFilter, setSelectedLocationFilter] = useState(user?.location_id || null);
 
   // State for OpenDental integration
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -89,15 +89,20 @@ useEffect(() => {
   }
 }, [dispatch, locationsStatus, user]);
 
-  // Fetch data when component mounts
-  useEffect(() => {
-    dispatch(fetchUsers());
-    dispatch(fetchLocations());
-    dispatch(fetchPracticeInfo());
-    if (user && user.id) {
-      dispatch(fetchUserLocations(user.id));
+useEffect(() => {
+
+  dispatch(fetchLocations());
+  dispatch(fetchPracticeInfo());
+  if (user && user.id) {
+    dispatch(fetchUserLocations(user.id));
+    // Set the location filter to user's location
+    if (user.location_id) {
+      setSelectedLocationFilter(user.location_id);
+      // Add this line - only fetch users for this location
+      dispatch(fetchUsersByLocation(user.location_id));
     }
-  }, [dispatch, user]);
+  }
+}, [dispatch, user]);
 
   // Fetch users by location when filter changes
   useEffect(() => {
@@ -445,25 +450,23 @@ const handleRemoveUser = async () => {
                 </button>
               </div>
 
-              {/* Location Filter */}
-              {userLocationsStatus === 'succeeded' && Array.isArray(userLocations) && userLocations.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Location</label>
-                  <select
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    value={selectedLocationFilter || ''}
-                    onChange={(e) => setSelectedLocationFilter(e.target.value ? Number(e.target.value) : null)}
-                  >
-                    <option value="">All Locations</option>
-                    {userLocations.map((location) => (
-                      <option key={location.id} value={location.id}>
-                        {location.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
+            {/* Location Filter */}
+{userLocationsStatus === 'succeeded' && Array.isArray(userLocations) && userLocations.length > 0 && (
+  <div className="mb-6">
+    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Location</label>
+    <select
+      className="w-full p-2 border border-gray-300 rounded-md"
+      value={selectedLocationFilter || ''}
+      onChange={(e) => setSelectedLocationFilter(e.target.value ? Number(e.target.value) : null)}
+    >
+      {userLocations.map((location) => (
+        <option key={location.id} value={location.id}>
+          {location.name}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
               {/* New User Form */}
               {showNewUserForm && (
                 <div className="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200">
@@ -750,28 +753,38 @@ const handleRemoveUser = async () => {
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
         {!editingPractice ? (
           // Display mode
-          <div className="grid grid-cols-2 gap-y-6 gap-x-12">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Practice Name</h3>
-              <p className="text-base">{practiceInfo.name}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Phone Number</h3>
-              <p className="text-base">{practiceInfo.phone}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Address</h3>
-              <p className="text-base">{practiceInfo.address}</p>
-              <p className="text-base">{practiceInfo.city}, {practiceInfo.state} {practiceInfo.zip}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Website</h3>
-              <p className="text-base">{practiceInfo.website}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Tax ID / EIN</h3>
-              <p className="text-base">{practiceInfo.tax_id}</p>
-            </div>
+          <div>
+            {!practiceInfo || !practiceInfo.name ? (
+              <div className="text-center p-6">
+                <p>Loading practice information...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-y-6 gap-x-12">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Practice Name</h3>
+                  <p className="text-base">{practiceInfo.name || "Not available"}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Phone Number</h3>
+                  <p className="text-base">{practiceInfo.phone || "Not available"}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Address</h3>
+                  <p className="text-base">{practiceInfo.address || "Not available"}</p>
+                  <p className="text-base">
+                    {practiceInfo.city ? `${practiceInfo.city}, ${practiceInfo.state} ${practiceInfo.zip}` : "Not available"}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Website</h3>
+                  <p className="text-base">{practiceInfo.website || "Not available"}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Tax ID / EIN</h3>
+                  <p className="text-base">{practiceInfo.tax_id || "Not available"}</p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           // Edit mode
