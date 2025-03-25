@@ -31,6 +31,8 @@ const Settings = () => {
   const { data: userLocations = [], status: userLocationsStatus } = useSelector((state) => state.settings.userLocations);
   const { data: usersByLocation = [], status: usersByLocationStatus } = useSelector((state) => state.settings.usersByLocation);
   const { data: locations = [], status: locationsStatus } = useSelector((state) => state.settings.locations);
+  const [editingKeys, setEditingKeys] = useState(false);
+  const [editKeysModalOpen, setEditKeysModalOpen] = useState(false);
   const { data: apiKeys, status: apiKeysStatus } = useSelector((state) => state.settings.apiKeys);
   const { data: practiceInfo = {}, status: practiceStatus } = useSelector((state) => state.settings.practiceInfo);
   const [editingUser, setEditingUser] = useState(false);
@@ -253,6 +255,7 @@ const handleUpdatePractice = async () => {
   const handleTestConnection = async () => {
     setTestingConnection(true);
     setConnectionStatus(null);
+    setEditingKeys(false);
 
     try {
       await dispatch(updateOpenDentalKeys({
@@ -913,7 +916,7 @@ const handleRemoveUser = async () => {
                               <p className="text-gray-600 mt-1">{location.phone}</p>
                             </div>
                             <div className="flex">
-                      
+
                               <button className="text-red-600 hover:text-red-900 flex items-center">
                                 <Trash2 size={16} className="mr-1" />
                                 Delete
@@ -1012,209 +1015,175 @@ const handleRemoveUser = async () => {
             </div>
           )}
 
-          {/* API & Integration Tab */}
-          {activeTab === "keys" && (
-            <div>
-              {/* OpenDental Integration Section */}
-              <div className="mb-10">
-                <h2 className="text-xl font-semibold mb-6">OpenDental Integration</h2>
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                  <div className="mb-6">
-                    <p className="mb-3 text-gray-600">
-                      Connect your practice to OpenDental by entering your customer key and developer key.
-                      These keys can be generated from your OpenDental software.
-                    </p>
-                    <div className="text-blue-600 hover:text-blue-800">
-                      <a
-                        href="https://www.opendental.com/site/apikeyguideline.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium flex items-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        How to generate OpenDental API keys
-                      </a>
-                    </div>
-                  </div>
+{/* API & Integration Tab */}
+{activeTab === "keys" && (
+  <div>
+    <h2 className="text-xl font-semibold mb-6">OpenDental Integration</h2>
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <p className="mb-3 text-gray-600">
+        Connect your practice to OpenDental by entering your customer key and developer key.
+        These keys can be generated from your OpenDental software.
+      </p>
+
+   <div className="mb-6">
+  <a
+    href="https://www.opendental.com/site/apisetup.html"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
+  >
+    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+    </svg>
+    How to generate OpenDental API keys
+  </a>
+                </div>
+
+<div className="mb-6">
+  <p className="text-sm text-gray-600 font-bold">
+    * API keys allow third-party applications to access your practice data securely.
+    Never share your production keys with unauthorized individuals. *
+  </p>
+</div>
 
 
-                  {/* Location Selector */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Practice Location</label>
-                    {locationsStatus === 'loading' ? (
-                      <div className="text-sm text-gray-500">Loading locations...</div>
-                    ) : locationsStatus === 'failed' ? (
-                      <div className="text-sm text-red-500">Failed to load locations</div>
-                    ) : !locations || !Array.isArray(locations) || locations.length === 0 ? (
-                      <div className="text-sm text-gray-500">No locations available. Please add a location first.</div>
-                    ) : (
-                      <select
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        value={selectedLocation || ''}
-                        onChange={(e) => setSelectedLocation(e.target.value ? Number(e.target.value) : null)}
-                      >
-                        <option value="" disabled>Select a location</option>
-                        {locations.map(location => (
-                          <option key={location.id} value={location.id}>
-                            {location.name} - {location.address}, {location.city}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Practice Location</label>
+        {locationsStatus === 'loading' ? (
+          <div className="text-sm text-gray-500">Loading locations...</div>
+        ) : locationsStatus === 'failed' ? (
+          <div className="text-sm text-red-500">Failed to load locations</div>
+        ) : !locations || !Array.isArray(locations) || locations.length === 0 ? (
+          <div className="text-sm text-gray-500">No locations available. Please add a location first.</div>
+        ) : (
+          <select
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={selectedLocation || ''}
+            onChange={(e) => setSelectedLocation(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="" disabled>Select a location</option>
+            {locations.map(location => (
+              <option key={location.id} value={location.id}>
+                {location.name} - {location.address}, {location.city}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
-                  {/* API Key Input Fields */}
-                  <div className="grid grid-cols-1 gap-4 mb-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer Key</label>
-                      <input
-                        type="text"
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        value={openDentalKeys.customerKey}
-                        onChange={(e) => setOpenDentalKeys({ ...openDentalKeys, customerKey: e.target.value })}
-                        placeholder="Enter your OpenDental Customer Key"
-                        disabled={!selectedLocation}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Developer Key</label>
-                      <input
-                        type="text"
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        value={openDentalKeys.developerKey}
-                        onChange={(e) => setOpenDentalKeys({ ...openDentalKeys, developerKey: e.target.value })}
-                        placeholder="Enter your OpenDental Developer Key"
-                        disabled={!selectedLocation}
-                      />
-                    </div>
-                  </div>
+     <div className="grid grid-cols-1 gap-4 mb-6">
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Key</label>
+    <input
+      type="text"
+      className={`w-full p-2 border border-gray-300 rounded-md ${openDentalKeys.customerKey ? 'bg-gray-100 text-gray-500' : ''}`}
+      value={openDentalKeys.customerKey}
+      onChange={(e) => setOpenDentalKeys({ ...openDentalKeys, customerKey: e.target.value })}
+      placeholder="Enter your OpenDental Customer Key"
+      disabled={!selectedLocation || (openDentalKeys.customerKey && openDentalKeys.developerKey && !editingKeys)}
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">Developer Key</label>
+    <input
+      type="text"
+      className={`w-full p-2 border border-gray-300 rounded-md ${openDentalKeys.developerKey ? 'bg-gray-100 text-gray-500' : ''}`}
+      value={openDentalKeys.developerKey}
+      onChange={(e) => setOpenDentalKeys({ ...openDentalKeys, developerKey: e.target.value })}
+      placeholder="Enter your OpenDental Developer Key"
+      disabled={!selectedLocation || (openDentalKeys.customerKey && openDentalKeys.developerKey && !editingKeys)}
+    />
+  </div>
+</div>
 
-                  {/* Connection Status and Test Button */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      {connectionStatus === 'success' && (
-                        <div className="flex items-center text-green-600">
-                          <Check size={18} className="mr-1" />
-                          <span>Connection successful! Keys saved.</span>
-                        </div>
-                      )}
-                      {connectionStatus === 'error' && (
-                        <div className="flex items-center text-red-600">
-                          <X size={18} className="mr-1" />
-                          <span>Connection failed. Please check your keys and try again.</span>
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      className={(!selectedLocation || testingConnection) ? `${secondaryButtonStyle} opacity-75 cursor-not-allowed` : primaryButtonStyle}
-                      onClick={handleTestConnection}
-                      disabled={!selectedLocation || testingConnection}
-                    >
-                      {testingConnection ? 'Testing Connection...' : 'Test & Save Connection'}
-                    </button>
-                  </div>
+<div className="flex items-center justify-between">
+  <div>
+    {connectionStatus === 'success' && (
+      <div className="flex items-center text-green-600">
+        <Check size={18} className="mr-1" />
+        <span>Connection successful! Keys saved.</span>
+      </div>
+    )}
+    {connectionStatus === 'error' && (
+      <div className="flex items-center text-red-600">
+        <X size={18} className="mr-1" />
+        <span>Connection failed. Please check your keys and try again.</span>
+      </div>
+    )}
+  </div>
+
+{(openDentalKeys.customerKey && openDentalKeys.developerKey && !editingKeys) ? (
+  <button
+    className={primaryButtonStyle}
+    onClick={() => setEditKeysModalOpen(true)}
+  >
+    Edit Keys
+  </button>
+) : (
+  <button
+    className={(!selectedLocation || testingConnection) ? `${secondaryButtonStyle} opacity-75 cursor-not-allowed` : primaryButtonStyle}
+    onClick={handleTestConnection}
+    disabled={!selectedLocation || testingConnection}
+  >
+    {testingConnection ? 'Testing Connection...' : 'Test & Save Connection'}
+  </button>
+)}
                 </div>
               </div>
 
-              {/* API Keys Section */}
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">ikon Practice API Keys</h2>
-                  <div className="flex space-x-3">
-                    <button
-                      className={secondaryButtonStyle}
-                      onClick={() => handleGenerateKey("Test")}
-                    >
-                      Generate Test Key
-                    </button>
-                    <button
-                      className={primaryButtonStyle}
-                      onClick={() => handleGenerateKey("Production")}
-                    >
-                      Generate Production Key
-                    </button>
+               {/* Place modal code HERE, before the final </div> */}
+  {editKeysModalOpen && (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <h3 className="text-lg font-medium mb-4">Edit OpenDental API Keys</h3>
 
-                  </div>
-                </div>
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Customer Key</label>
+            <input
+              type="text"
+              className="w-full p-2 border border-gray-300 rounded-md"
+              value={openDentalKeys.customerKey}
+              onChange={(e) => setOpenDentalKeys({ ...openDentalKeys, customerKey: e.target.value })}
+              placeholder="Enter your OpenDental Customer Key"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Developer Key</label>
+            <input
+              type="text"
+              className="w-full p-2 border border-gray-300 rounded-md"
+              value={openDentalKeys.developerKey}
+              onChange={(e) => setOpenDentalKeys({ ...openDentalKeys, developerKey: e.target.value })}
+              placeholder="Enter your OpenDental Developer Key"
+            />
+          </div>
+        </div>
 
-                <div className="bg-white rounded-lg border border-gray-200">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <p className="text-sm text-gray-600">
-                      API keys allow third-party applications to access your practice data securely.
-                      Never share your production keys with unauthorized individuals.
-                    </p>
-                  </div>
+        <div className="flex justify-end space-x-3">
+          <button
+            className={secondaryButtonStyle}
+            onClick={() => setEditKeysModalOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className={primaryButtonStyle}
+            onClick={() => {
+              handleTestConnection();
+              setEditKeysModalOpen(false);
+            }}
+          >
+            Update Keys
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 
-                  {apiKeysStatus === 'loading' ? (
-                    <div className="p-6 text-center">Loading API keys...</div>
-                  ) : apiKeysStatus === 'failed' ? (
-                    <div className="p-6 text-center text-red-500">Failed to load API keys</div>
-                  ) : apiKeys && apiKeys.length > 0 ? (
-                    <table className="min-w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {apiKeys.map((apiKey) => (
-                          <tr key={apiKey.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{apiKey.name}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{apiKey.key}</code>
-                                <button
-                                  className="ml-2 text-gray-500 hover:text-gray-700"
-                                  onClick={() => handleCopyKey(apiKey.key)}
-                                  title="Copy to clipboard"
-                                >
-                                  {copiedKey === apiKey.key ? (
-                                    <Check size={16} className="text-green-500" />
-                                  ) : (
-                                    <Copy size={16} />
-                                  )}
-                                </button>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                              ${apiKey.type === 'Production' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                                {apiKey.type}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-500">{apiKey.created}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button
-                                className="text-red-600 hover:text-red-900 flex items-center ml-auto"
-                                onClick={() => handleRevokeKey(apiKey.id)}
-                              >
-                                <Trash2 size={14} className="mr-1" />
-                                Revoke
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="p-6 text-center text-gray-500">
-                      No API keys found. Generate a key to get started.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+  </div>
+)}
+
 
           {/* System Preferences Tab */}
           {activeTab === "system" && (
