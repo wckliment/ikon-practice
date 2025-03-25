@@ -1,9 +1,9 @@
 const ikonDB = require("../config/db");
 const User = {};
 
-// ✅ Get all users
+// ✅ Get all users (active only)
 User.getAllUsers = (callback) => {
-  const query = "SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at, l.name AS location_name, l.id AS location_id FROM users u LEFT JOIN locations l ON u.location_id = l.id";
+  const query = "SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at, l.name AS location_name, l.id AS location_id FROM users u LEFT JOIN locations l ON u.location_id = l.id WHERE u.active = TRUE OR u.active IS NULL";
   ikonDB.query(query, callback);
 };
 
@@ -43,9 +43,9 @@ User.updateLocation = (userId, locationId, callback) => {
   ikonDB.query(query, [locationId, userId], callback);
 };
 
-// ✅ Get users by location
+// ✅ Get users by location (active only)
 User.getUsersByLocation = (locationId, callback) => {
-  const query = "SELECT id, name, dob, email, role, created_at FROM users WHERE location_id = ?";
+  const query = "SELECT id, name, dob, email, role, created_at FROM users WHERE location_id = ? AND (active = TRUE OR active IS NULL)";
   ikonDB.query(query, [locationId], callback);
 };
 
@@ -141,6 +141,30 @@ User.getUserLocations = (userId, callback) => {
     } else {
       callback(null, []); // User has no location assigned
     }
+  });
+};
+
+// Update user
+User.update = (id, userData, callback) => {
+  const { name, email, role, dob, location_id } = userData;
+  // Ensure empty DOB is stored as NULL
+  const formattedDob = dob ? dob : null;
+  // Ensure role is always stored in lowercase
+  const formattedRole = role ? role.trim().toLowerCase() : "staff";
+  // Allow null location_id
+  const formattedLocationId = location_id || null;
+
+  const query = "UPDATE users SET name = ?, email = ?, role = ?, dob = ?, location_id = ? WHERE id = ?";
+  ikonDB.query(query, [name.trim(), email.trim(), formattedRole, formattedDob, formattedLocationId, id], callback);
+};
+
+User.delete = (id, callback) => {
+  console.log(`Attempting soft delete for user ${id}`);
+  const query = "UPDATE users SET active = FALSE WHERE id = ?";
+  ikonDB.query(query, [id], (err, result) => {
+    console.log("Soft delete result:", result);
+    if (err) console.error("Soft delete error:", err);
+    callback(err, result);
   });
 };
 

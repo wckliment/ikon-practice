@@ -30,4 +30,10 @@ router.patch("/:id/pin", usersController.togglePinStatus);
 // Get locations for a user
 router.get("/:id/locations", usersController.getUserLocations);
 
+// Update user
+router.put("/:id", usersController.updateUser);
+
+// Delete user
+router.delete("/:id", usersController.deleteUser);
+
 module.exports = router;

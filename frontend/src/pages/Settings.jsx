@@ -15,7 +15,9 @@ import {
   generateApiKey,
   revokeApiKey,
   updateSystemPreferences,
-  fetchUserLocations
+  fetchUserLocations,
+  updateUser,
+  removeUser
 } from "../redux/settingsSlice";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -28,10 +30,13 @@ const Settings = () => {
   const { data: usersByLocation = [], status: usersByLocationStatus } = useSelector((state) => state.settings.usersByLocation);
   const { data: locations = [], status: locationsStatus } = useSelector((state) => state.settings.locations);
   const { data: apiKeys, status: apiKeysStatus } = useSelector((state) => state.settings.apiKeys);
+  const [editingUser, setEditingUser] = useState(false);
+  const [editedUser, setEditedUser] = useState(null);
+  const [removingUser, setRemovingUser] = useState(null);
   const systemPreferences = useSelector((state) => state.settings.systemPreferences);
 
 
-  const [activeTab, setActiveTab] = useState("keys");
+  const [activeTab, setActiveTab] = useState("users");
   const [userRole, setUserRole] = useState("admin"); // Default to admin for development
 
   // State for showing new user form
@@ -267,6 +272,69 @@ const Settings = () => {
   const displayUsers = selectedLocationFilter ? usersByLocation : users;
   const isLoadingUsers = selectedLocationFilter ? usersByLocationStatus === 'loading' : usersStatus === 'loading';
 
+
+const handleEditUser = (user) => {
+  // Format the date if it exists
+  let formattedDob = user.dob ? new Date(user.dob).toISOString().split('T')[0] : '';
+
+  setEditedUser({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    location_id: user.location_id,
+    dob: formattedDob
+  });
+  setEditingUser(true);
+};
+
+  // Handler for saving user updates
+const handleUpdateUser = async () => {
+  try {
+    await dispatch(updateUser({
+      userId: editedUser.id,
+      userData: editedUser
+    })).unwrap();
+
+    setEditingUser(false);
+    setEditedUser(null);
+
+    // Refresh the user list
+    if (selectedLocationFilter) {
+      dispatch(fetchUsersByLocation(selectedLocationFilter));
+    } else {
+      dispatch(fetchUsers());
+    }
+  } catch (error) {
+    console.error("Failed to update user:", error);
+    alert("Failed to update user: " + (error.message || "Unknown error"));
+  }
+};
+
+// Handler for initiating user removal
+const handleRemoveUserConfirm = (user) => {
+  setRemovingUser(user);
+};
+
+// Handler for confirming and executing user removal
+const handleRemoveUser = async () => {
+  try {
+    await dispatch(removeUser(removingUser.id)).unwrap();
+    setRemovingUser(null);
+
+    // Refresh the user list
+    if (selectedLocationFilter) {
+      dispatch(fetchUsersByLocation(selectedLocationFilter));
+    } else {
+      dispatch(fetchUsers());
+    }
+  } catch (error) {
+    console.error("Failed to remove user:", error);
+    alert("Failed to remove user: " + (error.message || "Unknown error"));
+  }
+};
+
+
   return (
     <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
       {/* Main App Sidebar - Fixed position */}
@@ -494,10 +562,20 @@ const Settings = () => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-500">{user.location_name || 'No Location'}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                              <button className="text-red-600 hover:text-red-900">Remove</button>
-                            </td>
+                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+  <button
+    className="text-blue-600 hover:text-blue-900 mr-3"
+    onClick={() => handleEditUser(user)}
+  >
+    Edit
+  </button>
+  <button
+    className="text-red-600 hover:text-red-900"
+    onClick={() => handleRemoveUserConfirm(user)}
+  >
+    Remove
+  </button>
+</td>
                           </tr>
                         ))
                       ) : (
@@ -511,6 +589,122 @@ const Settings = () => {
                   </table>
                 )}
               </div>
+
+              {/* Edit User Modal */}
+{editingUser && editedUser && (
+  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-xl p-6 w-3/4 max-w-3xl">
+      <h3 className="text-lg font-medium mb-4">Edit User</h3>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <input
+            type="text"
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={editedUser.name || ''}
+            onChange={(e) => setEditedUser({ ...editedUser, name: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input
+            type="email"
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={editedUser.email || ''}
+            onChange={(e) => setEditedUser({ ...editedUser, email: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+          <input
+            type="date"
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={editedUser.dob || ''}
+            onChange={(e) => setEditedUser({ ...editedUser, dob: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+          <select
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={editedUser.role || 'staff'}
+            onChange={(e) => setEditedUser({ ...editedUser, role: e.target.value })}
+          >
+            <option value="admin">Admin</option>
+            <option value="owner">Owner</option>
+            <option value="dentist">Dentist</option>
+            <option value="hygienist">Hygienist</option>
+            <option value="staff">Staff</option>
+            <option value="office manager">Office Manager</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+          <select
+            className="w-full p-2 border border-gray-300 rounded-md"
+            value={editedUser.location_id || ''}
+            onChange={(e) => setEditedUser({
+              ...editedUser,
+              location_id: e.target.value ? Number(e.target.value) : null
+            })}
+            disabled={userLocationsStatus !== 'succeeded' || !Array.isArray(userLocations) || userLocations.length === 0}
+          >
+            <option value="">No Location</option>
+            {Array.isArray(userLocations) && userLocations.length > 0 && userLocations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="flex justify-end space-x-3">
+        <button
+          className={secondaryButtonStyle}
+          onClick={() => {
+            setEditingUser(false);
+            setEditedUser(null);
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          className={primaryButtonStyle}
+          onClick={handleUpdateUser}
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Remove User Confirmation Modal */}
+{removingUser && (
+  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md">
+      <h3 className="text-lg font-medium mb-2">Remove User</h3>
+      <p className="mb-6">
+        Are you sure you want to remove <span className="font-semibold">{removingUser.name}</span> from your team?
+        This action cannot be undone.
+      </p>
+      <div className="flex justify-end space-x-3">
+        <button
+          className={secondaryButtonStyle}
+          onClick={() => setRemovingUser(null)}
+        >
+          Cancel
+        </button>
+        <button
+          className={dangerButtonStyle}
+          onClick={handleRemoveUser}
+        >
+          Remove User
+        </button>
+      </div>
+    </div>
+  </div>
+)}
             </div>
           )}
 

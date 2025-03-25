@@ -13,6 +13,36 @@ export const fetchUsers = createAsyncThunk("settings/fetchUsers", async (_, { ge
   return response.data;
 });
 
+export const updateUser = createAsyncThunk(
+  "settings/updateUser",
+  async ({ userId, userData }, { getState, rejectWithValue }) => {
+    try {
+      const headers = getAuthHeader(getState);
+      const response = await axios.put(`/api/users/${userId}`, userData, { headers });
+      return response.data;
+    } catch (error) {
+      console.error("Error in updateUser action:", error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const removeUser = createAsyncThunk(
+  "settings/removeUser",
+  async (userId, { getState, rejectWithValue }) => {
+    try {
+      const headers = getAuthHeader(getState);
+      const response = await axios.delete(`/api/users/${userId}`, { headers });
+      // Return both the response data and the original userId to ensure we can filter properly
+      return { ...response.data, id: userId };
+    } catch (error) {
+      console.error("Error in removeUser action:", error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+
 export const fetchUsersByLocation = createAsyncThunk("settings/fetchUsersByLocation", async (locationId, { getState }) => {
   const headers = getAuthHeader(getState);
   const response = await axios.get(`/api/users/location/${locationId}`, { headers });
@@ -211,6 +241,58 @@ const settingsSlice = createSlice({
         state.users.status = "failed";
         state.users.error = action.error.message;
       })
+
+       // Update user cases
+  .addCase(updateUser.pending, (state) => {
+    state.users.status = "loading";
+  })
+  .addCase(updateUser.fulfilled, (state, action) => {
+    state.users.status = "succeeded";
+
+    // Update in the main users list
+    const index = state.users.data.findIndex(user => user.id === action.payload.id);
+    if (index !== -1) {
+      state.users.data[index] = action.payload;
+    }
+
+    // Also update in the usersByLocation list if present
+    if (state.usersByLocation.data && state.usersByLocation.data.length > 0) {
+      const locationIndex = state.usersByLocation.data.findIndex(user => user.id === action.payload.id);
+      if (locationIndex !== -1) {
+        state.usersByLocation.data[locationIndex] = action.payload;
+      }
+    }
+  })
+  .addCase(updateUser.rejected, (state, action) => {
+    state.users.status = "failed";
+    state.users.error = action.payload || action.error.message;
+  })
+
+// Remove user cases
+.addCase(removeUser.pending, (state) => {
+  state.users.status = "loading";
+})
+.addCase(removeUser.fulfilled, (state, action) => {
+  state.users.status = "succeeded";
+
+  // Extract the user ID - either from the payload object or directly if it's just the ID
+  const userId = action.payload.id || action.payload;
+  console.log("Removing user with ID:", userId);
+
+  // Remove from main users list
+  state.users.data = state.users.data.filter(user => user.id !== userId);
+
+  // Also remove from usersByLocation list if present
+  if (state.usersByLocation.data && state.usersByLocation.data.length > 0) {
+    state.usersByLocation.data = state.usersByLocation.data.filter(
+      user => user.id !== userId
+    );
+  }
+})
+.addCase(removeUser.rejected, (state, action) => {
+  state.users.status = "failed";
+  state.users.error = action.payload || action.error.message;
+})
 
       // User locations
       .addCase(fetchUserLocations.pending, (state) => {

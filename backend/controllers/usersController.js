@@ -11,11 +11,9 @@ exports.getAllUsers = (req, res) => {
 // ✅ Get a single user by ID
 exports.getUserById = (req, res) => {
   const userId = req.params.id;
-
   User.getUserById(userId, (err, results) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (results.length === 0) return res.status(404).json({ error: "User not found" });
-
     res.json(results[0]);
   });
 };
@@ -24,11 +22,9 @@ exports.getUserById = (req, res) => {
 exports.updateUserLocation = (req, res) => {
   const userId = req.params.id;
   const { locationId } = req.body;
-
   if (locationId === undefined) {
     return res.status(400).json({ error: "Location ID is required" });
   }
-
   User.updateLocation(userId, locationId, (err, result) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (result.affectedRows === 0) return res.status(404).json({ error: "User not found" });
@@ -39,7 +35,6 @@ exports.updateUserLocation = (req, res) => {
 // ✅ Get users by location
 exports.getUsersByLocation = (req, res) => {
   const locationId = req.params.locationId;
-
   User.getUsersByLocation(locationId, (err, results) => {
     if (err) return res.status(500).json({ error: "Database error" });
     res.json(results);
@@ -59,18 +54,15 @@ exports.togglePinStatus = (req, res) => {
   const targetUserId = req.params.id;
   const currentUserId = req.user.userId; // Get the current user's ID from the auth token
   const { isPinned } = req.body;
-
   // Validate request
   if (isPinned === undefined) {
     return res.status(400).json({ error: "isPinned value is required" });
   }
-
   User.togglePinStatus(currentUserId, targetUserId, isPinned, (err, result) => {
     if (err) {
       console.error("Error toggling pin status:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
     }
-
     res.json({
       success: true,
       message: isPinned ? "User pinned successfully" : "User unpinned successfully",
@@ -81,19 +73,43 @@ exports.togglePinStatus = (req, res) => {
 
 exports.getUserLocations = (req, res) => {
   const userId = req.params.id;
-
   User.getUserLocations(userId, (err, results) => {
     if (err) return res.status(500).json({ error: "Database error" });
     res.json(results);
   });
 };
 
-
 exports.getAllUsersWithPinStatus = (req, res) => {
   const currentUserId = req.user.userId;
-
   User.getAllUsersWithPinStatus(currentUserId, (err, results) => {
     if (err) return res.status(500).json({ error: "Database error" });
     res.json(results);
+  });
+};
+
+// Update user
+exports.updateUser = (req, res) => {
+  const userId = req.params.id;
+  const userData = req.body;
+  User.update(userId, userData, (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error", details: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ error: "User not found" });
+    // Get the updated user to return
+    User.getUserById(userId, (err, results) => {
+      if (err) return res.status(500).json({ error: "Database error" });
+      if (results.length === 0) return res.status(404).json({ error: "User not found" });
+      res.json(results[0]);
+    });
+  });
+};
+
+// Soft Delete user
+exports.deleteUser = (req, res) => {
+  const userId = req.params.id;
+  User.delete(userId, (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error", details: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ error: "User not found" });
+    // For a soft delete, return a success message with the deactivated user ID
+    res.json({ message: "User deactivated successfully", id: userId });
   });
 };
