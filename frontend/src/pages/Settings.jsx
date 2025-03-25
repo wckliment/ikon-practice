@@ -913,13 +913,7 @@ const handleRemoveUser = async () => {
                               <p className="text-gray-600 mt-1">{location.phone}</p>
                             </div>
                             <div className="flex">
-                              <button
-                                className="text-blue-600 hover:text-blue-900 mr-3 flex items-center"
-                                onClick={() => handleEditLocation(location)}
-                              >
-                                <Edit2 size={16} className="mr-1" />
-                                Edit
-                              </button>
+                      
                               <button className="text-red-600 hover:text-red-900 flex items-center">
                                 <Trash2 size={16} className="mr-1" />
                                 Delete
