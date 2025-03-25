@@ -894,7 +894,7 @@ const handleRemoveUser = async () => {
   </div>
                 )}
 
-                {locationsStatus === 'succeeded' && (!locations.data || locations.data.length === 0) && (
+                {locationsStatus === 'succeeded' && (!locations || locations.length === 0) && (
   <div className="text-center p-6 text-gray-500">
     No locations found for your account.
   </div>

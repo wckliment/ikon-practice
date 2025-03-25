@@ -136,6 +136,7 @@ export const fetchLocations = createAsyncThunk(
       }
 
       const userId = state.auth.user.id;
+      const userLocationId = state.auth.user.location_id; // Get location_id here
 
       console.log(`THUNK: Fetching locations for user ID: ${userId}`);
 
@@ -149,13 +150,19 @@ export const fetchLocations = createAsyncThunk(
       });
 
       console.log('THUNK: Locations fetched:', response.data);
-      return response.data;
+
+      // Return both the locations data and the user's location_id
+      return {
+        locations: response.data,
+        userLocationId: userLocationId
+      };
     } catch (error) {
       console.error('THUNK: Error fetching locations:', error);
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+
 
 export const updateLocation = createAsyncThunk("settings/updateLocation", async ({ id, locationData }, { getState }) => {
   const headers = getAuthHeader(getState);
@@ -403,20 +410,21 @@ const settingsSlice = createSlice({
       .addCase(fetchLocations.pending, (state) => {
         state.locations.status = "loading";
       })
+      
       .addCase(fetchLocations.fulfilled, (state, action) => {
   state.locations.status = "succeeded";
 
-  // Get the current user's location ID from the auth state
-  const userLocationId = state.auth.user.location_id;
+  // Get userLocationId from the action payload
+  const { locations, userLocationId } = action.payload;
 
   // If the user has a location, filter to only that location
   if (userLocationId) {
-    state.locations.data = action.payload.filter(location =>
+    state.locations.data = locations.filter(location =>
       location.id === userLocationId
     );
   } else {
-    // If no location is assigned, potentially show all or none
-    state.locations.data = [];
+    // If no location is assigned or if the user's role allows all locations
+    state.locations.data = locations;
   }
 })
       .addCase(fetchLocations.rejected, (state, action) => {
