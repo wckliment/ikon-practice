@@ -53,8 +53,12 @@ export const fetchUserLocations = createAsyncThunk(
   "settings/fetchUserLocations",
   async (_, { getState }) => {
     const headers = getAuthHeader(getState);
-    const userId = getState().auth.user.id; // Get userId from state
+    const userId = getState().auth.user.id;
+    console.log(`Fetching locations for user ID: ${userId}`);
+
     const response = await axios.get(`/api/users/${userId}/locations`, { headers });
+    console.log('Locations fetched:', response.data);
+
     return response.data;
   }
 );
@@ -114,11 +118,44 @@ export const updatePracticeInfo = createAsyncThunk("settings/updatePracticeInfo"
   return response.data;
 });
 
-export const fetchLocations = createAsyncThunk("settings/fetchLocations", async (_, { getState }) => {
-  const headers = getAuthHeader(getState);
-  const response = await axios.get("/api/locations", { headers });
-  return response.data;
-});
+export const fetchLocations = createAsyncThunk(
+  "settings/fetchLocations",
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+
+      // Add more verbose logging
+      console.log('Full Redux state:', state);
+      console.log('Auth state:', state.auth);
+      console.log('Auth user:', state.auth.user);
+
+      // Ensure user exists and has an ID
+      if (!state.auth.user || !state.auth.user.id) {
+        console.error('THUNK: No authenticated user or user ID found');
+        return rejectWithValue('No authenticated user');
+      }
+
+      const userId = state.auth.user.id;
+
+      console.log(`THUNK: Fetching locations for user ID: ${userId}`);
+
+      const headers = {
+        Authorization: `Bearer ${state.auth.token}`
+      };
+
+      const response = await axios.get(`/api/users/${userId}/locations`, {
+        headers,
+        timeout: 10000
+      });
+
+      console.log('THUNK: Locations fetched:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('THUNK: Error fetching locations:', error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
 export const updateLocation = createAsyncThunk("settings/updateLocation", async ({ id, locationData }, { getState }) => {
   const headers = getAuthHeader(getState);
@@ -367,9 +404,21 @@ const settingsSlice = createSlice({
         state.locations.status = "loading";
       })
       .addCase(fetchLocations.fulfilled, (state, action) => {
-        state.locations.status = "succeeded";
-        state.locations.data = action.payload;
-      })
+  state.locations.status = "succeeded";
+
+  // Get the current user's location ID from the auth state
+  const userLocationId = state.auth.user.location_id;
+
+  // If the user has a location, filter to only that location
+  if (userLocationId) {
+    state.locations.data = action.payload.filter(location =>
+      location.id === userLocationId
+    );
+  } else {
+    // If no location is assigned, potentially show all or none
+    state.locations.data = [];
+  }
+})
       .addCase(fetchLocations.rejected, (state, action) => {
         state.locations.status = "failed";
         state.locations.error = action.error.message;

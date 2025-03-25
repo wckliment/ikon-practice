@@ -117,30 +117,31 @@ User.getAllExceptSender = (senderId, callback) => {
   ikonDB.query(query, [senderId], callback);
 };
 
-// Get locations associated with a user
+
 User.getUserLocations = (userId, callback) => {
-  // First, get the user's role and location_id
-  const userQuery = `
-    SELECT role, location_id
-    FROM users
-    WHERE id = ?
+  console.log(`MODEL: Fetching locations for user ID: ${userId}`);
+
+  const query = `
+    SELECT l.*
+    FROM locations l
+    JOIN users u ON u.location_id = l.id
+    WHERE u.id = ?
   `;
 
-  ikonDB.query(userQuery, [userId], (err, userResults) => {
-    if (err) return callback(err, null);
+  ikonDB.query(query, [userId], (err, results) => {
+    console.log(`MODEL: Query execution details:`, {
+      userId,
+      error: err,
+      resultsCount: results ? results.length : 'N/A'
+    });
 
-    // If no user found
-    if (!userResults.length) return callback(null, []);
-
-    const userLocationId = userResults[0].location_id;
-
-    // All users, regardless of role, should only see locations they're associated with
-    if (userLocationId) {
-      const specificLocationQuery = "SELECT * FROM locations WHERE id = ?";
-      ikonDB.query(specificLocationQuery, [userLocationId], callback);
-    } else {
-      callback(null, []); // User has no location assigned
+    if (err) {
+      console.error('MODEL: Database error:', err);
+      return callback(err, null);
     }
+
+    console.log(`MODEL: Found ${results.length} locations for user ${userId}`);
+    callback(null, results);
   });
 };
 

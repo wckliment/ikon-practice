@@ -9,6 +9,8 @@ import {
   fetchUsersByLocation,
   fetchLocations,
   inviteUser,
+  fetchPracticeInfo,
+  updatePracticeInfo,
   updateUserLocation,
   updateLocation,
   updateOpenDentalKeys,
@@ -30,6 +32,7 @@ const Settings = () => {
   const { data: usersByLocation = [], status: usersByLocationStatus } = useSelector((state) => state.settings.usersByLocation);
   const { data: locations = [], status: locationsStatus } = useSelector((state) => state.settings.locations);
   const { data: apiKeys, status: apiKeysStatus } = useSelector((state) => state.settings.apiKeys);
+  const { data: practiceInfo = {}, status: practiceStatus } = useSelector((state) => state.settings.practiceInfo);
   const [editingUser, setEditingUser] = useState(false);
   const [editedUser, setEditedUser] = useState(null);
   const [removingUser, setRemovingUser] = useState(null);
@@ -43,21 +46,10 @@ const Settings = () => {
   const [showNewUserForm, setShowNewUserForm] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", role: "staff", location_id: null, dob: "" });
 
-  // State for practice information
-  const [practiceInfo, setPracticeInfo] = useState({
-    name: "Bright Smile Dental",
-    address: "123 Main St, Suite 100",
-    city: "San Francisco",
-    state: "CA",
-    zip: "94105",
-    phone: "(415) 555-1234",
-    taxId: "12-3456789",
-    website: "www.brightsmile.com"
-  });
 
-  // State for editing practice info
-  const [editingPractice, setEditingPractice] = useState(false);
-  const [editedPractice, setEditedPractice] = useState({ ...practiceInfo });
+// State for editing practice info
+const [editingPractice, setEditingPractice] = useState(false);
+const [editedPractice, setEditedPractice] = useState({});
 
   // State for editing location
   const [editingLocation, setEditingLocation] = useState(false);
@@ -78,12 +70,30 @@ const Settings = () => {
   // State for copied API key
   const [copiedKey, setCopiedKey] = useState(null);
 
+useEffect(() => {
+  console.log('DEBUG: Current locations status:', locationsStatus);
+  console.log('DEBUG: Current locations data:', locations.data);
+  console.log('DEBUG: Current locations error:', locations.error);
+
+  // Only dispatch if locations haven't been loaded and there's a user
+  if (locationsStatus === 'idle') {
+    try {
+      dispatch(fetchLocations()).catch(error => {
+        console.error('Failed to fetch locations:', error);
+      });
+    } catch (error) {
+      console.error('Dispatch error:', error);
+    }
+  }
+}, [dispatch, locationsStatus, user]);
+
   // Fetch data when component mounts
   useEffect(() => {
     dispatch(fetchUsers());
     dispatch(fetchLocations());
+    dispatch(fetchPracticeInfo());
     if (user && user.id) {
-      dispatch(fetchUserLocations(user.id)); // Pass the user.id here
+      dispatch(fetchUserLocations(user.id));
     }
   }, [dispatch, user]);
 
@@ -186,14 +196,17 @@ const Settings = () => {
 
 
 
-  // Handler for updating practice info
-  const handleUpdatePractice = () => {
-    setPracticeInfo(editedPractice);
+// Handler for updating practice info
+const handleUpdatePractice = async () => {
+  try {
+    await dispatch(updatePracticeInfo(editedPractice)).unwrap();
     setEditingPractice(false);
-
-    // Here you would make an API call to update the practice information
-    // Example: dispatch(updatePracticeInfo(editedPractice));
-  };
+    // Optional: Add success notification
+  } catch (error) {
+    console.error("Failed to update practice information:", error);
+    alert("Failed to update practice info: " + (error.message || "Unknown error"));
+  }
+};
 
   // Handler for editing location
   const handleEditLocation = (location) => {
@@ -708,145 +721,150 @@ const handleRemoveUser = async () => {
             </div>
           )}
 
-          {/* Practice Information Tab */}
-          {activeTab === "practice" && (
+{/* Practice Information Tab */}
+{activeTab === "practice" && (
+  <div>
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-xl font-semibold">Practice Details</h2>
+      {!editingPractice && practiceStatus !== 'loading' && (
+        <button
+          className={`${secondaryButtonStyle} flex items-center`}
+          onClick={() => {
+            setEditedPractice({ ...practiceInfo });
+            setEditingPractice(true);
+          }}
+        >
+          <Edit2 size={16} className="mr-1" />
+          Edit Information
+        </button>
+      )}
+    </div>
+    {practiceStatus === 'loading' ? (
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8 text-center">
+        <p>Loading practice information...</p>
+      </div>
+    ) : (
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
+        {!editingPractice ? (
+          // Display mode
+          <div className="grid grid-cols-2 gap-y-6 gap-x-12">
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Practice Details</h2>
-                {!editingPractice && (
-                  <button
-                    className={`${secondaryButtonStyle} flex items-center`}
-                    onClick={() => {
-                      setEditedPractice({ ...practiceInfo });
-                      setEditingPractice(true);
-                    }}
-                  >
-                    <Edit2 size={16} className="mr-1" />
-                    Edit Information
-                  </button>
-                )}
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Practice Name</h3>
+              <p className="text-base">{practiceInfo.name}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Phone Number</h3>
+              <p className="text-base">{practiceInfo.phone}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Address</h3>
+              <p className="text-base">{practiceInfo.address}</p>
+              <p className="text-base">{practiceInfo.city}, {practiceInfo.state} {practiceInfo.zip}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Website</h3>
+              <p className="text-base">{practiceInfo.website}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Tax ID / EIN</h3>
+              <p className="text-base">{practiceInfo.tax_id}</p>
+            </div>
+          </div>
+        ) : (
+          // Edit mode
+          <div>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Practice Name</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.name || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, name: e.target.value })}
+                />
               </div>
-
-              <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-                {!editingPractice ? (
-                  // Display mode
-                  <div className="grid grid-cols-2 gap-y-6 gap-x-12">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Practice Name</h3>
-                      <p className="text-base">{practiceInfo.name}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Phone Number</h3>
-                      <p className="text-base">{practiceInfo.phone}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Address</h3>
-                      <p className="text-base">{practiceInfo.address}</p>
-                      <p className="text-base">{practiceInfo.city}, {practiceInfo.state} {practiceInfo.zip}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Website</h3>
-                      <p className="text-base">{practiceInfo.website}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 mb-1">Tax ID / EIN</h3>
-                      <p className="text-base">{practiceInfo.taxId}</p>
-                    </div>
-                  </div>
-                ) : (
-                  // Edit mode
-                  <div>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Practice Name</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.name}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, name: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.phone}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, phone: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.address}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, address: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.city}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, city: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.state}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, state: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.zip}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, zip: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.website}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, website: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tax ID / EIN</label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          value={editedPractice.taxId}
-                          onChange={(e) => setEditedPractice({ ...editedPractice, taxId: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-3">
-                      <button
-                        className={secondaryButtonStyle}
-                        onClick={() => setEditingPractice(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className={primaryButtonStyle}
-                        onClick={handleUpdatePractice}
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.phone || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, phone: e.target.value })}
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.address || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, address: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.city || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, city: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.state || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, state: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.zip || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, zip: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.website || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, website: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tax ID / EIN</label>
+                <input
+                  type="text"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  value={editedPractice.tax_id || ''}
+                  onChange={(e) => setEditedPractice({ ...editedPractice, tax_id: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                className={secondaryButtonStyle}
+                onClick={() => setEditingPractice(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={primaryButtonStyle}
+                onClick={handleUpdatePractice}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
 
               {/* Locations Section */}
               <div className="mt-8">
@@ -859,16 +877,28 @@ const handleRemoveUser = async () => {
                 </div>
 
                 {/* Locations Loading State */}
-                {locationsStatus === 'loading' && (
-                  <div className="text-center p-6">Loading locations...</div>
-                )}
+              {locationsStatus === 'loading' && (
+  <div className="text-center p-6">
+    Loading locations...
+    <br />
+    <small>(Debug: Status: {locationsStatus})</small>
+  </div>
+)}
 
                 {/* Locations Error State */}
-                {locationsStatus === 'failed' && (
-                  <div className="text-center p-6 text-red-500">
-                    Failed to load locations. Please try again.
-                  </div>
+          {locationsStatus === 'failed' && (
+  <div className="text-center p-6 text-red-500">
+    Failed to load locations:
+    <br />
+    {locations.error || 'Unknown error'}
+  </div>
                 )}
+
+                {locationsStatus === 'succeeded' && (!locations.data || locations.data.length === 0) && (
+  <div className="text-center p-6 text-gray-500">
+    No locations found for your account.
+  </div>
+)}
 
                 {/* Locations List */}
                 {locationsStatus === 'succeeded' && (

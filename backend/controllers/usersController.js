@@ -72,9 +72,16 @@ exports.togglePinStatus = (req, res) => {
 };
 
 exports.getUserLocations = (req, res) => {
-  const userId = req.params.id;
+  const userId = req.params.id; // Ensure this matches your route definition
+  console.log(`Controller: Fetching locations for user ID: ${userId}`);
+
   User.getUserLocations(userId, (err, results) => {
-    if (err) return res.status(500).json({ error: "Database error" });
+    if (err) {
+      console.error('Controller error:', err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    console.log('Controller location results:', results);
     res.json(results);
   });
 };
