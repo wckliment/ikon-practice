@@ -101,15 +101,12 @@ export const fetchAllMessages = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-
-      // Check if token is expired
       if (isTokenExpired(token)) {
-        console.log('Token is expired, need to refresh');
-        // You would typically redirect to login or call a refresh token endpoint
         return rejectWithValue({ error: 'Token expired' });
       }
 
-      console.log('Making API request to: http://localhost:5000/api/messages/all');
+      console.log('Making API request to fetch messages from current location');
+      // Location filtering is now handled server-side
       const response = await api.get('/messages/all');
       console.log('All user messages response:', response.data);
       return response.data;
@@ -125,24 +122,14 @@ export const fetchPatientCheckIns = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-
-      // Check if token is expired
       if (isTokenExpired(token)) {
-        console.log('Token is expired, need to refresh');
         return rejectWithValue({ error: 'Token expired' });
       }
 
-      console.log('Making API request to: http://localhost:5000/api/messages/patient-check-ins');
+      console.log('Making API request to fetch patient check-ins from current location');
+      // Location filtering is now handled server-side
       const response = await api.get('/messages/patient-check-ins');
       console.log('Patient check-in messages response data:', response.data);
-
-      // If response.data is empty but we expect data
-      if (Array.isArray(response.data) && response.data.length === 0) {
-        console.log('No patient check-ins returned from API, trying debug endpoint...');
-        // Try the debug endpoint as a fallback
-        const debugResponse = await api.get('/messages/debug/patient-check-ins');
-        console.log('Debug endpoint response:', debugResponse.data);
-      }
 
       return response.data;
     } catch (error) {
@@ -152,30 +139,24 @@ export const fetchPatientCheckIns = createAsyncThunk(
   }
 );
 
+// In chatSlice.js - Modify the fetchUsers function
 export const fetchUsers = createAsyncThunk(
   'chat/fetchUsers',
   async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-
-      // Check if token is expired
       if (isTokenExpired(token)) {
         console.log('Token is expired, need to refresh');
         return rejectWithValue({ error: 'Token expired' });
       }
 
-      console.log('Making API request to:', `${API_URL}/users`);
-      // Use the api instance instead of axios directly to ensure token is included
+      console.log('Making API request to fetch users from current location');
+      // The location filtering is now handled server-side
       const response = await api.get('/users');
       console.log('API response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
-      if (error.response) {
-        console.log('Error response data:', error.response.data);
-        console.log('Error response status:', error.response.status);
-        console.log('Error response headers:', error.response.headers);
-      }
       return rejectWithValue(error.response?.data || { error: 'Network error' });
     }
   }

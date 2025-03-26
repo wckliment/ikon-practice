@@ -49,12 +49,16 @@ exports.login = (req, res) => {
       if (err) return res.status(500).json({ error: "Server error" });
       if (!isMatch) return res.status(401).json({ error: "Invalid email or password" });
 
-      // ✅ Generate JWT Token
-      const token = jwt.sign(
-        { userId: user.id, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: "1h" }
-      );
+// ✅ Generate JWT Token
+const token = jwt.sign(
+  {
+    userId: user.id,
+    role: user.role,
+    location_id: user.location_id  
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: "1h" }
+);
 
       // ✅ Return user data with location info in response
       res.json({

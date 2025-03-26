@@ -121,20 +121,22 @@ exports.deleteMessage = (req, res) => {
 // Get all messages for the current user across all conversations
 exports.getAllUserMessages = (req, res) => {
   const currentUserId = req.user.userId; // Using req.user.userId based on your code pattern
+  const currentUserLocationId = req.user.location_id; // Add this to get location
 
-  console.log("DEBUG - Fetching all messages for user:", currentUserId);
+  console.log("DEBUG - Fetching all messages for user:", currentUserId, "from location:", currentUserLocationId);
 
-  // You'll need to add this method to your Message model
-  Message.getAllUserMessages(currentUserId, (err, results) => {
+  // You'll need to create this new method in your Message model
+  Message.getAllUserMessagesByLocation(currentUserId, currentUserLocationId, (err, results) => {
     if (err) {
       console.error("Error fetching all user messages:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
     }
 
-    console.log(`DEBUG - Found ${results.length} messages for user ${currentUserId}`);
+    console.log(`DEBUG - Found ${results.length} messages for user ${currentUserId} in location ${currentUserLocationId}`);
     res.json(results);
   });
 };
+
 
 // New endpoint: Get messages by type
 exports.getMessagesByType = (req, res) => {
@@ -153,36 +155,18 @@ exports.getMessagesByType = (req, res) => {
 
 // Get patient check-in messages
 exports.getPatientCheckIns = (req, res) => {
-  let userId;
+  const userId = req.user.userId;
+  const locationId = req.user.location_id;
 
-  // Check different possible sources for the user ID
-  if (req.user && req.user.userId) {
-    userId = req.user.userId;
-  } else if (req.params && req.params.id) {
-    userId = req.params.id;
-  } else if (req.query && req.query.userId) {
-    userId = req.query.userId;
-  }
+  console.log(`DEBUG - Fetching patient check-ins for user ${userId} in location ${locationId}`);
 
-  if (!userId) {
-    console.error("Warning: User ID not found in request, using default");
-    // Use current user's ID if available, otherwise default to broadcast messages
-    userId = req.user?.userId || -1;
-  }
-
-  console.log(`DEBUG - Fetching patient check-ins for user ${userId}`);
-
-  Message.getPatientCheckInsForUser(userId, (err, results) => {
+  Message.getPatientCheckInsByLocation(userId, locationId, (err, results) => {
     if (err) {
       console.error("Error fetching patient check-in messages:", err);
       return res.status(500).json({ error: "Database error", details: err.message });
     }
 
-    console.log(`DEBUG - Found ${results.length} patient check-in messages for user ${userId}`);
-    if (results.length > 0) {
-      console.log("Sample message:", results[0]);
-    }
-
+    console.log(`DEBUG - Found ${results.length} patient check-in messages for user ${userId} in location ${locationId}`);
     res.json(results);
   });
 };

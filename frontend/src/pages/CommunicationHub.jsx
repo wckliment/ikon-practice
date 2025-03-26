@@ -55,6 +55,22 @@ useEffect(() => {
   fetchData();
 }, [dispatch]);
 
+    // Add the new debugging useEffect here
+  useEffect(() => {
+    if (users.length > 0 && currentUser) {
+      console.log("User filtering debug:");
+      console.log("Current user location:", currentUser.location_id);
+      console.log("All fetched users with their locations:",
+        users.map(u => ({
+          id: u.id,
+          name: u.name,
+          location_id: u.location_id,
+          location_name: u.location_name
+        }))
+      );
+    }
+  }, [users, currentUser]);
+
     // Add this as a separate useEffect - not nested inside the previous one
 useEffect(() => {
   if (dataLoaded && users.length > 0 && allMessages.length > 0) {
@@ -71,6 +87,17 @@ useEffect(() => {
     }
   }
 }, [dataLoaded, users.length, allMessages.length]);
+
+  useEffect(() => {
+  if (currentUser) {
+    console.log("Current user information:", {
+      id: currentUser.id,
+      name: currentUser.name,
+      location_id: currentUser.location_id,
+      location: currentUser.location // If the location name is included
+    });
+  }
+}, [currentUser]);
 
   useEffect(() => {
   const testAuth = async () => {
@@ -398,11 +425,12 @@ const patientCheckInUsers = useMemo(() => {
   });
 }, [filteredUsers, allMessages, currentUser?.id]);
 
-// Regular users with general messages
+// In CommunicationHub.jsx - Update the regularUsers useMemo
 const regularUsers = useMemo(() => {
   console.log("Computing regularUsers with:", {
     filteredUsersLength: filteredUsers?.length || 0,
-    allMessagesLength: allMessages?.length || 0
+    allMessagesLength: allMessages?.length || 0,
+    currentUserLocation: currentUser?.location_id
   });
 
   if (!Array.isArray(filteredUsers) || !Array.isArray(allMessages) || allMessages.length === 0) {
@@ -410,28 +438,23 @@ const regularUsers = useMemo(() => {
   }
 
   return filteredUsers.filter(user => {
-    // Skip pinned users and current user
-    if (user.pinned || user.id === currentUser?.id) return false;
+    // Skip pinned users, current user, and users from different locations
+    if (
+      user.pinned ||
+      user.id === currentUser?.id ||
+      user.location_id !== currentUser?.location_id
+    ) {
+      console.log(`Filtering out user ${user.name}: pinned=${user.pinned}, isCurrent=${user.id === currentUser?.id}, locationMatch=${user.location_id === currentUser?.location_id}`);
+      return false;
+    }
 
-    // Log information about each user being filtered
-    const userMessages = allMessages.filter(msg =>
-      (msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
-      (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)
-    );
+    // For debugging, log each user's location
+    console.log(`User ${user.name} has location_id: ${user.location_id}, current user location_id: ${currentUser?.location_id}`);
 
-    console.log(`User ${user.id} (${user.name}) has ${userMessages.length} messages`);
-
-    // For debugging, include all users for now
-    return true; // Temporarily include all users to see if that's the issue
-
-    // Original condition
-    // return allMessages.some(msg =>
-    //   ((msg.sender_id === user.id && msg.receiver_id === currentUser?.id) ||
-    //    (msg.sender_id === currentUser?.id && msg.receiver_id === user.id)) &&
-    //   (msg.type === 'general' || msg.type === null || msg.type === undefined)
-    // );
+    // Include the user if they have matching location_id
+    return true;
   });
-}, [filteredUsers, allMessages, currentUser?.id]);
+}, [filteredUsers, allMessages, currentUser?.id, currentUser?.location_id]);
 
   // Group messages by date
   const groupedMessages = groupMessagesByDate();
@@ -491,12 +514,13 @@ console.log("User filtering details:", {
         {/* Top Bar */}
         <TopBar />
 
-        {/* Custom Header for Communication Hub */}
-        <div className="px-4 pt-0 pb-2 ml-10">
-          <h1 className="text-4xl font-bold text-gray-800">
-            Communication Hub
-          </h1>
-        </div>
+    {/* Custom Header for Communication Hub */}
+{/* Custom Header for Communication Hub */}
+<div className="px-4 pt-0 pb-2 ml-10">
+  <h1 className="text-4xl font-bold text-gray-800">
+    Communication Hub
+  </h1>
+</div>
 
         {/* Communication Hub Content */}
         <div className="p-6 mt-12 ml-10">

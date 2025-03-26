@@ -1,16 +1,22 @@
 const User = require("../models/userModel");
 
 exports.getAllUsers = (req, res) => {
-  User.getAllUsers((err, results) => {
+  // Get current user's location_id from JWT token
+  const currentUserLocationId = req.user.location_id;
+
+  console.log('Fetching users for location ID:', currentUserLocationId);
+
+  // Call the location-specific method instead of getAllUsers
+  User.getUsersByLocation(currentUserLocationId, (err, results) => {
     if (err) {
       console.error('Error in getAllUsers:', err);
       return res.status(500).json({ error: "Database error" });
     }
 
-    // Log the raw results to see what's coming back
-    console.log('Raw Users Results:', results);
+    // Log the results
+    console.log(`Retrieved ${results.length} users for location ID: ${currentUserLocationId}`);
 
-    // Optional: Transform results to ensure location info
+    // Transform results to ensure location info
     const processedUsers = results.map(user => ({
       ...user,
       location_name: user.location_name || 'No Location',

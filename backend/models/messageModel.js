@@ -112,6 +112,28 @@ Message.getMessagesByType = (type, callback) => {
   ikonDB.query(query, [type], callback);
 };
 
+// New method: Get all messages for a user by location
+Message.getAllUserMessagesByLocation = (userId, locationId, callback) => {
+  const query = `
+    SELECT m.*,
+    sender.name as sender_name,
+    receiver.name as receiver_name,
+    sender.location_id as sender_location_id,
+    receiver.location_id as receiver_location_id
+    FROM messages m
+    JOIN users sender ON m.sender_id = sender.id
+    LEFT JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE (m.sender_id = ? OR m.receiver_id = ?)
+    AND (
+      (sender.location_id = ? AND (receiver.location_id = ? OR m.receiver_id IS NULL))
+      OR
+      (receiver.location_id = ? AND sender.location_id = ?)
+    )
+    ORDER BY m.created_at DESC
+  `;
+
+  ikonDB.query(query, [userId, userId, locationId, locationId, locationId, locationId], callback);
+};
 
 // Get patient check-in messages for user
 Message.getPatientCheckInsForUser = (userId, callback) => {
