@@ -12,7 +12,8 @@ import {
   togglePinUser,
   fetchAllMessages,
   fetchPatientCheckIns,
-  createNewChat
+  createNewChat,
+  deleteMessage
 } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
@@ -223,6 +224,33 @@ useEffect(() => {
     setSelectedUserContext(context);
     setSelectedPatientCheckIns(false);
   };
+
+  // Add this function to handle message deletion
+const handleDeleteMessage = (messageId) => {
+  if (!messageId) return;
+
+  // Confirm before deleting
+  if (window.confirm("Are you sure you want to delete this message?")) {
+    dispatch(deleteMessage(messageId))
+      .then(() => {
+        // Optionally refresh the conversation if needed
+        if (selectedUser) {
+          dispatch(fetchConversation({
+            userId: selectedUser.id,
+            conversationType: selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general'
+          }));
+        }
+
+        // Also refresh all messages and patient check-ins
+        dispatch(fetchAllMessages());
+        dispatch(fetchPatientCheckIns());
+      })
+      .catch(error => {
+        console.error("Error deleting message:", error);
+        alert("Failed to delete message. Please try again.");
+      });
+  }
+};
 
 // Update handleSendMessage to ensure UI updates immediately
 const handleSendMessage = (e) => {
@@ -810,6 +838,23 @@ console.log("User filtering details:", {
     patientCheckIns.filter(msg => msg.receiver_id === null).map(checkIn => (
       <div key={checkIn.id} className="mb-4">
         <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded-md">
+{/* Add delete button if user sent this check-in */}
+      {checkIn.sender_id === currentUser?.id && (
+        <button
+          className="absolute top-1 right-1 text-gray-400 hover:text-red-500 p-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteMessage(checkIn.id);
+          }}
+          title="Delete check-in"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      )}
+
+
           <div className="flex justify-between items-center mb-1">
             <span className="font-medium text-sm">
               {checkIn.sender_name} <span className="text-xs text-gray-500">checked in a patient</span>
@@ -877,26 +922,39 @@ console.log("User filtering details:", {
               const isTemporary = message.is_temporary;
 
               return (
-                <div key={message.id}>
-                  <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
-                    <div className={`max-w-xs lg:max-w-md rounded-lg ${
-                      isSentByMe ?
-                        isTemporary ? 'bg-green-50' : 'bg-green-100' :
-                        isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
-                    } p-3 text-sm`}>
-                      {isPatientCheckIn && !isSentByMe && (
-                        <div className="mb-1 text-xs text-green-700 font-medium">Patient Check-in</div>
-                      )}
-                      <p>{message.message}</p>
-                      {isTemporary && (
-                        <div className="text-xs text-gray-400 mt-1">Sending...</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-gray-500">
-                    {formatTime(message.created_at)}
-                  </div>
-                </div>
+              <div key={message.id}>
+  <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
+    <div className={`relative max-w-xs lg:max-w-md rounded-lg ${
+      isSentByMe ?
+        isTemporary ? 'bg-green-50' : 'bg-green-100' :
+        isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
+    } p-3 text-sm`}>
+      {/* Simplified delete button condition */}
+  {isSentByMe && (
+  <button
+    className="absolute top-1 right-1 bg-white bg-opacity-60 hover:bg-red-100 text-gray-500 hover:text-red-600 p-1 rounded-full z-10"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleDeleteMessage(message.id);
+    }}
+    title="Delete message"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  </button>
+)}
+
+      <p>{message.message}</p>
+      {isTemporary && (
+        <div className="text-xs text-gray-400 mt-1">Sending...</div>
+      )}
+    </div>
+  </div>
+  <div className="text-right text-xs text-gray-500">
+    {formatTime(message.created_at)}
+  </div>
+</div>
               );
             })}
         </div>

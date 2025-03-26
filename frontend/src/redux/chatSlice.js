@@ -389,6 +389,28 @@ export const createNewChat = createAsyncThunk(
   }
 );
 
+export const deleteMessage = createAsyncThunk(
+  'chat/deleteMessage',
+  async (messageId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (isTokenExpired(token)) {
+        console.log('Token is expired, need to refresh');
+        return rejectWithValue({ error: 'Token expired' });
+      }
+
+      console.log('Deleting message with ID:', messageId);
+      const response = await api.delete(`/messages/${messageId}`);
+      console.log('Delete message response:', response.data);
+      return { messageId, ...response.data };
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      return rejectWithValue(error.response?.data || { error: 'Network error' });
+    }
+  }
+);
+
+
 // Initial state - updated to include patientCheckIns
 const initialState = {
   users: [],
@@ -558,7 +580,34 @@ const chatSlice = createSlice({
       .addCase(createNewChat.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to create new chat';
-      });
+
+      })
+
+// Add the deleteMessage reducers here
+.addCase(deleteMessage.pending, (state) => {
+  state.loading = true;
+  state.error = null;
+})
+.addCase(deleteMessage.fulfilled, (state, action) => {
+  const deletedMessageId = action.payload.messageId;
+
+  // Remove from messages array (conversation view)
+  state.messages = state.messages.filter(msg => msg.id !== deletedMessageId);
+
+  // Remove from allMessages array
+  state.allMessages = state.allMessages.filter(msg => msg.id !== deletedMessageId);
+
+  // Remove from patientCheckIns if it's a check-in message
+  state.patientCheckIns = state.patientCheckIns.filter(msg => msg.id !== deletedMessageId);
+
+  state.loading = false;
+})
+.addCase(deleteMessage.rejected, (state, action) => {
+  state.error = action.payload || { error: 'Failed to delete message' };
+  state.loading = false;
+});
+
+      ;
   }
 });
 
