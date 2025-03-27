@@ -4,8 +4,7 @@ class OpenDentalService {
   constructor(developerKey, customerKey) {
     this.baseUrl = 'https://api.opendental.com/api/v1';
     this.headers = {
-      'ODFHIR': `${developerKey}/${customerKey}`,
-      'Content-Type': 'application/json'
+      'Authorization': `ODFHIR ${developerKey}/${customerKey}`
     };
   }
 

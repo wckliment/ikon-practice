@@ -1,3 +1,4 @@
+// backend/routes/appointmentsRoutes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -7,12 +8,20 @@ const {
 } = require('../controllers/appointmentsController');
 const authenticateUser = require('../middleware/authMiddleware');
 const { initializeOpenDental } = require('../middleware/appointmentMiddleware');
+const { testInitializeOpenDental } = require('../middleware/testAppointmentMiddleware');
+
+// Use environment variable to determine which middleware to use
+const useTestMiddleware = process.env.NODE_ENV === 'test';
 
 // First use your existing authentication middleware
 router.use(authenticateUser);
 
-// Then use the Open Dental initialization middleware
-router.use(initializeOpenDental);
+// Then use the appropriate Open Dental initialization middleware
+if (useTestMiddleware) {
+  router.use(testInitializeOpenDental);
+} else {
+  router.use(initializeOpenDental);
+}
 
 // Define routes
 router.get('/', getAppointments);
