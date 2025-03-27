@@ -25,6 +25,9 @@ app.use("/api/messages", messageRoutes);
 const locationRoutes = require("./routes/locationRoutes");
 app.use("/api/locations", locationRoutes);
 
+const appointmentsRoutes = require("./routes/appointmentsRoutes");
+app.use("/api/appointments", appointmentsRoutes);
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
