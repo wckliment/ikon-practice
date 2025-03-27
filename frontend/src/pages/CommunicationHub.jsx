@@ -13,7 +13,8 @@ import {
   fetchAllMessages,
   fetchPatientCheckIns,
   createNewChat,
-  deleteMessage
+  deleteMessage,
+  deleteConversation
 } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
@@ -24,10 +25,11 @@ const CommunicationHub = () => {
   const [newMessageText, setNewMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
-  const [selectedUserContext, setSelectedUserContext] = useState(null); // 'patient-check-in' or 'regular'
+  const [selectedUserContext, setSelectedUserContext] = useState(null);
   const [selectedPatientCheckIns, setSelectedPatientCheckIns] = useState(false);
+  const [optionsMenuOpen, setOptionsMenuOpen] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [localMessages, setLocalMessages] = useState([]); // Add this new state for temporary messages
+  const [localMessages, setLocalMessages] = useState([]);
 
   // Add debugging for token
   console.log("Current token:", localStorage.getItem('token'));
@@ -179,6 +181,22 @@ useEffect(() => {
     setSearchQuery(searchQuery => searchQuery);
   }
 }, [loading, allMessages, users]);
+
+  useEffect(() => {
+  if (!optionsMenuOpen) return;
+
+  const handleClickOutside = (event) => {
+    if (!event.target.closest('[data-options-menu]') &&
+        !event.target.closest('button')?.onclick?.toString().includes('setOptionsMenuOpen')) {
+      setOptionsMenuOpen(false);
+    }
+  };
+
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, [optionsMenuOpen]);
 
   // Function to render the patient check-in section in the sidebar
   const patientCheckInSection = () => {
@@ -499,6 +517,40 @@ const regularUsers = useMemo(() => {
     }));
   };
 
+// Add this function to handle the deletion
+const handleDeleteConversation = () => {
+  if (!selectedUser || !currentUser) {
+    console.log("No selected user or current user");
+    return;
+  }
+
+  console.log("Selected user:", selectedUser);
+  console.log("Current user:", currentUser);
+
+  if (window.confirm(`Are you sure you want to delete all messages with ${selectedUser.name}?`)) {
+    console.log(`Attempting to delete conversation between ${currentUser.id} and ${selectedUser.id}`);
+
+    dispatch(deleteConversation({
+      userId: selectedUser.id,
+      currentUserId: currentUser.id
+    }))
+      .then((result) => {
+        console.log("Delete conversation result:", result);
+        // Close the menu
+        setOptionsMenuOpen(false);
+
+        // Clear the selected user to go back to the default view
+        dispatch(clearSelectedUser());
+      })
+      .catch(error => {
+        console.error("Error deleting conversation:", error);
+        alert("Failed to delete conversation. Please try again.");
+      });
+  }
+};
+
+
+
   // Add this right before the return statement
 console.log("Rendering Communication Hub with:", {
   usersCount: users.length,
@@ -816,7 +868,7 @@ console.log("User filtering details:", {
                     <p className="text-gray-500">Select a user to start chatting</p>
                   )}
                 </div>
-                <div className="flex items-center">
+                {/* <div className="flex items-center">
                   <input
                     type="text"
                     placeholder="Search..."
@@ -827,7 +879,50 @@ console.log("User filtering details:", {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
                     </svg>
                   </button>
-                </div>
+                </div> */}
+<div className="flex items-center">
+  <input
+    type="text"
+    placeholder="Search..."
+    className="border rounded-md px-2 py-1 text-sm mr-2"
+  />
+  {selectedUser && (
+    <div className="relative">
+      <button
+        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+        onClick={() => setOptionsMenuOpen(!optionsMenuOpen)}
+        aria-label="Message options"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+        </svg>
+      </button>
+
+      {optionsMenuOpen && (
+        <div
+          data-options-menu
+          className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50"
+        >
+          <div className="py-1">
+            <button
+              onClick={handleDeleteConversation}
+              className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+            >
+              Delete Conversation
+            </button>
+            <button
+              onClick={() => setOptionsMenuOpen(false)}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+</div>
+
               </div>
 
              <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -928,11 +1023,12 @@ console.log("User filtering details:", {
       isSentByMe ?
         isTemporary ? 'bg-green-50' : 'bg-green-100' :
         isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
-    } p-3 text-sm`}>
+                      } p-3 text-sm`}>
+
       {/* Simplified delete button condition */}
   {isSentByMe && (
   <button
-    className="absolute top-1 right-1 bg-white bg-opacity-60 hover:bg-red-100 text-gray-500 hover:text-red-600 p-1 rounded-full z-10"
+    className="absolute -top-6 right-0 bg-white bg-opacity-80 hover:bg-red-100 text-gray-500 hover:text-red-600 p-1 rounded-full shadow-sm z-10"
     onClick={(e) => {
       e.stopPropagation();
       handleDeleteMessage(message.id);

@@ -246,6 +246,54 @@ export const sendPatientCheckIn = createAsyncThunk(
   }
 );
 
+// Delete conversation
+
+export const deleteConversation = createAsyncThunk(
+  'chat/deleteConversation',
+  async ({ userId, currentUserId }, { getState, dispatch, rejectWithValue }) => {
+    try {
+      console.log(`Starting deleteConversation with userId=${userId}, currentUserId=${currentUserId}`);
+
+      // Get all messages from the Redux store
+      const { allMessages } = getState().chat;
+      console.log(`Total messages in store: ${allMessages.length}`);
+
+      // Filter the messages between the two users
+      const messagesToDelete = allMessages.filter(msg =>
+        (msg.sender_id === userId && msg.receiver_id === currentUserId) ||
+        (msg.sender_id === currentUserId && msg.receiver_id === userId)
+      );
+
+      console.log(`Found ${messagesToDelete.length} messages to delete between users ${currentUserId} and ${userId}`);
+
+      if (messagesToDelete.length === 0) {
+        console.log("No messages found to delete");
+        return { userId, currentUserId, noMessagesFound: true };
+      }
+
+      // Delete each message using the existing deleteMessage action
+      console.log("Starting to delete messages one by one");
+      const deletePromises = messagesToDelete.map(message => {
+        console.log(`Deleting message with ID: ${message.id}`);
+        return dispatch(deleteMessage(message.id));
+      });
+
+      const results = await Promise.all(deletePromises);
+      console.log("Delete results:", results);
+
+      // Refresh the users list to update the recent chats
+      console.log("Refreshing users list");
+      dispatch(fetchUsers());
+
+      return { userId, currentUserId, deletedCount: messagesToDelete.length };
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      return rejectWithValue(error.response?.data || { error: 'Failed to delete conversation' });
+    }
+  }
+);
+
+
 // Add new action for Patient Check-In creation
 export const createPatientCheckIn = createAsyncThunk(
   'chat/createPatientCheckIn',
@@ -582,6 +630,41 @@ const chatSlice = createSlice({
         state.error = action.error.message || 'Failed to create new chat';
 
       })
+
+
+// Add these reducer cases to your extraReducers builder
+.addCase(deleteConversation.pending, (state) => {
+  state.loading = true;
+  state.error = null;
+})
+.addCase(deleteConversation.fulfilled, (state, action) => {
+  const { userId, currentUserId } = action.payload;
+
+  // Clear messages if the deleted conversation was selected
+  if (state.selectedUser && state.selectedUser.id === userId) {
+    state.messages = [];
+  }
+
+  // Remove messages from allMessages (this is redundant since deleteMessage actions will
+  // already have modified the state, but it ensures all are removed)
+  state.allMessages = state.allMessages.filter(msg =>
+    !((msg.sender_id === userId && msg.receiver_id === currentUserId) ||
+      (msg.sender_id === currentUserId && msg.receiver_id === userId))
+  );
+
+  // Remove messages from patientCheckIns
+  state.patientCheckIns = state.patientCheckIns.filter(msg =>
+    !((msg.sender_id === userId && msg.receiver_id === currentUserId) ||
+      (msg.sender_id === currentUserId && msg.receiver_id === userId))
+  );
+
+  state.loading = false;
+})
+.addCase(deleteConversation.rejected, (state, action) => {
+  state.loading = false;
+  state.error = action.payload || { error: 'Failed to delete conversation' };
+})
+
 
 // Add the deleteMessage reducers here
 .addCase(deleteMessage.pending, (state) => {
