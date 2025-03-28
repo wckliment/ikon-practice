@@ -10,87 +10,47 @@ const appointmentService = {
   // Get appointments for a date range
   async getAppointments(startDate, endDate, providerId = null) {
     try {
-      // Format dates for API
-      const formattedStart = startDate.toISOString().split('T')[0];
-      const formattedEnd = endDate.toISOString().split('T')[0];
+      const formattedStart = startDate.toISOString().split("T")[0];
+      const formattedEnd = endDate.toISOString().split("T")[0];
 
-      // Build query params
       let url = `/api/appointments?startDate=${formattedStart}&endDate=${formattedEnd}`;
       if (providerId) {
         url += `&providerId=${providerId}`;
       }
 
       console.log(`🔍 ATTEMPTING API CALL: Fetching appointments from ${url}`);
-
-      // Add request headers to logs
       console.log("🔍 Request Headers:", {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + (localStorage.getItem('token') || 'no-token')
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
       });
 
-      // Make the API call with explicit timeout for debugging
       const response = await axios.get(url, {
-        timeout: 10000, // 10 second timeout for debugging
+        timeout: 10000,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + (localStorage.getItem('token') || 'no-token')
-        }
+          Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+        },
       });
 
       console.log(`✅ API CALL SUCCESS: Status ${response.status}`);
       console.log("📦 Response Headers:", response.headers);
 
-      // Log the first part of the response data to avoid excessive logging
-      if (response.data) {
-        if (Array.isArray(response.data)) {
-          console.log(`📋 Response Data: Array with ${response.data.length} items`);
-          if (response.data.length > 0) {
-            console.log("📋 First item:", response.data[0]);
-          }
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          console.log(`📋 Response Data: Object with data array containing ${response.data.data.length} items`);
-          if (response.data.data.length > 0) {
-            console.log("📋 First item:", response.data.data[0]);
-          }
-        } else {
-          console.log("📋 Response Data (truncated):",
-            JSON.stringify(response.data).substring(0, 500) +
-            (JSON.stringify(response.data).length > 500 ? "..." : "")
-          );
-        }
-      } else {
-        console.log("📋 No response data");
-      }
-
-      // Handle different response structures
-      // Some APIs return { success: true, data: [...] }
-      // Others might return the array directly
-      const appointmentsData = response.data.data || response.data;
-      return appointmentsData;
+      const data = response.data.data || response.data;
+      return data;
     } catch (error) {
       console.error("❌ API CALL FAILED:", error);
-
-      // Log detailed error information
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
         console.error("❌ Error Response Data:", error.response.data);
         console.error("❌ Error Response Status:", error.response.status);
         console.error("❌ Error Response Headers:", error.response.headers);
       } else if (error.request) {
-        // The request was made but no response was received
         console.error("❌ No response received - Network Error:", error.request);
       } else {
-        // Something happened in setting up the request that triggered an Error
         console.error("❌ Request Setup Error:", error.message);
       }
-
       throw error;
     }
   },
-
-  // Other methods remain the same
-  // ...
 };
 
 const Appointments = () => {
@@ -102,220 +62,139 @@ const Appointments = () => {
   const [currentMonthName, setCurrentMonthName] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Staff members - could be fetched from API later
+  // Updated staff list mapped to Open Dental provider abbreviations
   const staffMembers = [
-    { id: 1, name: "Roger Hall" },
-    { id: 2, name: "April Moody" },
-    { id: 3, name: "Allen Rogers" },
-    { id: 4, name: "Shelby Lang" },
-    { id: 5, name: "Dr. Yu" },
-    { id: 6, name: "Eric Smith" },
-    { id: 7, name: "Tommy Strong" },
-    { id: 8, name: "Lisa Johnson" },
-    { id: 9, name: "Maria Garcia" },
-    { id: 10, name: "James Wilson" },
-    { id: 11, name: "Dr. Chen" },
-    { id: 12, name: "Robert Taylor" },
-    { id: 13, name: "Sarah Miller" },
-    { id: 14, name: "David Brown" }
+    { id: 1, name: "DOCKS" },
+    { id: 2, name: "HYGAH" },
+    { id: 3, name: "HYGNB" },
   ];
 
-  // Update current month name whenever the month changes
   useEffect(() => {
-    const options = { month: 'long', year: 'numeric' };
-    setCurrentMonthName(currentMonth.toLocaleDateString('en-US', options));
+    const options = { month: "long", year: "numeric" };
+    setCurrentMonthName(currentMonth.toLocaleDateString("en-US", options));
   }, [currentMonth]);
 
-  // Fetch appointments when selected date or month changes
   useEffect(() => {
     fetchAppointments();
   }, [selectedDate, currentMonth]);
 
-  // Convert API appointment data to the format our UI expects
-  const transformAppointmentData = (apiAppointments) => {
-    return apiAppointments.map(apt => {
-      // Parse dates from API
-      const startTime = new Date(apt.startTime);
-      const endTime = new Date(apt.endTime);
+const transformAppointmentData = (apiAppointments) => {
+  console.log("🔍 Raw appointment objects:", apiAppointments);
 
-      // Format times for display
-      const formattedStartTime = startTime.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+  return apiAppointments.map((apt) => {
+    console.log("🧪 Transforming appointment:", apt);
 
-      const formattedEndTime = endTime.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+    const startTimeRaw = apt.startTime || apt.AptDateTime;
+    const normalizedDateTime = startTimeRaw?.replace(" ", "T");
+    const startTime = new Date(normalizedDateTime);
 
-      // Simplify to just hour for our grid view
-      const hourOnly = startTime.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        hour12: true
-      });
+    if (isNaN(startTime)) {
+      throw new RangeError(`⛔ Invalid date in appointment: ${startTimeRaw}`);
+    }
 
-      return {
-        id: apt.id,
-        patientName: apt.patientName,
-        date: startTime.toISOString().split('T')[0],
-        startTime: hourOnly, // For grid matching
-        endTime: formattedEndTime,
-        fullStartTime: formattedStartTime, // Full time with minutes for details
-        duration: Math.round((endTime - startTime) / (1000 * 60)), // Duration in minutes
-        type: "Appointment", // Default type
-        notes: apt.notes || "",
-        status: apt.status,
-        staff: apt.providerName, // Map provider to staff
-        providerId: apt.providerId,
-        color: "#F9E7A0", // Default color
-        // Add custom extension data if available
-        ...(apt.customTags && { customTags: apt.customTags }),
-        ...(apt.internalNotes && { internalNotes: apt.internalNotes }),
-        ...(apt.followupRequired && { followupRequired: apt.followupRequired }),
-        ...(apt.followupDate && { followupDate: apt.followupDate })
-      };
+    const durationInMinutes = apt.Pattern?.length ? apt.Pattern.length * 5 : 60;
+    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+
+    const fullStartTime = startTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
-  };
 
-  // Fetch appointments data from API
+    const endTimeFormatted = endTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const hourOnly = startTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      hour12: true,
+    });
+
+    return {
+      id: apt.id || apt.AptNum,
+      patientName: apt.patientName || `Patient #${apt.patientId || apt.PatNum}`,
+      date: startTime.toISOString().split("T")[0],
+      startTime: hourOnly,
+      fullStartTime,
+      endTime: endTimeFormatted,
+      duration: durationInMinutes,
+      type: apt.procedureDescription || apt.ProcDescript || "Appointment",
+      notes: apt.notes || apt.Note || "",
+      status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
+      staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId || apt.ProvNum}`,
+      providerId: apt.providerId || apt.ProvNum,
+      color: "#F9E7A0",
+      ...(apt.isNewPatient || apt.IsNewPatient === "true" ? { newPatient: true } : {}),
+      ...(apt.operatoryId || apt.Op ? { operatory: apt.operatoryId || apt.Op } : {}),
+      ...(apt.isHygiene || apt.IsHygiene === "true" ? { isHygiene: true } : {}),
+    };
+  });
+};
+
+
   const fetchAppointments = async () => {
-    try {
-      setIsLoading(true);
-      console.log("Starting fetchAppointments");
+  try {
+    setIsLoading(true);
 
-      // Calculate date range (start of month to end of month)
-      const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
-      console.log("Fetching appointments for range:", {
-        startOfMonth: startOfMonth.toISOString(),
-        endOfMonth: endOfMonth.toISOString(),
-        currentMonth: currentMonth.toISOString()
-      });
+    console.log("📅 Fetching appointments for:", {
+      startDate: startOfMonth.toISOString(),
+      endDate: endOfMonth.toISOString(),
+    });
 
-      // For debugging - let's add a test appointment directly
-      const debugAppointment = {
-        AptNum: 2,
-        PatNum: 5,
-        AptStatus: "Scheduled",
-        Pattern: "//XX//",
-        Confirmed: 22,
-        confirmed: "Arrived",
-        Op: 2,
-        Note: "Test appointment",
-        ProvNum: 3,
-        provAbbr: "HYGAH",
-        AptDateTime: "2025-03-25 13:00:00",
-        IsNewPatient: "true"
-      };
+    const appointmentsData = await appointmentService.getAppointments(startOfMonth, endOfMonth);
+    console.log("📦 Raw API appointments:", appointmentsData);
 
-      // Attempt to call API
-      let appointmentsData = [];
-      try {
-        // Call API
-        const apiResponse = await appointmentService.getAppointments(startOfMonth, endOfMonth);
-        console.log("API Response received:", apiResponse);
-        appointmentsData = apiResponse;
-      } catch (apiError) {
-        console.error("API call failed:", apiError);
-        console.log("Using debug appointment for testing");
-        // Use debug appointment for testing
-        appointmentsData = [debugAppointment];
-      }
+    const transformedAppointments = transformAppointmentData(appointmentsData);
 
-      console.log("Raw appointments data:", appointmentsData);
+   // 👇 Insert this console.log right here:
+console.log("🧠 Final Transformed Appointments:", transformedAppointments);
 
-      // Transform data for our UI
-      const transformedAppointments = transformAppointmentData(appointmentsData);
-      console.log("Transformed appointments:", transformedAppointments);
+    setAppointments(transformedAppointments);
 
-      setAppointments(transformedAppointments);
-
-      // Set first appointment as selected if available and none is selected
-      if (transformedAppointments.length > 0 && !selectedAppointment) {
-        console.log("Setting selected appointment:", transformedAppointments[0]);
-        setSelectedAppointment(transformedAppointments[0]);
-        setNotes(transformedAppointments[0].notes || "");
-      }
-
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error in fetchAppointments:", error);
-      setIsLoading(false);
-
-      // For development: fallback to mock data if API fails
-      // Remove this in production
-      const mockAppointments = [
-        {
-          id: 1,
-          patientName: "Jason Smith",
-          date: "2025-03-20",
-          startTime: "9 AM",
-          fullStartTime: "9:00 AM",
-          endTime: "10:00 AM",
-          duration: 60,
-          type: "Follow-up",
-          notes: "",
-          status: "Confirmed",
-          staff: "Roger Hall",
-          color: "#F9E7A0" // Yellow
-        },
-        {
-          id: 2,
-          patientName: "Kathy Peters",
-          date: "2025-03-20",
-          startTime: "9 AM",
-          fullStartTime: "9:00 AM",
-          endTime: "10:00 AM",
-          duration: 60,
-          type: "Treatment",
-          notes: "",
-          status: "Confirmed",
-          staff: "April Moody",
-          color: "#F9E7A0" // Yellow
-        },
-        {
-          id: 3,
-          patientName: "Jordan Reed",
-          date: "2025-03-20",
-          startTime: "11 AM",
-          fullStartTime: "11:00 AM",
-          endTime: "12:00 PM",
-          duration: 60,
-          type: "Initial Consult",
-          notes: "",
-          status: "Confirmed",
-          staff: "Shelby Lang",
-          color: "#F9C3C3" // Pink
-        },
-        // Add a mock appointment for March 25th to test calendar highlighting
-        {
-          id: 4,
-          patientName: "Test Patient",
-          date: "2025-03-25",
-          startTime: "1 PM",
-          fullStartTime: "1:00 PM",
-          endTime: "2:00 PM",
-          duration: 60,
-          type: "Initial Consult",
-          notes: "Test appointment",
-          status: "Confirmed",
-          staff: "Dr. Yu",
-          color: "#F9C3C3" // Pink
-        }
-      ];
-
-      console.log("Using mock appointments:", mockAppointments);
-      setAppointments(mockAppointments);
-      if (!selectedAppointment && mockAppointments.length > 0) {
-        setSelectedAppointment(mockAppointments[0]);
-        setNotes(mockAppointments[0].notes || "");
+    if (transformedAppointments.length > 0 && !selectedAppointment) {
+      const firstForSelectedDate = transformedAppointments.find(
+        (apt) => apt.date === selectedDate.toISOString().split("T")[0]
+      );
+      if (firstForSelectedDate) {
+        console.log("🎯 Preselecting appointment:", firstForSelectedDate);
+        setSelectedAppointment(firstForSelectedDate);
+        setNotes(firstForSelectedDate.notes || "");
       }
     }
-  };
+
+    setIsLoading(false);
+  } catch (error) {
+    console.error("❌ Error fetching appointments:", error);
+
+    // OPTIONAL: Use mock data during development
+    const mockAppointments = [
+      {
+        id: 99,
+        patientName: "Fallback Patient",
+        date: "2025-03-25",
+        startTime: "1 PM",
+        fullStartTime: "1:00 PM",
+        endTime: "2:00 PM",
+        duration: 60,
+        type: "Cleaning",
+        notes: "This is mock fallback data.",
+        status: "Confirmed",
+        staff: "HYGAH",
+        color: "#F9C3C3"
+      }
+    ];
+
+    setAppointments(mockAppointments);
+    setSelectedAppointment(mockAppointments[0]);
+    setNotes(mockAppointments[0].notes || "");
+    setIsLoading(false);
+  }
+};
 
   // Handle appointment click - fetch full details
   const handleAppointmentClick = async (appointment) => {
@@ -426,29 +305,18 @@ const Appointments = () => {
   ];
 
   // Get appointments for a specific time slot and staff member
-  const getAppointmentsForTimeAndStaff = (time, staff) => {
-    console.log("Checking appointments for time/staff:", time, staff.name);
-    console.log("Available appointments:", appointments.length);
+const getAppointmentsForTimeAndStaff = (time, staff) => {
+  const matchingApps = appointments.filter(app => {
+    const timeMatches = app.startTime === time;
+    const staffMatches = app.staff === staff.name;
+    const dateMatches = app.date === selectedDate.toISOString().split('T')[0];
 
-    const matchingApps = appointments.filter(app => {
-      const timeMatches = app.startTime === time;
-      const staffMatches = app.staff === staff.name;
+    return timeMatches && staffMatches && dateMatches;
+  });
 
-      // For debugging
-      if (timeMatches && !staffMatches) {
-        console.log(`Time matches but staff doesn't: ${app.staff} != ${staff.name}`);
-      }
+  return matchingApps;
+};
 
-      return timeMatches && staffMatches;
-    });
-
-    // Always log the result for debugging
-    if (matchingApps.length > 0) {
-      console.log(`Found ${matchingApps.length} appointments for ${staff.name} at ${time}:`, matchingApps);
-    }
-
-    return matchingApps;
-  };
 
   // Days of the week for calendar
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
