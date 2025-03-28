@@ -2,80 +2,82 @@ const ikonDB = require("../config/db");
 const User = {};
 
 // ✅ Get all users (active only)
-User.getAllUsers = (callback) => {
-  const query = "SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at, l.name AS location_name, l.id AS location_id FROM users u LEFT JOIN locations l ON u.location_id = l.id WHERE u.active = TRUE OR u.active IS NULL";
-  ikonDB.query(query, callback);
+User.getAllUsers = async () => {
+  const query = `
+    SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
+           l.name AS location_name, l.id AS location_id
+    FROM users u
+    LEFT JOIN locations l ON u.location_id = l.id
+    WHERE u.active = TRUE OR u.active IS NULL
+  `;
+  const [rows] = await ikonDB.query(query);
+  return rows;
 };
 
 // ✅ Get user by ID
-User.getUserById = (id, callback) => {
-  const query = "SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at, l.name AS location_name, l.id AS location_id FROM users u LEFT JOIN locations l ON u.location_id = l.id WHERE u.id = ?";
-  ikonDB.query(query, [id], callback);
+User.getUserById = async (id) => {
+  const query = `
+    SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
+           l.name AS location_name, l.id AS location_id
+    FROM users u
+    LEFT JOIN locations l ON u.location_id = l.id
+    WHERE u.id = ?
+  `;
+  const [rows] = await ikonDB.query(query, [id]);
+  return rows;
 };
 
 // ✅ Find user by email (For Login)
-User.findByEmail = (email, callback) => {
-  const query = "SELECT u.*, l.name AS location_name, l.id AS location_id FROM users u LEFT JOIN locations l ON u.location_id = l.id WHERE u.email = ?";
-  ikonDB.query(query, [email.trim()], (err, results) => {
-    if (err) {
-      console.error("Database error in findByEmail:", err.sqlMessage);
-      return callback(err, null);
-    }
-    callback(null, results);
-  });
+User.findByEmail = async (email) => {
+  const query = `
+    SELECT u.*, l.name AS location_name, l.id AS location_id
+    FROM users u
+    LEFT JOIN locations l ON u.location_id = l.id
+    WHERE u.email = ?
+  `;
+  const [rows] = await ikonDB.query(query, [email.trim()]);
+  return rows;
 };
 
 // ✅ Create new user with role, DOB & location
-User.create = (name, dob, email, password, role, location_id, callback) => {
-  // Ensure empty DOB is stored as NULL
-  const formattedDob = dob ? dob : null;
-  // Ensure role is always stored in lowercase
-  const formattedRole = role ? role.trim().toLowerCase() : "staff"; // Default role if missing
-  // Allow null location_id
+User.create = async (name, dob, email, password, role, location_id) => {
+  const formattedDob = dob || null;
+  const formattedRole = role ? role.trim().toLowerCase() : "staff";
   const formattedLocationId = location_id || null;
-  const query = "INSERT INTO users (name, dob, email, password, role, location_id) VALUES (?, ?, ?, ?, ?, ?)";
-  ikonDB.query(query, [name.trim(), formattedDob, email.trim(), password, formattedRole, formattedLocationId], callback);
+  const query = `
+    INSERT INTO users (name, dob, email, password, role, location_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  const [result] = await ikonDB.query(query, [name.trim(), formattedDob, email.trim(), password, formattedRole, formattedLocationId]);
+  return result;
 };
 
-// ✅ Update user's location
-User.getUsersByLocation = (locationId, callback) => {
-  console.log('MODEL: Fetching users for location ID:', locationId);
-
+// ✅ Get users by location
+User.getUsersByLocation = async (locationId) => {
   const query = `
-    SELECT
-      u.id,
-      u.name,
-      u.dob,
-      u.email,
-      u.role,
-      u.created_at,
-      l.name AS location_name,
-      l.id AS location_id 
+    SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
+           l.name AS location_name, l.id AS location_id
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
     WHERE u.location_id = ? AND (u.active = TRUE OR u.active IS NULL)
   `;
-
-  ikonDB.query(query, [locationId], (err, results) => {
-    if (err) {
-      console.error('Error in getUsersByLocation query:', err);
-      return callback(err, null);
-    }
-
-    console.log('MODEL: Users found for location:', results);
-    callback(null, results);
-  });
+  const [rows] = await ikonDB.query(query, [locationId]);
+  return rows;
 };
 
 // ✅ Get users without a location
-User.getUsersWithoutLocation = (callback) => {
-  const query = "SELECT id, name, dob, email, role, created_at FROM users WHERE location_id IS NULL";
-  ikonDB.query(query, callback);
+User.getUsersWithoutLocation = async () => {
+  const query = `
+    SELECT id, name, dob, email, role, created_at
+    FROM users
+    WHERE location_id IS NULL
+  `;
+  const [rows] = await ikonDB.query(query);
+  return rows;
 };
 
 // ✅ Toggle pin status for a user
-User.togglePinStatus = (currentUserId, targetUserId, isPinned, callback) => {
-  // First check if we need to create a pinned_users table if it doesn't exist
+User.togglePinStatus = async (currentUserId, targetUserId, isPinned) => {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS pinned_users (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -87,36 +89,27 @@ User.togglePinStatus = (currentUserId, targetUserId, isPinned, callback) => {
       FOREIGN KEY (pinned_user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `;
+  await ikonDB.query(createTableQuery);
 
-  ikonDB.query(createTableQuery, (tableErr) => {
-    if (tableErr) {
-      return callback(tableErr);
-    }
-
-    // Now handle pin/unpin based on isPinned value
-    if (isPinned) {
-      // Add the user to pinned users
-      const pinQuery = `
-        INSERT INTO pinned_users (user_id, pinned_user_id)
-        VALUES (?, ?)
-        ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
-      `;
-
-      ikonDB.query(pinQuery, [currentUserId, targetUserId], callback);
-    } else {
-      // Remove the user from pinned users
-      const unpinQuery = `
-        DELETE FROM pinned_users
-        WHERE user_id = ? AND pinned_user_id = ?
-      `;
-
-      ikonDB.query(unpinQuery, [currentUserId, targetUserId], callback);
-    }
-  });
+  if (isPinned) {
+    const pinQuery = `
+      INSERT INTO pinned_users (user_id, pinned_user_id)
+      VALUES (?, ?)
+      ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
+    `;
+    const [result] = await ikonDB.query(pinQuery, [currentUserId, targetUserId]);
+    return result;
+  } else {
+    const unpinQuery = `
+      DELETE FROM pinned_users
+      WHERE user_id = ? AND pinned_user_id = ?
+    `;
+    const [result] = await ikonDB.query(unpinQuery, [currentUserId, targetUserId]);
+    return result;
+  }
 };
 
-// Add this new method to your userModel.js file (don't modify the existing getAllUsers)
-User.getAllUsersWithPinStatus = (currentUserId, callback) => {
+User.getAllUsersWithPinStatus = async (currentUserId) => {
   const query = `
     SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
            l.name AS location_name, l.id AS location_id,
@@ -125,66 +118,45 @@ User.getAllUsersWithPinStatus = (currentUserId, callback) => {
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
   `;
-
-  ikonDB.query(query, [currentUserId], callback);
+  const [rows] = await ikonDB.query(query, [currentUserId]);
+  return rows;
 };
 
-// Get all users except the specified user ID
-User.getAllExceptSender = (senderId, callback) => {
-  const query = "SELECT * FROM users WHERE id != ?";
-  ikonDB.query(query, [senderId], callback);
+User.getAllExceptSender = async (senderId) => {
+  const query = `SELECT * FROM users WHERE id != ?`;
+  const [rows] = await ikonDB.query(query, [senderId]);
+  return rows;
 };
 
-
-User.getUserLocations = (userId, callback) => {
-  console.log(`MODEL: Fetching locations for user ID: ${userId}`);
-
+User.getUserLocations = async (userId) => {
   const query = `
     SELECT l.*
     FROM locations l
     JOIN users u ON u.location_id = l.id
     WHERE u.id = ?
   `;
-
-  ikonDB.query(query, [userId], (err, results) => {
-    console.log(`MODEL: Query execution details:`, {
-      userId,
-      error: err,
-      resultsCount: results ? results.length : 'N/A'
-    });
-
-    if (err) {
-      console.error('MODEL: Database error:', err);
-      return callback(err, null);
-    }
-
-    console.log(`MODEL: Found ${results.length} locations for user ${userId}`);
-    callback(null, results);
-  });
+  const [rows] = await ikonDB.query(query, [userId]);
+  return rows;
 };
 
-// Update user
-User.update = (id, userData, callback) => {
+User.update = async (id, userData) => {
   const { name, email, role, dob, location_id } = userData;
-  // Ensure empty DOB is stored as NULL
-  const formattedDob = dob ? dob : null;
-  // Ensure role is always stored in lowercase
+  const formattedDob = dob || null;
   const formattedRole = role ? role.trim().toLowerCase() : "staff";
-  // Allow null location_id
   const formattedLocationId = location_id || null;
-
-  const query = "UPDATE users SET name = ?, email = ?, role = ?, dob = ?, location_id = ? WHERE id = ?";
-  ikonDB.query(query, [name.trim(), email.trim(), formattedRole, formattedDob, formattedLocationId, id], callback);
+  const query = `
+    UPDATE users
+    SET name = ?, email = ?, role = ?, dob = ?, location_id = ?
+    WHERE id = ?
+  `;
+  const [result] = await ikonDB.query(query, [name.trim(), email.trim(), formattedRole, formattedDob, formattedLocationId, id]);
+  return result;
 };
 
-User.delete = (id, callback) => {
-  console.log(`Attempting soft delete for user ${id}`);
-  const query = "UPDATE users SET active = FALSE WHERE id = ?";
-  ikonDB.query(query, [id], (err, result) => {
-    console.log("Soft delete result:", result);
-    if (err) console.error("Soft delete error:", err);
-    callback(err, result);
-  });
+User.delete = async (id) => {
+  const query = `UPDATE users SET active = FALSE WHERE id = ?`;
+  const [result] = await ikonDB.query(query, [id]);
+  return result;
 };
 
 module.exports = User;

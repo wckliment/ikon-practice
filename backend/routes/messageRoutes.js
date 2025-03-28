@@ -28,7 +28,8 @@ router.delete("/:id", authenticateUser, messagesController.deleteMessage);
 router.get('/type/:type', messagesController.getMessagesByType);
 
 // Get patient check-in messages for the current user
-router.get('/patient-check-ins', messagesController.getPatientCheckIns);
+router.get('/patient-check-ins', authenticateUser, messagesController.getPatientCheckIns);
+
 
 // Debug endpoint - Get all patient check-in messages
 router.get('/debug/patient-check-ins', authenticateUser, (req, res) => {
@@ -53,6 +54,6 @@ router.get('/debug/patient-check-ins', authenticateUser, (req, res) => {
 });
 
 // Patient check-in route
-router.post('/patient-check-in', messagesController.createPatientCheckIn);
+router.post('/patient-check-in', authenticateUser, messagesController.createPatientCheckIn);
 
 module.exports = router;

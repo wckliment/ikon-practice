@@ -1,62 +1,57 @@
 const Practice = require("../models/practiceModel");
-const ikonDB = require("../config/db");
 
-
-exports.getPracticeInfo = (req, res) => {
+exports.getPracticeInfo = async (req, res) => {
   try {
-    console.log('API: getPracticeInfo called, user:', req.user);
-
-    // Get location ID from the query parameters instead of user object
     const locationId = req.query.locationId;
-    console.log('API: Using location ID from query:', locationId);
 
-    // Pass the location ID to the model
-    Practice.getInfo(locationId, (err, results) => {
-      if (err) {
-        console.error('API: Error querying practice:', err);
-        return res.status(500).json({ error: "Database error" });
-      }
+    if (!locationId) {
+      return res.status(400).json({ error: "Location ID is required" });
+    }
 
-      console.log('API: Practice query results:', results);
+    console.log("🧠 getPracticeInfo - locationId:", locationId);
 
-      if (!results || results.length === 0) {
-        console.log('API: No practices found');
-        return res.json({
-          name: "",
-          phone: "",
-          address: "",
-          city: "",
-          state: "",
-          zip: "",
-          website: "",
-          tax_id: ""
-        });
-      }
+    const [results] = await Practice.getInfo(locationId);
 
-      console.log('API: Returning practice:', results[0].name);
-      res.json(results[0]);
-    });
+    if (!results || results.length === 0) {
+      console.log("📭 No practice found for location");
+      return res.json({
+        name: "",
+        phone: "",
+        address: "",
+        city: "",
+        state: "",
+        zip: "",
+        website: "",
+        tax_id: ""
+      });
+    }
+
+    res.json(results[0]);
   } catch (error) {
-    console.error('API: Unexpected error:', error);
-    res.status(500).json({ error: "Server error" });
+    console.error("❌ getPracticeInfo error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 };
 
-// Update practice information
-exports.updatePracticeInfo = (req, res) => {
-  const practiceData = req.body;
-  // Validate required fields
-  if (!practiceData.name) {
-    return res.status(400).json({ error: "Practice name is required" });
+exports.updatePracticeInfo = async (req, res) => {
+  try {
+    const practiceData = req.body;
+    const locationId = req.user?.location_id;
+
+    if (!practiceData.name) {
+      return res.status(400).json({ error: "Practice name is required" });
+    }
+
+    console.log("🛠️ Updating practice info for location:", locationId);
+
+    await Practice.update(practiceData);
+
+    // Re-fetch updated info
+    const [updatedResults] = await Practice.getInfo(locationId);
+
+    res.json(updatedResults[0] || {});
+  } catch (error) {
+    console.error("❌ updatePracticeInfo error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
   }
-
-  Practice.update(practiceData, (err, result) => {
-    if (err) return res.status(500).json({ error: "Database error", details: err.message });
-
-    // Return updated practice info - pass the location ID here
-    Practice.getInfo(req.user?.location_id, (err, results) => {
-      if (err) return res.status(500).json({ error: "Database error" });
-      res.json(results[0]);
-    });
-  });
 };

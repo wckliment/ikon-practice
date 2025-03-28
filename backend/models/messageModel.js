@@ -1,159 +1,153 @@
 const ikonDB = require("../config/db");
+
 const Message = {};
 
-// Get all messages
-Message.getAllMessages = (callback) => {
+// ✅ Get all messages
+Message.getAllMessages = async () => {
   const query = `
-    SELECT m.*, u.name as sender_name
+    SELECT m.*, u.name AS sender_name
     FROM messages m
     LEFT JOIN users u ON m.sender_id = u.id
     ORDER BY m.created_at DESC
   `;
-  ikonDB.query(query, callback);
+  return ikonDB.query(query);
 };
 
-// Get messages between users (conversation)
-Message.getConversation = (userId, callback) => {
+// ✅ Get conversation for a user
+Message.getConversation = async (userId) => {
   const query = `
-    SELECT m.*,
-    s.name as sender_name,
-    r.name as receiver_name
+    SELECT m.*, s.name AS sender_name, r.name AS receiver_name
     FROM messages m
     LEFT JOIN users s ON m.sender_id = s.id
     LEFT JOIN users r ON m.receiver_id = r.id
     WHERE (m.sender_id = ? OR m.receiver_id = ?)
     ORDER BY m.created_at DESC
   `;
-  ikonDB.query(query, [userId, userId], callback);
+  return ikonDB.query(query, [userId, userId]);
 };
 
-// Updated: Get messages between two specific users with optional type filter
-Message.getConversationBetweenUsers = (currentUserId, otherUserId, type = null, callback) => {
+// ✅ Get messages between two users (with optional type)
+Message.getConversationBetweenUsers = async (currentUserId, otherUserId, type = null) => {
   let query = `
-    SELECT m.*,
-    s.name as sender_name,
-    r.name as receiver_name
+    SELECT m.*, s.name AS sender_name, r.name AS receiver_name
     FROM messages m
     LEFT JOIN users s ON m.sender_id = s.id
     LEFT JOIN users r ON m.receiver_id = r.id
     WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
   `;
 
-  // Add type filter if provided
-  const queryParams = [currentUserId, otherUserId, otherUserId, currentUserId];
+  const params = [currentUserId, otherUserId, otherUserId, currentUserId];
   if (type) {
     query += ` AND m.type = ?`;
-    queryParams.push(type);
+    params.push(type);
   }
-
   query += ` ORDER BY m.created_at DESC`;
 
-  ikonDB.query(query, queryParams, callback);
+  return ikonDB.query(query, params);
 };
 
-// Get unread message count for a user
-Message.getUnreadCount = (userId, callback) => {
-  // If you don't have a 'read' column yet, you might want to add it or modify this query
-  // For now, just return 0 to avoid errors
-  callback(null, [{ count: 0 }]);
-  // When you add a 'read' column, you can use this query instead:
-  // const query = "SELECT COUNT(*) as count FROM messages WHERE receiver_id = ? AND read = 0";
-  // ikonDB.query(query, [userId], callback);
+// ✅ Get unread count (placeholder until 'read' column is implemented)
+Message.getUnreadCount = async (userId) => {
+  return [{ count: 0 }];
 };
 
-// Mark message as read
-Message.markAsRead = (messageId, callback) => {
-  // If you don't have a 'read' column yet, just return success
-  callback(null, { affectedRows: 1 });
-  // When you add a 'read' column, you can use this query instead:
-  // const query = "UPDATE messages SET read = 1 WHERE id = ?";
-  // ikonDB.query(query, [messageId], callback);
+// ✅ Mark message as read (placeholder until 'read' column is implemented)
+Message.markAsRead = async (messageId) => {
+  return { affectedRows: 1 };
 };
 
-// Create new message (Updated to include type parameter)
-Message.create = (senderID, receiverID, message, type = 'general', callback) => {
-  const query = "INSERT INTO messages (sender_id, receiver_id, message, type) VALUES (?, ?, ?, ?)";
-  ikonDB.query(query, [senderID, receiverID, message, type], callback);
+// ✅ Create new message
+Message.create = async (senderID, receiverID, message, type = 'general') => {
+  const query = `INSERT INTO messages (sender_id, receiver_id, message, type) VALUES (?, ?, ?, ?)`;
+  return ikonDB.query(query, [senderID, receiverID, message, type]);
 };
 
-// Delete message
-Message.delete = (messageId, callback) => {
-  const query = "DELETE FROM messages WHERE id = ?";
-  ikonDB.query(query, [messageId], callback);
+// ✅ Delete message
+Message.delete = async (messageId) => {
+  const query = `DELETE FROM messages WHERE id = ?`;
+  return ikonDB.query(query, [messageId]);
 };
 
-// Get all messages for a user across all conversations
-Message.getAllUserMessages = (userId, callback) => {
+// ✅ Get all messages across conversations for a user
+Message.getAllUserMessages = async (userId) => {
   const query = `
-    SELECT m.*,
-    sender.name as sender_name,
-    receiver.name as receiver_name
+    SELECT m.*, sender.name AS sender_name, receiver.name AS receiver_name
     FROM messages m
     JOIN users sender ON m.sender_id = sender.id
     JOIN users receiver ON m.receiver_id = receiver.id
     WHERE m.sender_id = ? OR m.receiver_id = ?
     ORDER BY m.created_at DESC
   `;
-  ikonDB.query(query, [userId, userId], callback);
+  return ikonDB.query(query, [userId, userId]);
 };
 
-// New method: Get messages by type
-Message.getMessagesByType = (type, callback) => {
+// ✅ Get messages by type
+Message.getMessagesByType = async (type) => {
   const query = `
-    SELECT m.*,
-    sender.name as sender_name,
-    receiver.name as receiver_name
+    SELECT m.*, sender.name AS sender_name, receiver.name AS receiver_name
     FROM messages m
     JOIN users sender ON m.sender_id = sender.id
     JOIN users receiver ON m.receiver_id = receiver.id
     WHERE m.type = ?
     ORDER BY m.created_at DESC
   `;
-  ikonDB.query(query, [type], callback);
+  return ikonDB.query(query, [type]);
+
 };
 
-// New method: Get all messages for a user by location
-Message.getAllUserMessagesByLocation = (userId, locationId, callback) => {
+Message.getPatientCheckInsByLocation = async (userId, locationId) => {
   const query = `
-    SELECT m.*,
-    sender.name as sender_name,
-    receiver.name as receiver_name,
-    sender.location_id as sender_location_id,
-    receiver.location_id as receiver_location_id
-    FROM messages m
-    JOIN users sender ON m.sender_id = sender.id
-    LEFT JOIN users receiver ON m.receiver_id = receiver.id
-    WHERE (m.sender_id = ? OR m.receiver_id = ?)
-    AND (
-      (sender.location_id = ? AND (receiver.location_id = ? OR m.receiver_id IS NULL))
-      OR
-      (receiver.location_id = ? AND sender.location_id = ?)
-    )
-    ORDER BY m.created_at DESC
-  `;
-
-  ikonDB.query(query, [userId, userId, locationId, locationId, locationId, locationId], callback);
-};
-
-// Get patient check-in messages for user
-Message.getPatientCheckInsForUser = (userId, callback) => {
-  const query = `
-    SELECT m.*,
-    sender.name as sender_name,
-    CASE
-      WHEN m.receiver_id IS NULL THEN 'All Users'
-      ELSE receiver.name
-    END as receiver_name
+    SELECT m.*, sender.name AS sender_name,
+      CASE
+        WHEN m.receiver_id IS NULL THEN 'All Users'
+        ELSE receiver.name
+      END AS receiver_name
     FROM messages m
     JOIN users sender ON m.sender_id = sender.id
     LEFT JOIN users receiver ON m.receiver_id = receiver.id
     WHERE m.type = 'patient-check-in'
-    AND (m.receiver_id IS NULL OR m.receiver_id = ? OR m.sender_id = ?)
+      AND sender.location_id = ?
     ORDER BY m.created_at DESC
   `;
+  const [rows] = await ikonDB.query(query, [locationId]);
+  return rows;
+};
 
-  console.log(`DEBUG - Running patient check-in query for user ${userId}`);
-  ikonDB.query(query, [userId, userId], callback);
+// ✅ Get all user messages by location
+Message.getAllUserMessagesByLocation = async (userId, locationId) => {
+  const query = `
+    SELECT m.*, sender.name AS sender_name, receiver.name AS receiver_name,
+           sender.location_id AS sender_location_id, receiver.location_id AS receiver_location_id
+    FROM messages m
+    JOIN users sender ON m.sender_id = sender.id
+    LEFT JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE (m.sender_id = ? OR m.receiver_id = ?)
+      AND (
+        (sender.location_id = ? AND (receiver.location_id = ? OR m.receiver_id IS NULL))
+        OR
+        (receiver.location_id = ? AND sender.location_id = ?)
+      )
+    ORDER BY m.created_at DESC
+  `;
+  return ikonDB.query(query, [userId, userId, locationId, locationId, locationId, locationId]);
+};
+
+// ✅ Get patient check-in messages for a user
+Message.getPatientCheckInsForUser = async (userId) => {
+  const query = `
+    SELECT m.*, sender.name AS sender_name,
+      CASE
+        WHEN m.receiver_id IS NULL THEN 'All Users'
+        ELSE receiver.name
+      END AS receiver_name
+    FROM messages m
+    JOIN users sender ON m.sender_id = sender.id
+    LEFT JOIN users receiver ON m.receiver_id = receiver.id
+    WHERE m.type = 'patient-check-in'
+      AND (m.receiver_id IS NULL OR m.receiver_id = ? OR m.sender_id = ?)
+    ORDER BY m.created_at DESC
+  `;
+  return ikonDB.query(query, [userId, userId]);
 };
 
 module.exports = Message;
