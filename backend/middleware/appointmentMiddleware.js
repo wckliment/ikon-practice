@@ -1,4 +1,3 @@
-// backend/middleware/appointmentMiddleware.js
 const OpenDentalService = require('../services/openDentalService');
 const db = require('../config/db');
 
@@ -18,26 +17,26 @@ const initializeOpenDental = async (req, res, next) => {
 
     console.log('User found in request:', req.user);
 
-    if (!req.user.locationId) {
-      console.log('No locationId found in user object');
+    // Check for location_id (snake_case to match what's in the token)
+    if (!req.user.location_id) {
+      console.log('No location_id found in user object');
       return res.status(400).json({
         success: false,
         error: 'User must have a location ID to access appointment data'
       });
     }
 
-    console.log(`Fetching location data for ID: ${req.user.locationId}`);
+    console.log(`Fetching location data for ID: ${req.user.location_id}`);
 
-    // Get location details from database
-    try {
-      const [locations] = await db.execute(
-        'SELECT * FROM locations WHERE id = ?',
-        [req.user.locationId]
-      );
+    // Use the db connection with a promise wrapper to work with async/await
+    db.promise().query(
+      'SELECT * FROM locations WHERE id = ?',
+      [req.user.location_id]
+    )
+    .then(([rows]) => {
+      console.log('Query results:', rows);
 
-      console.log(`Query results: found ${locations.length} locations`);
-
-      if (locations.length === 0) {
+      if (!rows || rows.length === 0) {
         console.log('No location found with the given ID');
         return res.status(400).json({
           success: false,
@@ -45,8 +44,8 @@ const initializeOpenDental = async (req, res, next) => {
         });
       }
 
-      const location = locations[0];
-      console.log(`Location found: ${location.id}, has developer_key: ${!!location.developer_key}, has customer_key: ${!!location.customer_key}`);
+      const location = rows[0];
+      console.log('Location found:', location);
 
       if (!location.developer_key || !location.customer_key) {
         console.log('Missing keys in location record');
@@ -62,16 +61,17 @@ const initializeOpenDental = async (req, res, next) => {
         location.developer_key,
         location.customer_key
       );
-      console.log('OpenDentalService initialized successfully');
 
+      console.log('OpenDentalService initialized successfully');
       next();
-    } catch (dbError) {
+    })
+    .catch(dbError => {
       console.error('Database error fetching location:', dbError);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         error: 'Database error fetching location information'
       });
-    }
+    });
   } catch (error) {
     console.error('Failed to initialize Open Dental service:', error);
     res.status(500).json({
