@@ -28,50 +28,42 @@ const initializeOpenDental = async (req, res, next) => {
 
     console.log(`Fetching location data for ID: ${req.user.location_id}`);
 
-    // Use the db connection with a promise wrapper to work with async/await
-    db.promise().query(
+    // ✅ FIXED: No .promise() needed here
+    const [rows] = await db.query(
       'SELECT * FROM locations WHERE id = ?',
       [req.user.location_id]
-    )
-    .then(([rows]) => {
-      console.log('Query results:', rows);
+    );
 
-      if (!rows || rows.length === 0) {
-        console.log('No location found with the given ID');
-        return res.status(400).json({
-          success: false,
-          error: 'Location not found'
-        });
-      }
+    console.log('Query results:', rows);
 
-      const location = rows[0];
-      console.log('Location found:', location);
-
-      if (!location.developer_key || !location.customer_key) {
-        console.log('Missing keys in location record');
-        return res.status(400).json({
-          success: false,
-          error: 'Location is missing Open Dental API credentials'
-        });
-      }
-
-      // Attach Open Dental service to request
-      console.log('Initializing OpenDentalService...');
-      req.openDentalService = new OpenDentalService(
-        location.developer_key,
-        location.customer_key
-      );
-
-      console.log('OpenDentalService initialized successfully');
-      next();
-    })
-    .catch(dbError => {
-      console.error('Database error fetching location:', dbError);
-      res.status(500).json({
+    if (!rows || rows.length === 0) {
+      console.log('No location found with the given ID');
+      return res.status(400).json({
         success: false,
-        error: 'Database error fetching location information'
+        error: 'Location not found'
       });
-    });
+    }
+
+    const location = rows[0];
+    console.log('Location found:', location);
+
+    if (!location.developer_key || !location.customer_key) {
+      console.log('Missing keys in location record');
+      return res.status(400).json({
+        success: false,
+        error: 'Location is missing Open Dental API credentials'
+      });
+    }
+
+    // Attach Open Dental service to request
+    console.log('Initializing OpenDentalService...');
+    req.openDentalService = new OpenDentalService(
+      location.developer_key,
+      location.customer_key
+    );
+
+    console.log('OpenDentalService initialized successfully');
+    next();
   } catch (error) {
     console.error('Failed to initialize Open Dental service:', error);
     res.status(500).json({
@@ -84,3 +76,4 @@ const initializeOpenDental = async (req, res, next) => {
 module.exports = {
   initializeOpenDental
 };
+

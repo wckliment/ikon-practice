@@ -8,33 +8,44 @@ class OpenDentalService {
     };
   }
 
-  // Get appointments within a date range
-  async getAppointments(startDate, endDate, providerId = null) {
-    try {
-      console.log(`Fetching appointments from ${startDate} to ${endDate}`);
+ async getAppointments(startDate, endDate, providerId = null) {
+  try {
+    console.log(`Fetching appointments from ${startDate} to ${endDate}`);
 
-      const params = new URLSearchParams();
-      params.append('dateStart', this._formatDate(startDate));
-      params.append('dateEnd', this._formatDate(endDate));
+    const params = {
+      startDate: this._formatDate(startDate),
+      endDate: this._formatDate(endDate),
+    };
 
-      if (providerId) {
-        params.append('ProvNum', providerId);
-      }
-
-      console.log('Request params:', params.toString());
-
-      const response = await axios.get(`${this.baseUrl}/appointments`, {
-        headers: this.headers,
-        params
-      });
-
-      console.log(`Received ${response.data.length} appointments from API`);
-      return this._transformAppointments(response.data);
-    } catch (error) {
-      console.error('Open Dental API Error:', error.message);
-      throw new Error(`Failed to fetch appointments: ${error.message}`);
+    if (providerId) {
+      params.ProvNum = providerId;
     }
+
+    console.log('Request params:', params);
+
+    const response = await axios.get(`${this.baseUrl}/appointments`, {
+      headers: this.headers,
+      params
+    });
+
+    console.log(`Received ${response.data.length} appointments from API`);
+    return this._transformAppointments(response.data);
+  } catch (error) {
+    if (error.response) {
+      console.error('🔴 Open Dental API Response Error:', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers,
+      });
+    } else if (error.request) {
+      console.error('🔴 Open Dental API No Response:', error.request);
+    } else {
+      console.error('🔴 Open Dental API Other Error:', error.message);
+    }
+
+    throw new Error(`Failed to fetch appointments: ${error.message}`);
   }
+}
 
   // Get a single appointment by ID
   async getAppointment(appointmentId) {

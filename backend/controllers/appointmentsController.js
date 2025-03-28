@@ -35,7 +35,7 @@ const getAppointments = async (req, res) => {
     // Fetch any extensions for these appointments
     const extensions = await AppointmentExtension.findByAppointmentsAndLocation(
       appointmentIds,
-      req.user.locationId
+      req.user.location_id
     );
 
     // Create lookup map for quick access
@@ -85,7 +85,7 @@ const getAppointment = async (req, res) => {
     // Fetch any extension for this appointment
     const extension = await AppointmentExtension.findByAppointmentAndLocation(
       appointmentId,
-      req.user.locationId
+      req.user.location_id
     );
 
     // Combine appointment with extension if exists
@@ -122,7 +122,7 @@ const updateAppointmentExtension = async (req, res) => {
     // Find existing extension
     const extension = await AppointmentExtension.findByAppointmentAndLocation(
       appointmentId,
-      req.user.locationId
+      req.user.location_id
     );
 
     let result;
@@ -130,7 +130,7 @@ const updateAppointmentExtension = async (req, res) => {
       // Update existing extension
       result = await AppointmentExtension.update(
         appointmentId,
-        req.user.locationId,
+        req.user.location_id,
         {
           customTags,
           internalNotes,
@@ -143,7 +143,7 @@ const updateAppointmentExtension = async (req, res) => {
       result = await AppointmentExtension.create({
         openDentalAppointmentId: appointmentId,
         userId: req.user.userId,
-        locationId: req.user.locationId,
+        locationId: req.user.location_id,
         customTags,
         internalNotes,
         followupRequired,
@@ -154,7 +154,7 @@ const updateAppointmentExtension = async (req, res) => {
     // Fetch the updated/created extension
     const updatedExtension = await AppointmentExtension.findByAppointmentAndLocation(
       appointmentId,
-      req.user.locationId
+      req.user.location_id
     );
 
     res.json({

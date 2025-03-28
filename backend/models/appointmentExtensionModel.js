@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 class AppointmentExtension {
-  // Method to create a new appointment extension
+  // Create a new appointment extension
   static async create(extension) {
     try {
       const [result] = await db.execute(
@@ -22,12 +22,12 @@ class AppointmentExtension {
 
       return result.insertId;
     } catch (error) {
-      console.error('Error creating appointment extension:', error);
+      console.error('❌ Error creating appointment extension:', error);
       throw error;
     }
   }
 
-  // Method to find an extension by appointment ID and location
+  // Find a single extension by appointment ID and location
   static async findByAppointmentAndLocation(appointmentId, locationId) {
     try {
       const [rows] = await db.execute(
@@ -36,62 +36,58 @@ class AppointmentExtension {
         [appointmentId, locationId]
       );
 
-      if (rows.length === 0) {
-        return null;
-      }
+      if (rows.length === 0) return null;
 
-      // Parse JSON string back to array
-      if (rows[0].custom_tags) {
-        rows[0].customTags = JSON.parse(rows[0].custom_tags);
-      } else {
-        rows[0].customTags = [];
-      }
-
-      // Convert MySQL boolean (0/1) to JavaScript boolean
-      rows[0].followupRequired = rows[0].followup_required === 1;
-
-      return rows[0];
+      const row = rows[0];
+      return {
+        ...row,
+        customTags: row.custom_tags ? JSON.parse(row.custom_tags) : [],
+        followupRequired: row.followup_required === 1,
+      };
     } catch (error) {
-      console.error('Error finding appointment extension:', error);
+      console.error('❌ Error finding appointment extension:', error);
       throw error;
     }
   }
 
-  // Method to find extensions for multiple appointment IDs
+  // ✅ Find multiple extensions by appointment IDs and location
   static async findByAppointmentsAndLocation(appointmentIds, locationId) {
-    if (!appointmentIds.length) {
+    if (!appointmentIds.length) return [];
+
+    if (!locationId) {
+      console.warn('⚠️ Missing locationId in findByAppointmentsAndLocation');
       return [];
     }
 
+    console.log('🔍 Looking up appointment extensions with:');
+    console.log('appointmentIds:', appointmentIds);
+    console.log('locationId:', locationId);
+
     try {
-      // Create placeholders for the IN clause
       const placeholders = appointmentIds.map(() => '?').join(',');
 
-      const [rows] = await db.execute(
-        `SELECT * FROM appointment_extensions
-         WHERE open_dental_appointment_id IN (${placeholders}) AND location_id = ?`,
-        [...appointmentIds, locationId]
-      );
+      const sql = `
+        SELECT * FROM appointment_extensions
+        WHERE open_dental_appointment_id IN (${placeholders}) AND location_id = ?
+      `;
 
-      // Parse JSON strings and convert booleans
+      const values = [...appointmentIds, locationId];
+      const [rows] = await db.query(sql, values); // ✅ CORRECTED THIS LINE
+
       return rows.map(row => {
-        if (row.custom_tags) {
-          row.customTags = JSON.parse(row.custom_tags);
-        } else {
-          row.customTags = [];
-        }
-
-        row.followupRequired = row.followup_required === 1;
-
-        return row;
+        return {
+          ...row,
+          customTags: row.custom_tags ? JSON.parse(row.custom_tags) : [],
+          followupRequired: row.followup_required === 1,
+        };
       });
     } catch (error) {
-      console.error('Error finding appointment extensions:', error);
+      console.error('❌ Error finding appointment extensions:', error);
       throw error;
     }
   }
 
-  // Method to update an extension
+  // Update an appointment extension
   static async update(appointmentId, locationId, updates) {
     try {
       const setClause = [];
@@ -117,9 +113,7 @@ class AppointmentExtension {
         values.push(updates.followupDate);
       }
 
-      if (setClause.length === 0) {
-        return false; // Nothing to update
-      }
+      if (!setClause.length) return false;
 
       const [result] = await db.execute(
         `UPDATE appointment_extensions
@@ -130,7 +124,7 @@ class AppointmentExtension {
 
       return result.affectedRows > 0;
     } catch (error) {
-      console.error('Error updating appointment extension:', error);
+      console.error('❌ Error updating appointment extension:', error);
       throw error;
     }
   }
