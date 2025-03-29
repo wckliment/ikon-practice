@@ -27,6 +27,22 @@ const appointmentService = {
       throw error;
     }
   },
+
+  // Fetch a patient by PatNum
+  async getPatientById(patNum) {
+    try {
+      const response = await axios.get(`/api/patients/${patNum}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Failed to fetch patient ${patNum}:`, error);
+      return null;
+    }
+  },
 };
 
 const Appointments = () => {
@@ -64,31 +80,53 @@ const Appointments = () => {
   fetchAppointments();
 }, [selectedDate, currentMonth]);
 
-  const transformAppointmentData = (apiAppointments) => {
-    return apiAppointments.map((apt) => {
-      const startTimeRaw = apt.startTime || apt.AptDateTime;
-      const normalizedDateTime = startTimeRaw?.replace(" ", "T");
-      const startTime = new Date(normalizedDateTime);
-      const durationInMinutes = apt.Pattern?.length ? apt.Pattern.length * 5 : 60;
-      const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+  const transformAppointmentData = async (apiAppointments) => {
+  const transformed = [];
 
-      return {
-        id: apt.id || apt.AptNum,
-        patientName: apt.patientName || `Patient #${apt.patientId || apt.PatNum}`,
-        date: startTime.toISOString().split("T")[0],
-        startTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
-        fullStartTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-        endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-        duration: durationInMinutes,
-        type: apt.procedureDescription || apt.ProcDescript || "Appointment",
-        notes: apt.notes || apt.Note || "",
-        status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
-        staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId || apt.ProvNum}`,
-        providerId: apt.providerId || apt.ProvNum,
-        color: `rgb(${apt.provColor || "249,231,160"})`,
-      };
+    for (const apt of apiAppointments) {
+  console.log("🔎 Raw apt object:", apt);
+  console.log("📋 Appointment PatNum:", apt.patientId);
+
+  const startTimeRaw = apt.startTime || apt.AptDateTime;
+  const normalizedDateTime = startTimeRaw?.replace(" ", "T");
+  const startTime = new Date(normalizedDateTime);
+  const durationInMinutes = apt.Pattern?.length ? apt.Pattern.length * 5 : 60;
+  const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+
+  let patientName = `Patient #${apt.patientId}`;
+  try {
+    if (apt.patientId) {
+      const patient = await appointmentService.getPatientById(apt.patientId);
+      if (patient && (patient.FName || patient.LName)) {
+        console.log("🧑‍⚕️ Patient fetched:", patient);
+        patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
+      } else {
+        console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
+      }
+    }
+  } catch (err) {
+    console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
+  }
+
+    transformed.push({
+      id: apt.id || apt.AptNum,
+      patientName,
+      date: startTime.toISOString().split("T")[0],
+      startTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+      fullStartTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+      endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+      duration: durationInMinutes,
+      type: apt.procedureDescription || apt.ProcDescript || "Appointment",
+      notes: apt.notes || apt.Note || "",
+      status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
+      staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId || apt.ProvNum}`,
+      providerId: apt.providerId || apt.ProvNum,
+      color: `rgb(${apt.provColor || "249,231,160"})`,
     });
-  };
+  }
+
+  return transformed;
+};
 
 const fetchAppointments = async () => {
   try {
@@ -97,13 +135,13 @@ const fetchAppointments = async () => {
     const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
     const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
-    // 🛰 Log raw API response
+    //  Log raw API response
     const appointmentsData = await appointmentService.getAppointments(startOfMonth, endOfMonth);
-    console.log("🛰 Raw appointment response:", appointmentsData); // ✅ This is correct here
+    console.log("🛰 Raw appointment response:", appointmentsData);
 
-    // 📦 Transform and log processed appointments
-    const transformedAppointments = transformAppointmentData(appointmentsData);
-    console.log("📦 Transformed Appointments:", transformedAppointments); // ✅ This is correct here
+    //  Await transformed appointments (because it now fetches patient data)
+    const transformedAppointments = await transformAppointmentData(appointmentsData);
+    console.log("📦 Transformed Appointments:", transformedAppointments);
 
     setAppointments(transformedAppointments);
 
