@@ -164,18 +164,25 @@ const fetchAppointments = async () => {
 
 
   const getAppointmentsForTimeAndStaff = (time, staff) => {
-    return appointments.filter((app) => {
-      const timeMatches = app.startTime === time;
-      const staffMatches = app.staff === staff.name;
-      const dateMatches = app.date === selectedDate.toISOString().split("T")[0];
-      return timeMatches && staffMatches && dateMatches;
-    });
-  };
+  return appointments.filter((app) => {
+    const timeMatches = app.fullStartTime === time;
+    const staffMatches = app.staff === staff.name;
+    const dateMatches = app.date === selectedDate.toISOString().split("T")[0];
+    return timeMatches && staffMatches && dateMatches;
+  });
+};
 
-  const timeSlots = [
-    "7 AM", "8 AM", "9 AM", "10 AM", "11 AM", "12 PM",
-    "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM"
-  ];
+  const timeSlots = [];
+
+for (let hour = 7; hour <= 19; hour++) {
+  for (let minute = 0; minute < 60; minute += 15) {
+    const displayHour = hour > 12 ? hour - 12 : hour;
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayMinute = minute === 0 ? "00" : minute.toString().padStart(2, "0");
+    timeSlots.push(`${displayHour}:${displayMinute} ${ampm}`);
+  }
+}
+
 
     const isToday = (day) => {
     return (
@@ -386,16 +393,20 @@ const handleAppointmentClick = (appointment) => {
                       {timeSlots.map((time, index) => (
                         <tr key={time} className="border-b">
                           {/* Time label - sticky left column */}
-                          <td className="p-3 border-r text-xs text-gray-500 sticky left-0 bg-white z-10">
-                            {time}
-                          </td>
+                          <td
+  className={`p-3 border-r text-xs text-gray-500 sticky left-0 bg-white z-10 ${
+    time.endsWith(":00 AM") || time.endsWith(":00 PM") ? "font-semibold" : ""
+  }`}
+>
+  {time}
+</td>
 
                           {/* Staff columns */}
                           {staffMembers.map(staff => {
                             const appsForThisSlot = getAppointmentsForTimeAndStaff(time, staff);
 
                             return (
-                              <td key={`${staff.id}-${time}`} className="border-r p-1 relative h-16">
+                              <td key={`${staff.id}-${time}`} className="border-r p-1 relative h-12">
                                 {appsForThisSlot.map(app => (
                                   <div
                                     key={app.id}
