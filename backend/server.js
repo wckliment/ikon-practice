@@ -31,6 +31,9 @@ app.use("/api/practice", practiceRoutes);
 const appointmentRoutes = require("./routes/appointmentRoutes");
 app.use("/api/appointments", appointmentRoutes);
 
+const providerRoutes = require("./routes/providerRoutes");
+app.use("/api/providers", providerRoutes);
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

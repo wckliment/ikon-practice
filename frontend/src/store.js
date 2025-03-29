@@ -8,6 +8,7 @@ const store = configureStore({
     auth: authReducer,
     chat: chatReducer,
     settings: settingsReducer,
+    providers: providersReducer,
   },
 });
 
