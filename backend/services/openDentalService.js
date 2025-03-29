@@ -8,46 +8,49 @@ class OpenDentalService {
     };
   }
 
- async getAppointments(startDate, endDate, providerId = null) {
-  try {
-    console.log(`Fetching appointments from ${startDate} to ${endDate}`);
+  async getAppointments(startDate, endDate, providerId = null) {
+    try {
+      console.log(`Fetching appointments from ${startDate} to ${endDate}`);
 
-    const params = {
-      startDate: this._formatDate(startDate),
-      endDate: this._formatDate(endDate),
-    };
+      const params = {
+        startDate: this._formatDate(startDate),
+        endDate: this._formatDate(endDate),
+      };
 
-    if (providerId) {
-      params.ProvNum = providerId;
-    }
+      if (providerId) {
+        params.ProvNum = providerId;
+      }
 
-    console.log('Request params:', params);
+      console.log('Request params:', params);
 
-    const response = await axios.get(`${this.baseUrl}/appointments`, {
-      headers: this.headers,
-      params
-    });
-
-    console.log(`Received ${response.data.length} appointments from API`);
-    return this._transformAppointments(response.data);
-  } catch (error) {
-    if (error.response) {
-      console.error('🔴 Open Dental API Response Error:', {
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers,
+      const response = await axios.get(`${this.baseUrl}/appointments`, {
+        headers: this.headers,
+        params
       });
-    } else if (error.request) {
-      console.error('🔴 Open Dental API No Response:', error.request);
-    } else {
-      console.error('🔴 Open Dental API Other Error:', error.message);
+
+      console.log(`Received ${response.data.length} appointments from API`);
+      return this._transformAppointments(response.data);
+    } catch (error) {
+      this._handleError('appointments', error);
+      throw new Error(`Failed to fetch appointments: ${error.message}`);
     }
-
-    throw new Error(`Failed to fetch appointments: ${error.message}`);
   }
-}
 
-  // Get a single appointment by ID
+  async getProviders() {
+    try {
+      console.log("🌐 Fetching providers from Open Dental");
+      const response = await axios.get(`${this.baseUrl}/providers`, {
+        headers: this.headers
+      });
+
+      console.log(`✅ Received ${response.data.length} providers`);
+      return response.data;
+    } catch (error) {
+      this._handleError('providers', error);
+      throw new Error(`Failed to fetch providers: ${error.message}`);
+    }
+  }
+
   async getAppointment(appointmentId) {
     try {
       const response = await axios.get(`${this.baseUrl}/appointments/${appointmentId}`, {
@@ -60,7 +63,6 @@ class OpenDentalService {
     }
   }
 
-  // Get patient information
   async getPatient(patientId) {
     try {
       const response = await axios.get(`${this.baseUrl}/patients/${patientId}`, {
@@ -73,27 +75,20 @@ class OpenDentalService {
     }
   }
 
-  // Helper methods
   _formatDate(date) {
     try {
       if (date instanceof Date) {
-        // Format as YYYY-MM-DD
         return date.toISOString().split('T')[0];
       }
 
-      // If it's a string, ensure it's in the correct format
       if (typeof date === 'string') {
-        // Try to parse the date
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) {
-          console.error('Invalid date string:', date);
           throw new Error('Invalid date format');
         }
         return parsedDate.toISOString().split('T')[0];
       }
 
-      // If it's neither a Date nor a string, treat it as invalid
-      console.error('Invalid date type:', typeof date);
       throw new Error('Invalid date type');
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -113,7 +108,6 @@ class OpenDentalService {
 
   _transformAppointment(apt) {
     try {
-      // Based on the Open Dental API documentation, map the fields correctly
       return {
         id: apt.AptNum,
         patientId: apt.PatNum,
@@ -128,11 +122,9 @@ class OpenDentalService {
         isHygiene: apt.IsHygiene === 'true',
         isNewPatient: apt.IsNewPatient === 'true',
         procedureDescription: apt.ProcDescript || '',
-        // Add other fields as needed
       };
     } catch (error) {
       console.error('Error transforming appointment:', error, apt);
-      // Return a minimal object to avoid breaking the UI
       return {
         id: apt.AptNum || 0,
         startTime: apt.AptDateTime || new Date().toISOString(),
@@ -143,36 +135,37 @@ class OpenDentalService {
 
   _calculateEndTime(startTime, pattern) {
     try {
-      // Make sure startTime is a valid date
       const start = new Date(startTime);
       if (isNaN(start.getTime())) {
-        console.error('Invalid start time:', startTime);
-        // Return a default end time 30 minutes later from now
         return new Date(Date.now() + 30 * 60000).toISOString();
       }
 
-      // Calculate duration from pattern
-      // Pattern is like "//XXXX//" where each character represents 5 minutes
-      let durationMinutes = 30; // Default 30 mins
+      let durationMinutes = 30;
 
       if (pattern && typeof pattern === 'string') {
-        // Count the 'X' characters in the pattern, each representing 5 minutes
         const xCount = (pattern.match(/X/g) || []).length;
-        if (xCount > 0) {
-          durationMinutes = xCount * 5;
-        } else {
-          // If no X characters, each character represents 5 minutes
-          durationMinutes = pattern.length * 5;
-        }
+        durationMinutes = xCount > 0 ? xCount * 5 : pattern.length * 5;
       }
 
-      // Calculate end time
       const end = new Date(start.getTime() + durationMinutes * 60000);
       return end.toISOString();
     } catch (error) {
       console.error('Error calculating end time:', error);
-      // Return a default end time 30 minutes from now
       return new Date(Date.now() + 30 * 60000).toISOString();
+    }
+  }
+
+  _handleError(resource, error) {
+    if (error.response) {
+      console.error(`🔴 Open Dental API Response Error for ${resource}:`, {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers,
+      });
+    } else if (error.request) {
+      console.error(`🔴 Open Dental API No Response for ${resource}:`, error.request);
+    } else {
+      console.error(`🔴 Open Dental API Other Error for ${resource}:`, error.message);
     }
   }
 }

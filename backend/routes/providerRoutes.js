@@ -4,13 +4,16 @@ const {
   getProviders,
   getProviderById,
 } = require("../controllers/providersController");
-const { attachOpenDentalService } = require("../middleware/appointmentMiddleware");
-const { verifyToken } = require("../middleware/authMiddleware");
 
-router.use(verifyToken); // Protect all routes
-router.use(attachOpenDentalService); // Attach OpenDentalService instance
+// ✅ Corrected names
+const authenticateUser = require("../middleware/authMiddleware");
+const { initializeOpenDental } = require("../middleware/appointmentMiddleware");
 
-router.get("/", getProviders); // GET /api/providers
-router.get("/:id", getProviderById); // GET /api/providers/:id
+// ✅ Use correct middleware
+router.use(authenticateUser);
+router.use(initializeOpenDental);
+
+router.get("/", getProviders);
+router.get("/:id", getProviderById);
 
 module.exports = router;

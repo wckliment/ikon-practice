@@ -1,28 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, Clock, User, Filter, ChevronLeft, ChevronRight } from "react-feather";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchProviders } from "../redux/providersSlice";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 
-// API service for appointments
 const appointmentService = {
-  // Get appointments for a date range
   async getAppointments(startDate, endDate, providerId = null) {
     try {
       const formattedStart = startDate.toISOString().split("T")[0];
       const formattedEnd = endDate.toISOString().split("T")[0];
-
       let url = `/api/appointments?startDate=${formattedStart}&endDate=${formattedEnd}`;
-      if (providerId) {
-        url += `&providerId=${providerId}`;
-      }
-
-      console.log(`🔍 ATTEMPTING API CALL: Fetching appointments from ${url}`);
-      console.log("🔍 Request Headers:", {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
-      });
+      if (providerId) url += `&providerId=${providerId}`;
 
       const response = await axios.get(url, {
         timeout: 10000,
@@ -31,29 +21,16 @@ const appointmentService = {
           Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
         },
       });
-
-      console.log(`✅ API CALL SUCCESS: Status ${response.status}`);
-      console.log("📦 Response Headers:", response.headers);
-
-      const data = response.data.data || response.data;
-      return data;
+      return response.data.data || response.data;
     } catch (error) {
       console.error("❌ API CALL FAILED:", error);
-      if (error.response) {
-        console.error("❌ Error Response Data:", error.response.data);
-        console.error("❌ Error Response Status:", error.response.status);
-        console.error("❌ Error Response Headers:", error.response.headers);
-      } else if (error.request) {
-        console.error("❌ No response received - Network Error:", error.request);
-      } else {
-        console.error("❌ Request Setup Error:", error.message);
-      }
       throw error;
     }
   },
 };
 
 const Appointments = () => {
+  const dispatch = useDispatch();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,272 +39,186 @@ const Appointments = () => {
   const [currentMonthName, setCurrentMonthName] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Updated staff list mapped to Open Dental provider abbreviations
-  const staffMembers = [
-    { id: 1, name: "DOCKS" },
-    { id: 2, name: "HYGAH" },
-    { id: 3, name: "HYGNB" },
-  ];
+  const { list: providers, loading: providersLoading } = useSelector((state) => state.providers);
+
+  console.log("🧠 Redux - Providers state:", providers);
+
+  useEffect(() => {
+     console.log("📣 dispatching fetchProviders()");
+    dispatch(fetchProviders());
+  }, [dispatch]);
+
+  const staffMembers = providers.map((prov) => ({
+    id: prov.ProvNum,
+    name: prov.Abbr,
+    fullName: `${prov.FName} ${prov.LName}`.trim(),
+    color: `rgb(${prov.provColor})`,
+  }));
 
   useEffect(() => {
     const options = { month: "long", year: "numeric" };
     setCurrentMonthName(currentMonth.toLocaleDateString("en-US", options));
   }, [currentMonth]);
 
-  useEffect(() => {
-    fetchAppointments();
-  }, [selectedDate, currentMonth]);
+ useEffect(() => {
+  fetchAppointments();
+}, [selectedDate, currentMonth]);
 
-const transformAppointmentData = (apiAppointments) => {
-  console.log("🔍 Raw appointment objects:", apiAppointments);
+  const transformAppointmentData = (apiAppointments) => {
+    return apiAppointments.map((apt) => {
+      const startTimeRaw = apt.startTime || apt.AptDateTime;
+      const normalizedDateTime = startTimeRaw?.replace(" ", "T");
+      const startTime = new Date(normalizedDateTime);
+      const durationInMinutes = apt.Pattern?.length ? apt.Pattern.length * 5 : 60;
+      const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
 
-  return apiAppointments.map((apt) => {
-    console.log("🧪 Transforming appointment:", apt);
-
-    const startTimeRaw = apt.startTime || apt.AptDateTime;
-    const normalizedDateTime = startTimeRaw?.replace(" ", "T");
-    const startTime = new Date(normalizedDateTime);
-
-    if (isNaN(startTime)) {
-      throw new RangeError(`⛔ Invalid date in appointment: ${startTimeRaw}`);
-    }
-
-    const durationInMinutes = apt.Pattern?.length ? apt.Pattern.length * 5 : 60;
-    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-
-    const fullStartTime = startTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
+      return {
+        id: apt.id || apt.AptNum,
+        patientName: apt.patientName || `Patient #${apt.patientId || apt.PatNum}`,
+        date: startTime.toISOString().split("T")[0],
+        startTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+        fullStartTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+        endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+        duration: durationInMinutes,
+        type: apt.procedureDescription || apt.ProcDescript || "Appointment",
+        notes: apt.notes || apt.Note || "",
+        status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
+        staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId || apt.ProvNum}`,
+        providerId: apt.providerId || apt.ProvNum,
+        color: `rgb(${apt.provColor || "249,231,160"})`,
+      };
     });
+  };
 
-    const endTimeFormatted = endTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    const hourOnly = startTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      hour12: true,
-    });
-
-    return {
-      id: apt.id || apt.AptNum,
-      patientName: apt.patientName || `Patient #${apt.patientId || apt.PatNum}`,
-      date: startTime.toISOString().split("T")[0],
-      startTime: hourOnly,
-      fullStartTime,
-      endTime: endTimeFormatted,
-      duration: durationInMinutes,
-      type: apt.procedureDescription || apt.ProcDescript || "Appointment",
-      notes: apt.notes || apt.Note || "",
-      status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
-      staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId || apt.ProvNum}`,
-      providerId: apt.providerId || apt.ProvNum,
-      color: "#F9E7A0",
-      ...(apt.isNewPatient || apt.IsNewPatient === "true" ? { newPatient: true } : {}),
-      ...(apt.operatoryId || apt.Op ? { operatory: apt.operatoryId || apt.Op } : {}),
-      ...(apt.isHygiene || apt.IsHygiene === "true" ? { isHygiene: true } : {}),
-    };
-  });
-};
-
-
-  const fetchAppointments = async () => {
+const fetchAppointments = async () => {
   try {
     setIsLoading(true);
 
     const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
     const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
-    console.log("📅 Fetching appointments for:", {
-      startDate: startOfMonth.toISOString(),
-      endDate: endOfMonth.toISOString(),
-    });
-
+    // 🛰 Log raw API response
     const appointmentsData = await appointmentService.getAppointments(startOfMonth, endOfMonth);
-    console.log("📦 Raw API appointments:", appointmentsData);
+    console.log("🛰 Raw appointment response:", appointmentsData); // ✅ This is correct here
 
+    // 📦 Transform and log processed appointments
     const transformedAppointments = transformAppointmentData(appointmentsData);
-
-   // 👇 Insert this console.log right here:
-console.log("🧠 Final Transformed Appointments:", transformedAppointments);
+    console.log("📦 Transformed Appointments:", transformedAppointments); // ✅ This is correct here
 
     setAppointments(transformedAppointments);
 
     if (transformedAppointments.length > 0 && !selectedAppointment) {
-      const firstForSelectedDate = transformedAppointments.find(
+      const first = transformedAppointments.find(
         (apt) => apt.date === selectedDate.toISOString().split("T")[0]
       );
-      if (firstForSelectedDate) {
-        console.log("🎯 Preselecting appointment:", firstForSelectedDate);
-        setSelectedAppointment(firstForSelectedDate);
-        setNotes(firstForSelectedDate.notes || "");
+      if (first) {
+        setSelectedAppointment(first);
+        setNotes(first.notes || "");
       }
     }
 
     setIsLoading(false);
   } catch (error) {
     console.error("❌ Error fetching appointments:", error);
-
-    // OPTIONAL: Use mock data during development
-    const mockAppointments = [
-      {
-        id: 99,
-        patientName: "Fallback Patient",
-        date: "2025-03-25",
-        startTime: "1 PM",
-        fullStartTime: "1:00 PM",
-        endTime: "2:00 PM",
-        duration: 60,
-        type: "Cleaning",
-        notes: "This is mock fallback data.",
-        status: "Confirmed",
-        staff: "HYGAH",
-        color: "#F9C3C3"
-      }
-    ];
-
-    setAppointments(mockAppointments);
-    setSelectedAppointment(mockAppointments[0]);
-    setNotes(mockAppointments[0].notes || "");
     setIsLoading(false);
   }
 };
 
-  // Handle appointment click - fetch full details
-  const handleAppointmentClick = async (appointment) => {
-    try {
-      // Get full appointment details from API
-      const detailedAppointment = await appointmentService.getAppointment(appointment.id);
 
-      // Transform to UI format
-      const transformedAppointment = transformAppointmentData([detailedAppointment])[0];
-
-      setSelectedAppointment(transformedAppointment);
-      setNotes(transformedAppointment.notes || "");
-    } catch (error) {
-      console.error("Error fetching appointment details:", error);
-      // Fallback to the basic appointment data we already have
-      setSelectedAppointment(appointment);
-      setNotes(appointment.notes || "");
-    }
+  const getAppointmentsForTimeAndStaff = (time, staff) => {
+    return appointments.filter((app) => {
+      const timeMatches = app.startTime === time;
+      const staffMatches = app.staff === staff.name;
+      const dateMatches = app.date === selectedDate.toISOString().split("T")[0];
+      return timeMatches && staffMatches && dateMatches;
+    });
   };
 
-  // Handle notes change and save
-  const handleNotesChange = (e) => {
-    setNotes(e.target.value);
-  };
-
-  // Save notes to appointment
-  const saveNotes = async () => {
-    if (!selectedAppointment) return;
-
-    try {
-      // Update appointment extension with new notes
-      await appointmentService.updateAppointmentExtension(
-        selectedAppointment.id,
-        { internalNotes: notes }
-      );
-
-      // Update local state
-      setSelectedAppointment({
-        ...selectedAppointment,
-        notes: notes
-      });
-
-      // Refresh appointments list to show updated data
-      fetchAppointments();
-
-      // Show a success toast/notification here if you have a notification system
-    } catch (error) {
-      console.error("Error saving notes:", error);
-      // Could add error notification here
-    }
-  };
-
-  // Function to create a new appointment (stub for now)
-  const createNewAppointment = () => {
-    // This would open a modal or navigate to a new appointment form
-    console.log("Create new appointment clicked");
-    // You could implement this later with:
-    // navigate('/appointments/new') or setShowNewAppointmentModal(true)
-  };
-
-  const handlePrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
-
-  // Generate calendar data for the month view
-  const generateCalendarDays = () => {
-    const days = [];
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-
-    // First day of the month
-    const firstDay = new Date(year, month, 1);
-    const startingDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-    // Last day of the month
-    const lastDay = new Date(year, month + 1, 0);
-    const totalDays = lastDay.getDate();
-
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDay; i++) {
-      days.push(null);
-    }
-
-    // Add the days of the month
-    for (let i = 1; i <= totalDays; i++) {
-      days.push(i);
-    }
-
-    return days;
-  };
-
-  // Get today's date to highlight on calendar
-  const today = new Date();
-  const isToday = (day) => {
-    return day === today.getDate() &&
-           currentMonth.getMonth() === today.getMonth() &&
-           currentMonth.getFullYear() === today.getFullYear();
-  };
-
-  // Generate time slots for the day view
   const timeSlots = [
     "7 AM", "8 AM", "9 AM", "10 AM", "11 AM", "12 PM",
     "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM"
   ];
 
-  // Get appointments for a specific time slot and staff member
-const getAppointmentsForTimeAndStaff = (time, staff) => {
-  const matchingApps = appointments.filter(app => {
-    const timeMatches = app.startTime === time;
-    const staffMatches = app.staff === staff.name;
-    const dateMatches = app.date === selectedDate.toISOString().split('T')[0];
+    const isToday = (day) => {
+    return (
+      day === new Date().getDate() &&
+      currentMonth.getMonth() === new Date().getMonth() &&
+      currentMonth.getFullYear() === new Date().getFullYear()
+    );
+  };
 
-    return timeMatches && staffMatches && dateMatches;
-  });
-
-  return matchingApps;
-};
-
-
-  // Days of the week for calendar
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-  // Handle day selection from calendar
   const handleDaySelect = (day) => {
-    if (!day) return; // Skip empty days
-
+    if (!day) return;
     const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     setSelectedDate(newDate);
   };
+
+  const createNewAppointment = () => {
+  console.log("Create New Appointment clicked");
+  // TODO: implement modal or navigation
+  };
+
+  const handlePrevMonth = () => {
+  setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+};
+
+const handleNextMonth = () => {
+  setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+};
+
+const handleNotesChange = (e) => {
+  setNotes(e.target.value);
+};
+
+const saveNotes = async () => {
+  if (!selectedAppointment) return;
+
+  try {
+    // This should ideally be a PATCH or PUT request to your backend
+    await appointmentService.updateAppointmentExtension?.(selectedAppointment.id, { internalNotes: notes });
+
+    setSelectedAppointment({
+      ...selectedAppointment,
+      notes: notes,
+    });
+
+    fetchAppointments();
+  } catch (error) {
+    console.error("❌ Error saving notes:", error);
+  }
+};
+
+const generateCalendarDays = () => {
+  const days = [];
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+
+  const firstDay = new Date(year, month, 1);
+  const startingDay = firstDay.getDay();
+
+  const lastDay = new Date(year, month + 1, 0);
+  const totalDays = lastDay.getDate();
+
+  for (let i = 0; i < startingDay; i++) {
+    days.push(null);
+  }
+
+  for (let i = 1; i <= totalDays; i++) {
+    days.push(i);
+  }
+
+  return days;
+};
+
+const handleAppointmentClick = (appointment) => {
+  setSelectedAppointment(appointment);
+  setNotes(appointment.notes || "");
+};
+
+  console.log("✅ Staff Members:", staffMembers);
+
 
   return (
     <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
