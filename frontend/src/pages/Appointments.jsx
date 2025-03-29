@@ -92,6 +92,8 @@ const Appointments = () => {
   const startTime = new Date(normalizedDateTime);
   const durationInMinutes = apt.Pattern?.length ? apt.Pattern.length * 5 : 60;
   const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+  const pixelsPerMinute = 3;
+  const height = durationInMinutes * pixelsPerMinute;
 
   let patientName = `Patient #${apt.patientId}`;
   try {
@@ -116,6 +118,7 @@ const Appointments = () => {
       fullStartTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
       endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
       duration: durationInMinutes,
+      height: height,
       type: apt.procedureDescription || apt.ProcDescript || "Appointment",
       notes: apt.notes || apt.Note || "",
       status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
@@ -409,16 +412,17 @@ const handleAppointmentClick = (appointment) => {
                               <td key={`${staff.id}-${time}`} className="border-r p-1 relative h-12">
                                 {appsForThisSlot.map(app => (
                                   <div
-                                    key={app.id}
-                                    className="absolute inset-x-1 top-1 bottom-1 rounded p-1 cursor-pointer"
-                                    style={{
-                                      backgroundColor: app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0"
-                                    }}
-                                    onClick={() => handleAppointmentClick(app)}
-                                  >
-                                    <div className="text-sm font-medium">{app.patientName}</div>
-                                    <div className="text-xs">{app.type}</div>
-                                  </div>
+  key={app.id}
+  className="absolute inset-x-1 top-0 rounded p-1 cursor-pointer"
+  style={{
+    height: `${app.height}px`,
+    backgroundColor: app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0"
+  }}
+  onClick={() => handleAppointmentClick(app)}
+>
+  <div className="text-sm font-medium">{app.patientName}</div>
+  <div className="text-xs">{app.type}</div>
+</div>
                                 ))}
                               </td>
                             );
