@@ -337,7 +337,7 @@ const handleAppointmentClick = (appointment) => {
                         <th style={{ width: "80px" }} className="p-3 border text-left sticky left-0 bg-white z-10"></th>
                         {staffMembers.map((staff, index) => (
                           <th key={staff.id} style={{ width: "130px" }} className="p-3 text-center border text-sm font-medium">
-                            {staff.name}
+                            {staff.fullName}
                           </th>
                         ))}
                       </tr>
