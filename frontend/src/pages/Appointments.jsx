@@ -21,6 +21,7 @@ const appointmentService = {
           Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
         },
       });
+      console.log("🛰 Raw API Response:", response.data);
       return response.data.data || response.data;
     } catch (error) {
       console.error("❌ API CALL FAILED:", error);
@@ -90,10 +91,11 @@ const Appointments = () => {
   const startTimeRaw = apt.startTime || apt.AptDateTime;
   const normalizedDateTime = startTimeRaw?.replace(" ", "T");
   const startTime = new Date(normalizedDateTime);
-  const durationInMinutes = apt.Pattern?.length ? apt.Pattern.length * 5 : 60;
+  const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
   const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-  const pixelsPerMinute = 3;
+  const pixelsPerMinute = 3.2;
   const height = durationInMinutes * pixelsPerMinute;
+
 
   let patientName = `Patient #${apt.patientId}`;
   try {
@@ -106,9 +108,13 @@ const Appointments = () => {
         console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
       }
     }
-  } catch (err) {
-    console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
-  }
+ } catch (err) {
+  console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
+}
+
+console.log(
+  `🧪 ${patientName}: Pattern=${apt.pattern}, Duration=${durationInMinutes} mins, Height=${height}px`
+);
 
     transformed.push({
       id: apt.id || apt.AptNum,
@@ -409,21 +415,27 @@ const handleAppointmentClick = (appointment) => {
                             const appsForThisSlot = getAppointmentsForTimeAndStaff(time, staff);
 
                             return (
-                              <td key={`${staff.id}-${time}`} className="border-r p-1 relative h-12">
-                                {appsForThisSlot.map(app => (
-                                  <div
+                              <td key={`${staff.id}-${time}`} className="border-r p-1 relative">
+                                {appsForThisSlot.map(app => {
+  console.log(`🧱 Rendering ${app.patientName} | Duration: ${app.duration} | Height: ${app.height}px`);
+
+  return (
+    <div
   key={app.id}
-  className="absolute inset-x-1 top-0 rounded p-1 cursor-pointer"
+  className="absolute inset-x-1 top-0 rounded cursor-pointer"
   style={{
     height: `${app.height}px`,
-    backgroundColor: app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0"
+    backgroundColor: app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0",
+    boxSizing: "border-box",
+    overflow: "hidden"  // optional but helps if there's any overflow issue
   }}
   onClick={() => handleAppointmentClick(app)}
 >
-  <div className="text-sm font-medium">{app.patientName}</div>
-  <div className="text-xs">{app.type}</div>
-</div>
-                                ))}
+      <div className="text-sm font-medium">{app.patientName}</div>
+      <div className="text-xs">{app.type}</div>
+    </div>
+  );
+})}
                               </td>
                             );
                           })}

@@ -116,6 +116,7 @@ class OpenDentalService {
         providerName: apt.provAbbr || `Provider #${apt.ProvNum}`,
         startTime: apt.AptDateTime,
         endTime: this._calculateEndTime(apt.AptDateTime, apt.Pattern),
+        pattern: apt.Pattern,
         operatoryId: apt.Op,
         status: apt.AptStatus,
         notes: apt.Note || '',
@@ -133,27 +134,25 @@ class OpenDentalService {
     }
   }
 
-  _calculateEndTime(startTime, pattern) {
-    try {
-      const start = new Date(startTime);
-      if (isNaN(start.getTime())) {
-        return new Date(Date.now() + 30 * 60000).toISOString();
-      }
-
-      let durationMinutes = 30;
-
-      if (pattern && typeof pattern === 'string') {
-        const xCount = (pattern.match(/X/g) || []).length;
-        durationMinutes = xCount > 0 ? xCount * 5 : pattern.length * 5;
-      }
-
-      const end = new Date(start.getTime() + durationMinutes * 60000);
-      return end.toISOString();
-    } catch (error) {
-      console.error('Error calculating end time:', error);
+ _calculateEndTime(startTime, pattern) {
+  try {
+    const start = new Date(startTime);
+    if (isNaN(start.getTime())) {
       return new Date(Date.now() + 30 * 60000).toISOString();
     }
+
+    // ✅ Use total length of Pattern — every char counts as 5 minutes
+    const durationMinutes = pattern && typeof pattern === 'string'
+      ? pattern.length * 5
+      : 60; // fallback to 1 hour
+
+    const end = new Date(start.getTime() + durationMinutes * 60000);
+    return end.toISOString();
+  } catch (error) {
+    console.error('Error calculating end time:', error);
+    return new Date(Date.now() + 30 * 60000).toISOString();
   }
+}
 
   _handleError(resource, error) {
     if (error.response) {
