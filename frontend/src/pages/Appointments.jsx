@@ -346,30 +346,37 @@ const Appointments = () => {
                     )}
 
         {/* Appointments */}
-                    {appointments.map((app) => {
-                      let rowIndex = 2;
-                      let span = 1;
-                      let providerIndex = -1;
+{appointments
+  .filter(app => {
+    // Filter appointments to only show those that match the selected date
+    const appointmentDate = app.date;
+    const selectedDateStr = selectedDate.toISOString().split('T')[0];
+    return appointmentDate === selectedDateStr;
+  })
+  .map((app) => {
+    let rowIndex = 2;
+    let span = 1;
+    let providerIndex = -1;
 
-                      try {
-                        const [hourStr, minuteStrPart] = app.fullStartTime.split(":");
-                        const [minuteStr, ampm] = minuteStrPart.split(" ");
-                        let hour = parseInt(hourStr, 10);
-                        const minute = parseInt(minuteStr, 10);
+    try {
+      const [hourStr, minuteStrPart] = app.fullStartTime.split(":");
+      const [minuteStr, ampm] = minuteStrPart.split(" ");
+      let hour = parseInt(hourStr, 10);
+      const minute = parseInt(minuteStr, 10);
 
-                        if (ampm === "PM" && hour !== 12) hour += 12;
-                        if (ampm === "AM" && hour === 12) hour = 0;
+      if (ampm === "PM" && hour !== 12) hour += 12;
+      if (ampm === "AM" && hour === 12) hour = 0;
 
-                        const totalMinutes = (hour - 7) * 60 + minute;
-                        rowIndex = Math.floor(totalMinutes / 15) + 2;
-                        span = Math.ceil(app.duration / 15);
-                        providerIndex = staffMembers.findIndex((s) => s.name === app.staff);
-                      } catch (err) {
-                        console.error("⛔ Error parsing appointment time:", app, err);
-                        return null;
-                      }
+      const totalMinutes = (hour - 7) * 60 + minute;
+      rowIndex = Math.floor(totalMinutes / 15) + 2;
+      span = Math.ceil(app.duration / 15);
+      providerIndex = staffMembers.findIndex((s) => s.name === app.staff);
+    } catch (err) {
+      console.error("⛔ Error parsing appointment time:", app, err);
+      return null;
+    }
 
-          if (providerIndex === -1) return null;
+    if (providerIndex === -1) return null;
 
            return (
                         <div
@@ -420,16 +427,6 @@ const Appointments = () => {
 
               <div className="grid grid-cols-7 gap-1 text-sm">
                 {generateCalendarDays().map((day, index) => {
-                  const hasAppointments =
-                    day &&
-                    appointments.some((app) => {
-                      const appDate = new Date(app.date);
-                      return (
-                        appDate.getDate() === day &&
-                        appDate.getMonth() === currentMonth.getMonth() &&
-                        appDate.getFullYear() === currentMonth.getFullYear()
-                      );
-                    });
 
                   const isSelected =
                     day &&
@@ -444,7 +441,6 @@ const Appointments = () => {
                       h-8 w-8 flex items-center justify-center rounded-full
                       ${isSelected ? "bg-blue-600 text-white" : ""}
                       ${isToday(day) && !isSelected ? "bg-blue-100 font-bold text-blue-600" : ""}
-                      ${!isSelected && !isToday(day) && hasAppointments ? "bg-blue-100" : ""}
                       ${day ? "hover:bg-gray-100 cursor-pointer" : ""}
                     `}
                       onClick={() => handleDaySelect(day)}
