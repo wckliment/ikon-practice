@@ -275,7 +275,7 @@ const Appointments = () => {
     <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
       <Sidebar />
 
-      <div className="ml-20" style={{ backgroundColor: "#EBEAE6" }}>
+      <div className="ml-20 max-w-[calc(100vw-80px)]" style={{ backgroundColor: "#EBEAE6" }}>
         <TopBar />
 
         {/* Header */}
@@ -283,9 +283,9 @@ const Appointments = () => {
           <h1 className="text-4xl font-bold text-gray-800">Appointments</h1>
         </div>
 
-        <div className="p-6 mt-6 ml-10 flex gap-6 h-[calc(100vh-100px)] overflow-hidden">
+        <div className="p-6 mt-6 ml-10 flex h-[calc(100vh-100px)] overflow-hidden">
           {/* Left Side */}
-          <div className="flex-1 mr-6 flex flex-col overflow-hidden">
+          <div className="flex flex-col flex-grow overflow-hidden mr-6">
             {/* Filters */}
             <div className="flex space-x-4 mb-4">
               {/* Filters go here - no changes needed */}
@@ -293,12 +293,11 @@ const Appointments = () => {
             </div>
 
             {/* Appointment Grid */}
-            <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="overflow-auto h-full">
+            <div className="flex-1 bg-white rounded-lg shadow-md overflow-auto">
+              <div className="grid w-full">
                 <div
-                  className="grid"
+                  className="grid w-full"
                   style={{
-                    minWidth: `${80 + staffMembers.length * 130}px`,
                     gridTemplateColumns: `80px repeat(${staffMembers.length}, 130px)`,
                     gridTemplateRows: `auto repeat(${timeSlots.length}, 48px)`,
                   }}
