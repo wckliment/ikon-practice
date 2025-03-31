@@ -293,15 +293,16 @@ const Appointments = () => {
             </div>
 
             {/* Appointment Grid */}
-            <div className="flex-1 bg-white rounded-lg shadow-md overflow-auto">
-              <div className="grid w-full">
-                <div
-                  className="grid w-full"
-                  style={{
-                    gridTemplateColumns: `80px repeat(${staffMembers.length}, 130px)`,
-                    gridTemplateRows: `auto repeat(${timeSlots.length}, 48px)`,
-                  }}
-                >
+<div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
+  <div className="overflow-x-auto h-full">
+    <div className="min-w-full">
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `80px repeat(${staffMembers.length}, 130px)`,
+          gridTemplateRows: `auto repeat(${timeSlots.length}, 48px)`,
+        }}
+      >
                   {/* Time Labels */}
                   {timeSlots.map((time, i) => (
                     <div
@@ -384,8 +385,9 @@ const Appointments = () => {
                   })}
                 </div>
               </div>
-            </div>
-          </div>
+              </div>
+
+
 
           {/* Right Side: Mini Calendar + Details */}
           <div className="w-80 flex-shrink-0 flex flex-col h-full overflow-y-auto">

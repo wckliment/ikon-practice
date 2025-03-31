@@ -378,7 +378,14 @@ const handleRemoveUser = async () => {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="ml-20" style={{ backgroundColor: "#EBEAE6" }}>
+      <div
+  className="ml-20 flex flex-col"
+  style={{
+    backgroundColor: "#EBEAE6",
+    maxWidth: "calc(100vw - 80px)",
+    overflow: "hidden",
+  }}
+>
         {/* Top Bar */}
         <TopBar />
 
