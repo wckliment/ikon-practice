@@ -649,16 +649,15 @@ const handleRemoveUser = async () => {
                       style={{ backgroundColor: userColor }}
                     ></div>
                     <button
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                      onClick={() => {
-                        handleEditUser({
-                          ...user,
-                          appointmentColor: userColor
-                        });
-                      }}
-                    >
-                      Change
-                    </button>
+  className="text-xs text-blue-600 hover:text-blue-800"
+  onClick={() => {
+    console.log('Updating color for user:', user.id, 'to color:', userColor);
+    // Call handleUpdateUserColor directly instead of opening the edit modal
+    handleUpdateUserColor(user.id, userColor);
+  }}
+>
+  Change
+</button>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

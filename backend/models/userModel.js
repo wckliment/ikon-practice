@@ -5,7 +5,7 @@ const User = {};
 User.getAllUsers = async () => {
   const query = `
     SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
-           l.name AS location_name, l.id AS location_id
+           l.name AS location_name, u.appointment_color, l.id AS location_id
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
     WHERE u.active = TRUE OR u.active IS NULL
@@ -18,7 +18,7 @@ User.getAllUsers = async () => {
 User.getUserById = async (id) => {
   const query = `
     SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
-           l.name AS location_name, l.id AS location_id
+           l.name AS location_name, u.appointment_color, l.id AS location_id
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
     WHERE u.id = ?
@@ -30,7 +30,7 @@ User.getUserById = async (id) => {
 // ✅ Find user by email (For Login)
 User.findByEmail = async (email) => {
   const query = `
-    SELECT u.*, l.name AS location_name, l.id AS location_id
+    SELECT u.*, l.name AS location_name, u.appointment_color, l.id AS location_id
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
     WHERE u.email = ?
@@ -45,7 +45,7 @@ User.create = async (name, dob, email, password, role, location_id) => {
   const formattedRole = role ? role.trim().toLowerCase() : "staff";
   const formattedLocationId = location_id || null;
   const query = `
-    INSERT INTO users (name, dob, email, password, role, location_id)
+    INSERT INTO users (name, dob, email, password, role, location_id, appointment_color)
     VALUES (?, ?, ?, ?, ?, ?)
   `;
   const [result] = await ikonDB.query(query, [name.trim(), formattedDob, email.trim(), password, formattedRole, formattedLocationId]);
@@ -56,7 +56,7 @@ User.create = async (name, dob, email, password, role, location_id) => {
 User.getUsersByLocation = async (locationId) => {
   const query = `
     SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
-           l.name AS location_name, l.id AS location_id
+           l.name AS location_name, u.appointment_color, l.id AS location_id
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
     WHERE u.location_id = ? AND (u.active = TRUE OR u.active IS NULL)
@@ -68,7 +68,7 @@ User.getUsersByLocation = async (locationId) => {
 // ✅ Get users without a location
 User.getUsersWithoutLocation = async () => {
   const query = `
-    SELECT id, name, dob, email, role, created_at
+    SELECT id, name, dob, email, role, created_at, appointment_color
     FROM users
     WHERE location_id IS NULL
   `;
@@ -112,7 +112,7 @@ User.togglePinStatus = async (currentUserId, targetUserId, isPinned) => {
 User.getAllUsersWithPinStatus = async (currentUserId) => {
   const query = `
     SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
-           l.name AS location_name, l.id AS location_id,
+           l.name AS location_name, u.appointment_color, l.id AS location_id,
            (SELECT COUNT(*) > 0 FROM pinned_users p
             WHERE p.user_id = ? AND p.pinned_user_id = u.id) AS pinned
     FROM users u
@@ -130,7 +130,7 @@ User.getAllExceptSender = async (senderId) => {
 
 User.getUserLocations = async (userId) => {
   const query = `
-    SELECT l.*
+    SELECT l.*, u.appointment_color
     FROM locations l
     JOIN users u ON u.location_id = l.id
     WHERE u.id = ?
@@ -140,16 +140,24 @@ User.getUserLocations = async (userId) => {
 };
 
 User.update = async (id, userData) => {
-  const { name, email, role, dob, location_id } = userData;
+  const { name, email, role, dob, location_id, appointmentColor } = userData;
   const formattedDob = dob || null;
   const formattedRole = role ? role.trim().toLowerCase() : "staff";
   const formattedLocationId = location_id || null;
   const query = `
     UPDATE users
-    SET name = ?, email = ?, role = ?, dob = ?, location_id = ?
+    SET name = ?, email = ?, role = ?, dob = ?, location_id = ?, appointment_color = ?
     WHERE id = ?
   `;
-  const [result] = await ikonDB.query(query, [name.trim(), email.trim(), formattedRole, formattedDob, formattedLocationId, id]);
+  const [result] = await ikonDB.query(query, [
+    name?.trim() || '',
+    email?.trim() || '',
+    formattedRole,
+    formattedDob,
+    formattedLocationId,
+    appointmentColor || null,
+    id
+  ]);
   return result;
 };
 
