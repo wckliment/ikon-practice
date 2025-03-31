@@ -278,7 +278,8 @@ const Appointments = () => {
       <div className="ml-20 max-w-[calc(100vw-80px)]" style={{ backgroundColor: "#EBEAE6" }}>
         <TopBar />
 
-        {/* Header */}
+
+         {/* Header */}
         <div className="px-4 pt-0 pb-2 ml-16">
           <h1 className="text-4xl font-bold text-gray-800">Appointments</h1>
         </div>
@@ -292,100 +293,108 @@ const Appointments = () => {
               {/* ... Date, Office, Status, Button ... */}
             </div>
 
-            {/* Appointment Grid */}
-<div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
-  <div className="overflow-x-auto h-full">
-    <div className="min-w-full">
-      <div
-        className="grid"
-        style={{
-          gridTemplateColumns: `80px repeat(${staffMembers.length}, 130px)`,
-          gridTemplateRows: `auto repeat(${timeSlots.length}, 48px)`,
-        }}
-      >
-                  {/* Time Labels */}
-                  {timeSlots.map((time, i) => (
-                    <div
-                      key={`time-${i}`}
-                      className="text-xs text-gray-500 p-2 border-b border-r bg-white z-10"
-                      style={{ gridColumn: 1, gridRow: i + 2 }}
-                    >
-                      {time}
-                    </div>
-                  ))}
 
-                  {/* Staff Headers */}
-                  {staffMembers.map((staff, index) => (
-                    <div
-                      key={`header-${staff.id}`}
-                      className="text-center text-sm font-medium p-2 border-b border-l bg-gray-100 sticky top-0 z-20"
-                      style={{ gridColumn: index + 2, gridRow: 1 }}
-                    >
-                      {staff.fullName}
-                    </div>
-                  ))}
-
-                  {/* Grid Cells (striped) */}
-                  {timeSlots.map((_, rowIdx) =>
-                    staffMembers.map((_, colIdx) => (
+{/* Appointment Grid */}
+            <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="overflow-x-auto h-full">
+                <div className="min-w-full inline-block">
+                  <div
+                    className="grid"
+                    style={{
+                      gridTemplateColumns: `80px repeat(${staffMembers.length}, minmax(130px, 1fr))`,
+                      gridTemplateRows: `auto repeat(${timeSlots.length}, 48px)`,
+                      width: "fit-content",
+                      minWidth: "100%"
+                    }}
+                  >
+        {/* Time Labels */}
+                    {timeSlots.map((time, i) => (
                       <div
-                        key={`cell-${rowIdx}-${colIdx}`}
-                        className={`border-r ${rowIdx % 2 === 0 ? "border-b" : ""}`}
-                        style={{
-                          gridColumn: colIdx + 2,
-                          gridRow: rowIdx + 2,
-                          backgroundColor: rowIdx % 2 === 0 ? "#f9f9f9" : "#ffffff",
-                        }}
-                      />
-                    ))
-                  )}
-
-                  {/* Appointments */}
-                  {appointments.map((app) => {
-                    let rowIndex = 2;
-                    let span = 1;
-                    let providerIndex = -1;
-
-                    try {
-                      const [hourStr, minuteStrPart] = app.fullStartTime.split(":");
-                      const [minuteStr, ampm] = minuteStrPart.split(" ");
-                      let hour = parseInt(hourStr, 10);
-                      const minute = parseInt(minuteStr, 10);
-
-                      if (ampm === "PM" && hour !== 12) hour += 12;
-                      if (ampm === "AM" && hour === 12) hour = 0;
-
-                      const totalMinutes = (hour - 7) * 60 + minute;
-                      rowIndex = Math.floor(totalMinutes / 15) + 2;
-                      span = Math.ceil(app.duration / 15);
-                      providerIndex = staffMembers.findIndex((s) => s.name === app.staff);
-                    } catch (err) {
-                      console.error("⛔ Error parsing appointment time:", app, err);
-                      return null;
-                    }
-
-                    if (providerIndex === -1) return null;
-
-                    return (
-                      <div
-                        key={app.id}
-                        className="rounded cursor-pointer text-sm p-1 text-black overflow-hidden shadow"
-                        style={{
-                          gridColumn: providerIndex + 2,
-                          gridRow: `${rowIndex} / span ${span}`,
-                          backgroundColor:
-                            app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0",
-                        }}
-                        onClick={() => handleAppointmentClick(app)}
+                        key={`time-${i}`}
+                        className="text-xs text-gray-500 p-2 border-b border-r bg-white z-10"
+                        style={{ gridColumn: 1, gridRow: i + 2 }}
                       >
-                        <div className="font-medium">{app.patientName}</div>
-                        <div className="text-xs">{app.type}</div>
+                        {time}
                       </div>
-                    );
-                  })}
+                    ))}
+
+        {/* Staff Headers */}
+                    {staffMembers.map((staff, index) => (
+                      <div
+                        key={`header-${staff.id}`}
+                        className="text-center text-sm font-medium p-2 border-b border-l bg-gray-100 sticky top-0 z-20"
+                        style={{ gridColumn: index + 2, gridRow: 1 }}
+                      >
+                        {staff.fullName}
+                      </div>
+                    ))}
+
+
+        {/* Grid Cells (striped) */}
+                    {timeSlots.map((_, rowIdx) =>
+                      staffMembers.map((_, colIdx) => (
+                        <div
+                          key={`cell-${rowIdx}-${colIdx}`}
+                          className={`border-r ${rowIdx % 2 === 0 ? "border-b" : ""}`}
+                          style={{
+                            gridColumn: colIdx + 2,
+                            gridRow: rowIdx + 2,
+                            backgroundColor: rowIdx % 2 === 0 ? "#f9f9f9" : "#ffffff",
+                          }}
+                        />
+                      ))
+                    )}
+
+        {/* Appointments */}
+                    {appointments.map((app) => {
+                      let rowIndex = 2;
+                      let span = 1;
+                      let providerIndex = -1;
+
+                      try {
+                        const [hourStr, minuteStrPart] = app.fullStartTime.split(":");
+                        const [minuteStr, ampm] = minuteStrPart.split(" ");
+                        let hour = parseInt(hourStr, 10);
+                        const minute = parseInt(minuteStr, 10);
+
+                        if (ampm === "PM" && hour !== 12) hour += 12;
+                        if (ampm === "AM" && hour === 12) hour = 0;
+
+                        const totalMinutes = (hour - 7) * 60 + minute;
+                        rowIndex = Math.floor(totalMinutes / 15) + 2;
+                        span = Math.ceil(app.duration / 15);
+                        providerIndex = staffMembers.findIndex((s) => s.name === app.staff);
+                      } catch (err) {
+                        console.error("⛔ Error parsing appointment time:", app, err);
+                        return null;
+                      }
+
+          if (providerIndex === -1) return null;
+
+           return (
+                        <div
+                          key={app.id}
+                          className="rounded cursor-pointer text-sm p-1 text-black overflow-hidden shadow"
+                          style={{
+                            gridColumn: providerIndex + 2,
+                            gridRow: `${rowIndex} / span ${span}`,
+                            backgroundColor:
+                              app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0",
+                          }}
+                          onClick={() => handleAppointmentClick(app)}
+                        >
+                          <div className="font-medium">{app.patientName}</div>
+                          <div className="text-xs">{app.type}</div>
+                        </div>
+                      );
+                    })}
+
+
+      </div>
                 </div>
               </div>
-              </div>
+            </div>
+          </div>
 
 
 
