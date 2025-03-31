@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Users, Home, Key, Settings as SettingsIcon,
-  Plus, Edit2, Trash2, Check, X, Copy
+  Plus, Edit2, Trash2, Check, X, Copy, Circle
 } from "react-feather";
 import {
   fetchUsers,
@@ -38,6 +38,7 @@ const Settings = () => {
   const [editingUser, setEditingUser] = useState(false);
   const [editedUser, setEditedUser] = useState(null);
   const [removingUser, setRemovingUser] = useState(null);
+  const [selectedColor, setSelectedColor] = useState("#F9E7A0");
   const systemPreferences = useSelector((state) => state.settings.systemPreferences);
 
 
@@ -176,6 +177,16 @@ useEffect(() => {
     staff: ["system"]
   };
 
+  const colorOptions = [
+  { name: "Yellow", value: "#F9E7A0" },
+  { name: "Light Blue", value: "#A0E7F9" },
+  { name: "Light Green", value: "#A0F9C3" },
+  { name: "Light Purple", value: "#C3A0F9" },
+  { name: "Light Pink", value: "#F9A0E7" },
+  { name: "Orange", value: "#F9C3A0" },
+  { name: "Teal", value: "#A0F9E7" },
+];
+
   // Function to check if user has access to a tab
   const hasTabAccess = (tabId) => {
     if (!roleTabAccess[userRole]) return false;
@@ -217,6 +228,26 @@ useEffect(() => {
     }
   };
 
+  const handleUpdateUserColor = async (userId, color) => {
+  try {
+    await dispatch(updateUser({
+      userId: userId,
+      userData: { appointmentColor: color }
+    })).unwrap();
+
+    // Refresh the user list to show the updated color
+    if (selectedLocationFilter) {
+      dispatch(fetchUsersByLocation(selectedLocationFilter));
+    } else {
+      dispatch(fetchUsers());
+    }
+
+    alert("User color updated successfully!");
+  } catch (error) {
+    console.error("Failed to update user color:", error);
+    alert("Failed to update user color: " + (error.message || "Unknown error"));
+  }
+};
 
 
 // Handler for updating practice info
@@ -571,7 +602,7 @@ const handleRemoveUser = async () => {
                 </div>
               )}
 
-         {/* Users Table */}
+  {/* Users Table - Modified version with color indicators */}
 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
   {isLoadingUsers ? (
     <div className="p-6 text-center">Loading users...</div>
@@ -585,74 +616,72 @@ const handleRemoveUser = async () => {
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Appointment Color</th>
           <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200">
-        {/* Debug: Log display users and their details */}
-        {(() => {
-          console.log('Display Users:', displayUsers);
-          console.log('Display Users Length:', displayUsers.length);
-          return null;
-        })()}
+        {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
+          displayUsers.map((user) => {
+            // Get user's appointment color with fallback
+            const userColor = user.appointmentColor || "#F9E7A0";
 
-  {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
-  displayUsers.map((user) => {
-    // Explicit location logging with more detailed information
-    console.log(`User ${user.name} Location Details:`, {
-      location_name: user.location_name,
-      location_id: user.location_id,
-      location: user.location,
-      full_user_object: user
-    });
-
-    return (
-      <tr key={user.id}>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="text-sm text-gray-500">{user.email}</div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="text-sm text-gray-500 capitalize">{user.role}</div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="text-sm text-gray-500">
-            {/* Multiple fallback options for location */}
-            {user.location_name || user.location || user.location_id || 'No Location'}
-          </div>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-          <button
-            className="text-blue-600 hover:text-blue-900 mr-3"
-            onClick={() => handleEditUser(user)}
-          >
-            Edit
-          </button>
-          <button
-            className="text-red-600 hover:text-red-900"
-            onClick={() => handleRemoveUserConfirm(user)}
-          >
-            Remove
-          </button>
-        </td>
-      </tr>
-    );
-  })
-) : (
+            return (
+              <tr key={user.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">{user.email}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500 capitalize">{user.role}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">
+                    {user.location_name || user.location || user.location_id || 'No Location'}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div
+                      className="w-6 h-6 rounded-full mr-2"
+                      style={{ backgroundColor: userColor }}
+                    ></div>
+                    <button
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                      onClick={() => {
+                        handleEditUser({
+                          ...user,
+                          appointmentColor: userColor
+                        });
+                      }}
+                    >
+                      Change
+                    </button>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button
+                    className="text-blue-600 hover:text-blue-900 mr-3"
+                    onClick={() => handleEditUser(user)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="text-red-600 hover:text-red-900"
+                    onClick={() => handleRemoveUserConfirm(user)}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            );
+          })
+        ) : (
           <tr>
-            <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+            <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
               No users found{selectedLocationFilter ? " for this location" : ""}.
-              {(() => {
-                console.log('Debug - No Users Scenario:', {
-                  displayUsers,
-                  selectedLocationFilter,
-                  usersStatus: usersStatus,
-                  usersByLocationStatus: usersByLocationStatus
-                });
-                return null;
-              })()}
             </td>
           </tr>
         )}
@@ -661,7 +690,7 @@ const handleRemoveUser = async () => {
   )}
 </div>
 
-              {/* Edit User Modal */}
+ {/* Edit User Modal */}
 {editingUser && editedUser && (
   <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
     <div className="bg-white rounded-lg shadow-xl p-6 w-3/4 max-w-3xl">
@@ -727,6 +756,63 @@ const handleRemoveUser = async () => {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Appointment Color Section */}
+        <div className="col-span-2 mt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Appointment Color
+            <span className="ml-2 text-xs text-gray-500">
+              (This color will be used for this user's appointments in the calendar)
+            </span>
+          </label>
+
+          <div className="grid grid-cols-4 md:grid-cols-7 gap-3 mb-4">
+            {colorOptions.map((color) => (
+              <div
+                key={color.value}
+                className={`p-3 border rounded-md cursor-pointer hover:border-gray-400 ${
+                  (editedUser.appointmentColor === color.value) ? 'border-blue-500 shadow-md' : 'border-gray-200'
+                }`}
+                onClick={() => setEditedUser({ ...editedUser, appointmentColor: color.value })}
+              >
+                <div
+                  className="w-full h-8 rounded-md mb-2"
+                  style={{ backgroundColor: color.value }}
+                ></div>
+                <div className="text-center text-xs">{color.name}</div>
+              </div>
+            ))}
+
+            {/* Custom color input */}
+            <div className="p-3 border rounded-md border-gray-200">
+              <div className="flex justify-center h-8 items-center mb-2">
+                <input
+                  type="color"
+                  value={editedUser.appointmentColor || '#F9E7A0'}
+                  onChange={(e) => setEditedUser({ ...editedUser, appointmentColor: e.target.value })}
+                  className="w-8 h-8"
+                />
+              </div>
+              <div className="text-center text-xs">Custom</div>
+            </div>
+          </div>
+
+          {/* Preview section */}
+          <div className="mb-4">
+            <h4 className="text-sm font-medium mb-2">Preview</h4>
+            <div className="border rounded-md p-3 bg-gray-50">
+              <div
+                className="w-40 h-12 rounded shadow-sm p-2"
+                style={{ backgroundColor: editedUser.appointmentColor || '#F9E7A0' }}
+              >
+                <div className="text-black text-sm font-medium truncate">
+                  {editedUser.name}
+                </div>
+                <div className="text-black text-xs">Sample Appointment</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div className="flex justify-end space-x-3">
