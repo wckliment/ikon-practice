@@ -56,11 +56,12 @@ const Appointments = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentMonthName, setCurrentMonthName] = useState("");
   const [notes, setNotes] = useState("");
-
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const { list: providers, loading: providersLoading } = useSelector((state) => state.providers);
   const users = useSelector((state) => state.settings.users.data);
-  console.log("👥 Users from Redux:", users);
-
+  const [searchTerm, setSearchTerm] = useState("");
+  const [patients, setPatients] = useState([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProviders());
@@ -73,6 +74,14 @@ const Appointments = () => {
     fullName: `${prov.FName} ${prov.LName}`.trim(),
     color: `rgb(${prov.provColor})`,
   }));
+
+  const [newAppointment, setNewAppointment] = useState({
+  patientId: '',
+  providerId: '',
+  date: '',
+  startTime: '',
+  duration: 15, // default 15 minutes
+});
 
   useEffect(() => {
     const options = { month: "long", year: "numeric" };
@@ -94,7 +103,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     }
   });
 
-  console.log("📍 Built providerColorMap:", providerColorMap);
+
 
   for (const apt of apiAppointments) {
     const startTimeRaw = apt.startTime || apt.AptDateTime;
@@ -107,7 +116,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
 
     // 🧾 Log providerId for debugging
     const providerId = apt.providerId || apt.ProvNum;
-    console.log("📦 Appointment providerId:", providerId);
+
 
     let patientName = `Patient #${apt.patientId}`;
     try {
@@ -158,11 +167,11 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
 
       //  Log raw API response
       const appointmentsData = await appointmentService.getAppointments(startOfMonth, endOfMonth);
-      console.log("🛰 Raw appointment response:", appointmentsData);
+
 
       //  Await transformed appointments (because it now fetches patient data)
       const transformedAppointments = await transformAppointmentData(appointmentsData, users);
-      console.log("📦 Transformed Appointments:", transformedAppointments);
+
 
       setAppointments(transformedAppointments);
 
@@ -221,10 +230,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     setSelectedDate(newDate);
   };
 
-  const createNewAppointment = () => {
-    console.log("Create New Appointment clicked");
-    // TODO: implement modal or navigation
-  };
+
 
   const handlePrevMonth = () => {
     setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -242,7 +248,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     if (!selectedAppointment) return;
 
     try {
-      // This should ideally be a PATCH or PUT request to your backend
+
       await appointmentService.updateAppointmentExtension?.(selectedAppointment.id, { internalNotes: notes });
 
       setSelectedAppointment({
@@ -284,6 +290,41 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
   };
 
 
+    // Fetch Patients based on search term
+  useEffect(() => {
+    const fetchPatients = async () => {
+      if (!searchTerm) {
+        setPatients([]); // Clear patients if no search term
+        return;
+      }
+
+      try {
+        setLoadingPatients(true);
+
+        const response = await axios.get(`/path-to-your-backend-api/patients`, {
+          params: {
+            search: searchTerm,
+            limit: 50, // Limit results per page
+          },
+          headers: {
+            'Customer-Key': YOUR_CUSTOMER_KEY,
+            'Developer-Key': YOUR_DEVELOPER_KEY,
+          }
+        });
+
+        setPatients(response.data); // Store patients in state
+      } catch (error) {
+        console.error("Error fetching patients:", error);
+      } finally {
+        setLoadingPatients(false);
+      }
+    };
+
+    fetchPatients();
+  }, [searchTerm]); // Triggered when searchTerm changes
+
+
+
     return (
   <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
     <Sidebar />
@@ -302,8 +343,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
         <div className="flex flex-col flex-grow overflow-hidden mr-6">
             {/* Filters */}
             <div className="flex space-x-4 mb-4">
-              {/* Filters go here - no changes needed */}
-              {/* ... Date, Office, Status, Button ... */}
+
             </div>
 
 {/* New Appointment Button */}
@@ -511,7 +551,72 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
               </div>
             )}
           </div>
-        </div>
+          </div>
+ {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">Create New Appointment</h3>
+              <form>
+                <div className="mb-4">
+  <label className="block text-sm font-medium mb-1">Patient</label>
+  <select
+    className="w-full border rounded p-2"
+    value={newAppointment.patientId}
+    onChange={(e) =>
+      setNewAppointment({ ...newAppointment, patientId: e.target.value })
+    }
+  >
+    <option value="" disabled>Select Patient</option>
+    {/* Loop through patient options here */}
+    {patients.map((patient) => (
+      <option key={patient.id} value={patient.id}>
+        {patient.firstName} {patient.lastName}
+      </option>
+    ))}
+  </select>
+</div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Provider</label>
+                  <input type="text" className="w-full border rounded p-2" />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Date</label>
+                  <input type="date" className="w-full border rounded p-2" />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Start Time</label>
+                  <input type="time" className="w-full border rounded p-2" />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Duration (mins)</label>
+                  <input type="number" className="w-full border rounded p-2" />
+                </div>
+
+                <div className="flex justify-end space-x-2 mt-4">
+                  <button
+                    type="button"
+                    className="text-sm text-gray-600 hover:underline"
+                    onClick={() => setShowCreateModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                  >
+                    Create
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+
       </div>
     </div>
   );
