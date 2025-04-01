@@ -3,6 +3,7 @@ import { Calendar, Clock, User, Filter, ChevronLeft, ChevronRight } from "react-
 import { useSelector, useDispatch } from "react-redux";
 import { fetchProviders } from "../redux/providersSlice";
 import { fetchUsers } from "../redux/settingsSlice";
+import { fetchLocations } from "../redux/settingsSlice";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -66,6 +67,7 @@ const Appointments = () => {
   useEffect(() => {
     dispatch(fetchProviders());
     dispatch(fetchUsers());
+    dispatch(fetchLocations());
   }, [dispatch]);
 
   const staffMembers = providers.map((prov) => ({
@@ -289,39 +291,39 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     setNotes(appointment.notes || "");
   };
 
+useEffect(() => {
+  if (!searchTerm) {
+    setPatients([]); // Clear patients if no search term
+    return;
+  }
 
-    // Fetch Patients based on search term
-  useEffect(() => {
-    const fetchPatients = async () => {
-      if (!searchTerm) {
-        setPatients([]); // Clear patients if no search term
-        return;
-      }
+  const fetchPatients = async () => {
+    setLoadingPatients(true);
+    try {
+      const token = localStorage.getItem("token");
+      console.log("Authorization Token:", token);  // Log the token to verify it's correct
 
-      try {
-        setLoadingPatients(true);
+      const response = await axios.get(`/api/patients`, {
+        params: {
+          search: searchTerm,  // Use the search term in the API request
+          limit: 50,           // Adjust limit if needed
+        },
+        headers: {
+          "Authorization": `Bearer ${token}`, // Ensure the token is sent in the Authorization header
+        }
+      });
 
-        const response = await axios.get(`/path-to-your-backend-api/patients`, {
-          params: {
-            search: searchTerm,
-            limit: 50, // Limit results per page
-          },
-          headers: {
-            'Customer-Key': YOUR_CUSTOMER_KEY,
-            'Developer-Key': YOUR_DEVELOPER_KEY,
-          }
-        });
+      console.log("Fetched Patients:", response.data);  // Log the response to verify
+      setPatients(response.data);  // Update the patient list
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
 
-        setPatients(response.data); // Store patients in state
-      } catch (error) {
-        console.error("Error fetching patients:", error);
-      } finally {
-        setLoadingPatients(false);
-      }
-    };
-
-    fetchPatients();
-  }, [searchTerm]); // Triggered when searchTerm changes
+  fetchPatients();  // Call fetch when the search term changes
+}, [searchTerm]);
 
 
 
@@ -330,7 +332,29 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     <Sidebar />
 
     <div className="ml-20 max-w-[calc(100vw-80px)]" style={{ backgroundColor: "#EBEAE6" }}>
-      <TopBar />
+          <TopBar />
+
+
+        {/* Display Patients List */}
+        {loadingPatients ? (
+  <div>Loading patients...</div>
+) : (
+  <select
+    className="w-full border rounded p-2"
+    value={newAppointment.patientId}
+    onChange={(e) =>
+      setNewAppointment({ ...newAppointment, patientId: e.target.value })
+    }
+  >
+    <option value="" disabled>Select Patient</option>
+    {patients.map((patient) => (
+      <option key={patient.PatNum} value={patient.PatNum}>
+        {patient.FName} {patient.LName}
+      </option>
+    ))}
+  </select>
+)}
+
 
           {/* Header */}
           <div className="px-4 pt-0 pb-2 ml-16">
@@ -552,69 +576,82 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
             )}
           </div>
           </div>
- {showCreateModal && (
+ {/* Modal for creating new appointment */}
+           {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
             <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
               <h3 className="text-lg font-semibold mb-4">Create New Appointment</h3>
               <form>
                 <div className="mb-4">
-  <label className="block text-sm font-medium mb-1">Patient</label>
-  <select
-    className="w-full border rounded p-2"
-    value={newAppointment.patientId}
-    onChange={(e) =>
-      setNewAppointment({ ...newAppointment, patientId: e.target.value })
-    }
-  >
-    <option value="" disabled>Select Patient</option>
-    {/* Loop through patient options here */}
-    {patients.map((patient) => (
-      <option key={patient.id} value={patient.id}>
-        {patient.firstName} {patient.lastName}
-      </option>
-    ))}
-  </select>
-</div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Provider</label>
-                  <input type="text" className="w-full border rounded p-2" />
+                  <label className="block text-sm font-medium mb-1">Patient</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded p-2"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}  // Update searchTerm as user types
+                    placeholder="Search by name or ID..."
+                  />
                 </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Date</label>
-                  <input type="date" className="w-full border rounded p-2" />
-                </div>
+        {/* Patient dropdown */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Select Patient</label>
+          <select
+            className="w-full border rounded p-2"
+            value={newAppointment.patientId}
+            onChange={(e) =>
+              setNewAppointment({ ...newAppointment, patientId: e.target.value })
+            }
+          >
+            <option value="" disabled>Select Patient</option>
+            {patients.map((patient) => (
+              <option key={patient.PatNum} value={patient.PatNum}>
+                {patient.FName} {patient.LName}
+              </option>
+            ))}
+          </select>
+        </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Start Time</label>
-                  <input type="time" className="w-full border rounded p-2" />
-                </div>
+        {/* Other form fields for provider, date, etc. */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Provider</label>
+          <input type="text" className="w-full border rounded p-2" />
+        </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Duration (mins)</label>
-                  <input type="number" className="w-full border rounded p-2" />
-                </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Date</label>
+          <input type="date" className="w-full border rounded p-2" />
+        </div>
 
-                <div className="flex justify-end space-x-2 mt-4">
-                  <button
-                    type="button"
-                    className="text-sm text-gray-600 hover:underline"
-                    onClick={() => setShowCreateModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-                  >
-                    Create
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Start Time</label>
+          <input type="time" className="w-full border rounded p-2" />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Duration (mins)</label>
+          <input type="number" className="w-full border rounded p-2" />
+        </div>
+
+        <div className="flex justify-end space-x-2 mt-4">
+          <button
+            type="button"
+            className="text-sm text-gray-600 hover:underline"
+            onClick={() => setShowCreateModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+          >
+            Create
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
 
       </div>

@@ -172,7 +172,7 @@ export const fetchLocations = createAsyncThunk(
     try {
       const state = getState();
 
-      // Add more verbose logging
+      // Verbose logging for debugging
       console.log('Full Redux state:', state);
       console.log('Auth state:', state.auth);
       console.log('Auth user:', state.auth.user);
@@ -184,7 +184,7 @@ export const fetchLocations = createAsyncThunk(
       }
 
       const userId = state.auth.user.id;
-      const userLocationId = state.auth.user.location_id; // Get location_id here
+      const userLocationId = state.auth.user.location_id; // Get location_id from auth state
 
       console.log(`THUNK: Fetching locations for user ID: ${userId}`);
 
@@ -192,19 +192,28 @@ export const fetchLocations = createAsyncThunk(
         Authorization: `Bearer ${state.auth.token}`
       };
 
+      // Fetch locations from API
       const response = await axios.get(`/api/users/${userId}/locations`, {
         headers,
-        timeout: 10000
+        timeout: 10000,
       });
 
-      console.log('THUNK: Locations fetched:', response.data);
+      // Check if locations data is returned and log it
+      if (!response.data || response.data.length === 0) {
+        console.error('THUNK: No locations returned from API');
+        return rejectWithValue('No locations available for the user.');
+      }
 
-      // Return both the locations data and the user's location_id
+      console.log('Locations fetched successfully:', response.data);
+
+      // Return locations data and userLocationId
       return {
         locations: response.data,
         userLocationId: userLocationId
       };
+
     } catch (error) {
+      // Catch and log any errors from the API call
       console.error('THUNK: Error fetching locations:', error);
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -474,6 +483,7 @@ const settingsSlice = createSlice({
       })
 
       .addCase(fetchLocations.fulfilled, (state, action) => {
+         console.log("Fetched locations:", action.payload.locations);  // Log the fetched locations
   state.locations.status = "succeeded";
 
   // Get userLocationId from the action payload

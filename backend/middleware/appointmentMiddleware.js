@@ -1,12 +1,10 @@
 const OpenDentalService = require('../services/openDentalService');
 const db = require('../config/db');
 
-// This middleware initializes the Open Dental service
 const initializeOpenDental = async (req, res, next) => {
   try {
     console.log('Initialize Open Dental middleware - starting');
 
-    // We expect req.user to be set by your existing authentication middleware
     if (!req.user) {
       console.log('User not found in request');
       return res.status(400).json({
@@ -17,7 +15,6 @@ const initializeOpenDental = async (req, res, next) => {
 
     console.log('User found in request:', req.user);
 
-    // Check for location_id (snake_case to match what's in the token)
     if (!req.user.location_id) {
       console.log('No location_id found in user object');
       return res.status(400).json({
@@ -28,11 +25,7 @@ const initializeOpenDental = async (req, res, next) => {
 
     console.log(`Fetching location data for ID: ${req.user.location_id}`);
 
-    // ✅ FIXED: No .promise() needed here
-    const [rows] = await db.query(
-      'SELECT * FROM locations WHERE id = ?',
-      [req.user.location_id]
-    );
+    const [rows] = await db.query('SELECT * FROM locations WHERE id = ?', [req.user.location_id]);
 
     console.log('Query results:', rows);
 
@@ -76,4 +69,3 @@ const initializeOpenDental = async (req, res, next) => {
 module.exports = {
   initializeOpenDental
 };
-

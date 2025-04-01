@@ -75,6 +75,39 @@ class OpenDentalService {
     }
   }
 
+  // New method for searching patients
+async searchPatients(searchTerm) {
+  try {
+    console.log(`Searching for patients with term: ${searchTerm}`);
+
+    // Split search term into first name and last name
+    const [LName, FName] = searchTerm.split(" "); // This assumes the search term is in "LastName FirstName" format
+
+    const url = `${this.baseUrl}/patients`;
+
+    const response = await axios.get(url, {
+      headers: this.headers,
+      params: {
+        LName: LName,  // Last Name
+        FName: FName,  // First Name
+      
+      },
+    });
+
+    if (!response.data || response.data.length === 0) {
+      console.log('No patients found');
+      return [];
+    }
+
+    console.log(`✅ Found ${response.data.length} patients`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error searching for patients:', error.response ? error.response.data : error.message);
+    throw new Error(`Failed to search patients: ${error.message}`);
+  }
+}
+
+
   _formatDate(date) {
     try {
       if (date instanceof Date) {
@@ -134,25 +167,24 @@ class OpenDentalService {
     }
   }
 
- _calculateEndTime(startTime, pattern) {
-  try {
-    const start = new Date(startTime);
-    if (isNaN(start.getTime())) {
+  _calculateEndTime(startTime, pattern) {
+    try {
+      const start = new Date(startTime);
+      if (isNaN(start.getTime())) {
+        return new Date(Date.now() + 30 * 60000).toISOString();
+      }
+
+      const durationMinutes = pattern && typeof pattern === 'string'
+        ? pattern.length * 5
+        : 60;
+
+      const end = new Date(start.getTime() + durationMinutes * 60000);
+      return end.toISOString();
+    } catch (error) {
+      console.error('Error calculating end time:', error);
       return new Date(Date.now() + 30 * 60000).toISOString();
     }
-
-    // ✅ Use total length of Pattern — every char counts as 5 minutes
-    const durationMinutes = pattern && typeof pattern === 'string'
-      ? pattern.length * 5
-      : 60; // fallback to 1 hour
-
-    const end = new Date(start.getTime() + durationMinutes * 60000);
-    return end.toISOString();
-  } catch (error) {
-    console.error('Error calculating end time:', error);
-    return new Date(Date.now() + 30 * 60000).toISOString();
   }
-}
 
   _handleError(resource, error) {
     if (error.response) {
