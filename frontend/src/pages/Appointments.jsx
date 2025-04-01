@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ReactSelect from "react-select";
 import { Calendar, Clock, User, Filter, ChevronLeft, ChevronRight } from "react-feather";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchProviders } from "../redux/providersSlice";
@@ -291,6 +292,8 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     setNotes(appointment.notes || "");
   };
 
+
+  //Fetching patients based on the search term
 useEffect(() => {
   if (!searchTerm) {
     setPatients([]); // Clear patients if no search term
@@ -313,7 +316,7 @@ useEffect(() => {
         }
       });
 
-      console.log("Fetched Patients:", response.data);  // Log the response to verify
+
       setPatients(response.data);  // Update the patient list
     } catch (error) {
       console.error("Error fetching patients:", error);
@@ -325,6 +328,23 @@ useEffect(() => {
   fetchPatients();  // Call fetch when the search term changes
 }, [searchTerm]);
 
+
+   // Auto-complete for the patient search input
+  const handleSearchChange = (selectedOption) => {
+    setNewAppointment({
+      ...newAppointment,
+      patientId: selectedOption ? selectedOption.value : "",
+    });
+  };
+
+  const handleSearchInputChange = (inputValue) => {
+    setSearchTerm(inputValue);
+  };
+
+  const patientOptions = patients.map((patient) => ({
+    label: `${patient.FName} ${patient.LName}`,
+    value: patient.PatNum,
+  }));
 
 
     return (
@@ -578,39 +598,50 @@ useEffect(() => {
           </div>
  {/* Modal for creating new appointment */}
            {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-              <h3 className="text-lg font-semibold mb-4">Create New Appointment</h3>
-              <form>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Patient</label>
-                  <input
-                    type="text"
-                    className="w-full border rounded p-2"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}  // Update searchTerm as user types
-                    placeholder="Search by name or ID..."
-                  />
-                </div>
+           <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+          <h3 className="text-lg font-semibold mb-4">Create New Appointment</h3>
+          <form>
+            {/* Patient Search Input with React Select */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Patient</label>
+              <ReactSelect
+                cacheOptions
+                loadOptions={handleSearchInputChange}  // Handle input change and update the searchTerm
+                options={patientOptions}
+                onInputChange={handleSearchInputChange} // Update the searchTerm on input change
+                onChange={handleSearchChange}  // Set selected patient ID
+                isLoading={loadingPatients}
+                placeholder="Search by name or ID..."
+                value={
+                  patients.find((patient) => patient.PatNum === newAppointment.patientId)
+                    ? {
+                        label: `${patients.find((patient) => patient.PatNum === newAppointment.patientId).FName} ${patients.find((patient) => patient.PatNum === newAppointment.patientId).LName}`,
+                        value: newAppointment.patientId,
+                      }
+                    : null
+                }
+              />
+            </div>
 
-        {/* Patient dropdown */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Select Patient</label>
-          <select
-            className="w-full border rounded p-2"
-            value={newAppointment.patientId}
-            onChange={(e) =>
-              setNewAppointment({ ...newAppointment, patientId: e.target.value })
-            }
-          >
-            <option value="" disabled>Select Patient</option>
-            {patients.map((patient) => (
-              <option key={patient.PatNum} value={patient.PatNum}>
-                {patient.FName} {patient.LName}
-              </option>
-            ))}
-          </select>
-        </div>
+            {/* Patient Dropdown (if no auto-complete) */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Select Patient</label>
+              <select
+                className="w-full border rounded p-2"
+                value={newAppointment.patientId}
+                onChange={(e) =>
+                  setNewAppointment({ ...newAppointment, patientId: e.target.value })
+                }
+              >
+                <option value="" disabled>Select Patient</option>
+                {patients.map((patient) => (
+                  <option key={patient.PatNum} value={patient.PatNum}>
+                    {patient.FName} {patient.LName}
+                  </option>
+                ))}
+              </select>
+            </div>
 
         {/* Other form fields for provider, date, etc. */}
         <div className="mb-4">
