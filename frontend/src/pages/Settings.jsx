@@ -351,7 +351,8 @@ const handleEditUser = (user) => {
     email: user.email,
     role: user.role,
     location_id: user.location_id,
-    dob: formattedDob
+    dob: formattedDob,
+    appointmentColor: user.appointment_color || "#F9E7A0",
   });
   setEditingUser(true);
 };
@@ -624,7 +625,7 @@ const handleRemoveUser = async () => {
         {Array.isArray(displayUsers) && displayUsers.length > 0 ? (
           displayUsers.map((user) => {
             // Get user's appointment color with fallback
-            const userColor = user.appointmentColor || "#F9E7A0";
+            const userColor = user.appointment_color || "#F9E7A0";
 
             return (
               <tr key={user.id}>
@@ -800,7 +801,8 @@ const handleRemoveUser = async () => {
           {/* Preview section */}
           <div className="mb-4">
             <h4 className="text-sm font-medium mb-2">Preview</h4>
-            <div className="border rounded-md p-3 bg-gray-50">
+                          <div className="border rounded-md p-3 bg-gray-50">
+                            {console.log("🖍️ Preview Color:", editedUser.appointmentColor)}
               <div
                 className="w-40 h-12 rounded shadow-sm p-2"
                 style={{ backgroundColor: editedUser.appointmentColor || '#F9E7A0' }}
