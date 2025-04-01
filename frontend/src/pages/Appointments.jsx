@@ -283,28 +283,38 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     setNotes(appointment.notes || "");
   };
 
-  return (
-    <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
-      <Sidebar />
 
-      <div className="ml-20 max-w-[calc(100vw-80px)]" style={{ backgroundColor: "#EBEAE6" }}>
-        <TopBar />
+    return (
+  <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
+    <Sidebar />
+
+    <div className="ml-20 max-w-[calc(100vw-80px)]" style={{ backgroundColor: "#EBEAE6" }}>
+      <TopBar />
+
+          {/* Header */}
+          <div className="px-4 pt-0 pb-2 ml-16">
+  <h1 className="text-4xl font-bold text-gray-800">Appointments</h1>
+</div>
 
 
-         {/* Header */}
-        <div className="px-4 pt-0 pb-2 ml-16">
-          <h1 className="text-4xl font-bold text-gray-800">Appointments</h1>
-        </div>
-
-        <div className="p-6 mt-6 ml-10 flex h-[calc(100vh-100px)] overflow-hidden">
-          {/* Left Side */}
-          <div className="flex flex-col flex-grow overflow-hidden mr-6">
+      <div className="p-6 mt-6 ml-10 flex h-[calc(100vh-100px)] overflow-hidden">
+        {/* Left Side */}
+        <div className="flex flex-col flex-grow overflow-hidden mr-6">
             {/* Filters */}
             <div className="flex space-x-4 mb-4">
               {/* Filters go here - no changes needed */}
               {/* ... Date, Office, Status, Button ... */}
             </div>
 
+{/* New Appointment Button */}
+<div className="mb-4">
+  <button
+    onClick={() => setShowCreateModal(true)}
+    className="border border-gray-300 rounded-full px-4 py-1 text-gray-700 text-sm flex items-center hover:shadow"
+  >
+    New Appointment <span className="ml-2 text-xl leading-none">+</span>
+  </button>
+              </div>
 
 {/* Appointment Grid */}
             <div className="flex-1 bg-white rounded-lg shadow-md overflow-hidden">
