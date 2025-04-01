@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Calendar, Clock, User, Filter, ChevronLeft, ChevronRight } from "react-feather";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchProviders } from "../redux/providersSlice";
+import { fetchUsers } from "../redux/settingsSlice";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -57,12 +58,13 @@ const Appointments = () => {
   const [notes, setNotes] = useState("");
 
   const { list: providers, loading: providersLoading } = useSelector((state) => state.providers);
+  const users = useSelector((state) => state.settings.users.data);
+  console.log("👥 Users from Redux:", users);
 
-  console.log("🧠 Redux - Providers state:", providers);
 
   useEffect(() => {
-    console.log("📣 dispatching fetchProviders()");
     dispatch(fetchProviders());
+    dispatch(fetchUsers());
   }, [dispatch]);
 
   const staffMembers = providers.map((prov) => ({
@@ -81,61 +83,71 @@ const Appointments = () => {
     fetchAppointments();
   }, [selectedDate, currentMonth]);
 
-  const transformAppointmentData = async (apiAppointments) => {
-    const transformed = [];
+const transformAppointmentData = async (apiAppointments, users = []) => {
+  const transformed = [];
 
-    for (const apt of apiAppointments) {
-      console.log("🔎 Raw apt object:", apt);
-      console.log("📋 Appointment PatNum:", apt.patientId);
+  // 🔧 Build color map with string keys
+  const providerColorMap = {};
+  users.forEach((user) => {
+    if (user.provider_id && user.appointment_color) {
+      providerColorMap[String(user.provider_id)] = user.appointment_color;
+    }
+  });
 
-      const startTimeRaw = apt.startTime || apt.AptDateTime;
-      const normalizedDateTime = startTimeRaw?.replace(" ", "T");
-      const startTime = new Date(normalizedDateTime);
-      const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
-      const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-      const pixelsPerMinute = 3.2;
-      const height = durationInMinutes * pixelsPerMinute;
+  console.log("📍 Built providerColorMap:", providerColorMap);
 
+  for (const apt of apiAppointments) {
+    const startTimeRaw = apt.startTime || apt.AptDateTime;
+    const normalizedDateTime = startTimeRaw?.replace(" ", "T");
+    const startTime = new Date(normalizedDateTime);
+    const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
+    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+    const pixelsPerMinute = 3.2;
+    const height = durationInMinutes * pixelsPerMinute;
 
-      let patientName = `Patient #${apt.patientId}`;
-      try {
-        if (apt.patientId) {
-          const patient = await appointmentService.getPatientById(apt.patientId);
-          if (patient && (patient.FName || patient.LName)) {
-            console.log("🧑‍⚕️ Patient fetched:", patient);
-            patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
-          } else {
-            console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
-          }
+    // 🧾 Log providerId for debugging
+    const providerId = apt.providerId || apt.ProvNum;
+    console.log("📦 Appointment providerId:", providerId);
+
+    let patientName = `Patient #${apt.patientId}`;
+    try {
+      if (apt.patientId) {
+        const patient = await appointmentService.getPatientById(apt.patientId);
+        if (patient && (patient.FName || patient.LName)) {
+          console.log("🧑‍⚕️ Patient fetched:", patient);
+          patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
+        } else {
+          console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
         }
-      } catch (err) {
-        console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
       }
-
-      console.log(
-        `🧪 ${patientName}: Pattern=${apt.pattern}, Duration=${durationInMinutes} mins, Height=${height}px`
-      );
-
-      transformed.push({
-        id: apt.id || apt.AptNum,
-        patientName,
-        date: startTime.toISOString().split("T")[0],
-        startTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
-        fullStartTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-        endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-        duration: durationInMinutes,
-        height: height,
-        type: apt.procedureDescription || apt.ProcDescript || "Appointment",
-        notes: apt.notes || apt.Note || "",
-        status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
-        staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId || apt.ProvNum}`,
-        providerId: apt.providerId || apt.ProvNum,
-        color: `rgb(${apt.provColor || "249,231,160"})`,
-      });
+    } catch (err) {
+      console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
     }
 
-    return transformed;
-  };
+    const resolvedColor = providerColorMap[String(providerId)] || `rgb(${apt.provColor || "249,231,160"})`;
+
+    console.log(`🎨 Color resolved for provider ${providerId}:`, resolvedColor);
+
+    transformed.push({
+      id: apt.id || apt.AptNum,
+      patientName,
+      date: startTime.toISOString().split("T")[0],
+      startTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+      fullStartTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+      endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+      duration: durationInMinutes,
+      height: height,
+      type: apt.procedureDescription || apt.ProcDescript || "Appointment",
+      notes: apt.notes || apt.Note || "",
+      status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
+      staff: apt.providerName || apt.provAbbr || `Provider #${providerId}`,
+      providerId,
+      color: resolvedColor
+    });
+  }
+
+  return transformed;
+};
 
   const fetchAppointments = async () => {
     try {
@@ -149,7 +161,7 @@ const Appointments = () => {
       console.log("🛰 Raw appointment response:", appointmentsData);
 
       //  Await transformed appointments (because it now fetches patient data)
-      const transformedAppointments = await transformAppointmentData(appointmentsData);
+      const transformedAppointments = await transformAppointmentData(appointmentsData, users);
       console.log("📦 Transformed Appointments:", transformedAppointments);
 
       setAppointments(transformedAppointments);
@@ -385,8 +397,8 @@ const Appointments = () => {
                           style={{
                             gridColumn: providerIndex + 2,
                             gridRow: `${rowIndex} / span ${span}`,
-                            backgroundColor:
-                              app.type === "Initial Consult" ? "#F9C3C3" : "#F9E7A0",
+                            backgroundColor: app.color || "#F9E7A0",
+
                           }}
                           onClick={() => handleAppointmentClick(app)}
                         >

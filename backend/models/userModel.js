@@ -56,7 +56,7 @@ User.create = async (name, dob, email, password, role, location_id) => {
 User.getUsersByLocation = async (locationId) => {
   const query = `
     SELECT u.id, u.name, u.dob, u.email, u.role, u.created_at,
-           l.name AS location_name, u.appointment_color, l.id AS location_id
+           l.name AS location_name, u.appointment_color, l.id AS location_id, u.provider_id
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
     WHERE u.location_id = ? AND (u.active = TRUE OR u.active IS NULL)
