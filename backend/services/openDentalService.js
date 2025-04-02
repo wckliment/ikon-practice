@@ -36,6 +36,49 @@ class OpenDentalService {
     }
   }
 
+async createAppointment(appointmentData) {
+  try {
+    console.log('Creating appointment in Open Dental:', appointmentData);
+
+    // Make sure AptStatus is properly set as a string
+    if (typeof appointmentData.AptStatus === 'number') {
+      // Convert numeric status to string if needed
+      switch(appointmentData.AptStatus) {
+        case 1:
+          appointmentData.AptStatus = "Scheduled";
+          break;
+        case 2:
+          appointmentData.AptStatus = "Complete";
+          break;
+        case 3:
+          appointmentData.AptStatus = "UnschedList";
+          break;
+        case 4:
+          appointmentData.AptStatus = "Broken";
+          break;
+        case 5:
+          appointmentData.AptStatus = "Planned";
+          break;
+        default:
+          appointmentData.AptStatus = "Scheduled";
+      }
+    }
+
+    // Send the request to Open Dental API
+    const response = await axios.post(`${this.baseUrl}/appointments`, appointmentData, {
+      headers: this.headers
+    });
+
+    console.log('Open Dental API response:', response.data);
+
+    // Transform the response data to match our appointment format
+    return this._transformAppointment(response.data);
+  } catch (error) {
+    this._handleError('create appointment', error);
+    throw new Error(`Failed to create appointment: ${error.message}`);
+  }
+}
+
   async getProviders() {
     try {
       console.log("🌐 Fetching providers from Open Dental");
@@ -90,7 +133,7 @@ async searchPatients(searchTerm) {
       params: {
         LName: LName,  // Last Name
         FName: FName,  // First Name
-      
+
       },
     });
 

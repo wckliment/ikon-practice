@@ -74,6 +74,47 @@ const getAppointments = async (req, res) => {
   }
 };
 
+// Create a new appointment
+const createAppointment = async (req, res) => {
+  try {
+    // Get appointment data from request body
+    const appointmentData = req.body;
+
+    console.log('Creating appointment with data:', appointmentData);
+
+    // Validate required fields
+    if (!appointmentData.PatNum || !appointmentData.ProvNum || !appointmentData.AptDateTime) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: PatNum, ProvNum, and AptDateTime are required'
+      });
+    }
+
+    // Ensure AptStatus is a string and is valid
+    const validStatuses = ["Scheduled", "Complete", "UnschedList", "ASAP", "Broken", "Planned", "PtNote", "PtNoteCompleted"];
+
+    if (!appointmentData.AptStatus || !validStatuses.includes(appointmentData.AptStatus)) {
+      appointmentData.AptStatus = "Scheduled"; // Default to Scheduled if missing or invalid
+    }
+
+    // Call Open Dental API to create appointment
+    // The openDentalService was attached by middleware
+    const createdAppointment = await req.openDentalService.createAppointment(appointmentData);
+
+    // Return the created appointment
+    res.status(201).json({
+      success: true,
+      data: createdAppointment
+    });
+  } catch (error) {
+    console.error('Error creating appointment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create appointment'
+    });
+  }
+};
+
 // Get a single appointment by ID
 const getAppointment = async (req, res) => {
   try {
@@ -173,5 +214,6 @@ const updateAppointmentExtension = async (req, res) => {
 module.exports = {
   getAppointments,
   getAppointment,
-  updateAppointmentExtension
+  updateAppointmentExtension,
+  createAppointment
 };

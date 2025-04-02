@@ -4,7 +4,8 @@ const router = express.Router();
 const {
   getAppointments,
   getAppointment,
-  updateAppointmentExtension
+  updateAppointmentExtension,
+  createAppointment
 } = require('../controllers/appointmentsController');
 const authenticateUser = require('../middleware/authMiddleware');
 const { initializeOpenDental } = require('../middleware/appointmentMiddleware');
@@ -27,5 +28,5 @@ if (useTestMiddleware) {
 router.get('/', getAppointments);
 router.get('/:id', getAppointment);
 router.patch('/:appointmentId/extension', updateAppointmentExtension);
-
+router.post('/', createAppointment);
 module.exports = router;
