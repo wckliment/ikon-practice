@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import ReactSelect from "react-select";
 import { Calendar, Clock, User, Filter, ChevronLeft, ChevronRight } from "react-feather";
+import { debounce } from "lodash";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchProviders } from "../redux/providersSlice";
 import { fetchUsers } from "../redux/settingsSlice";
@@ -47,7 +48,58 @@ const appointmentService = {
       return null;
     }
   },
+
+  async createAppointment(appointmentData) {
+    try {
+      console.log("📅 Creating new appointment:", appointmentData);
+
+    // Change this validation to check for description field instead
+    if (!appointmentData.description) {
+      throw new Error("Procedure is required for appointment creation");
+    }
+
+      // Format the data to match Open Dental API expectations
+      const formattedData = {
+        PatNum: appointmentData.patientId,
+        ProvNum: appointmentData.providerId,
+        AptDateTime: appointmentData.aptDateTime, // Format: "YYYY-MM-DDThh:mm:ss"
+        Pattern: "X".repeat(appointmentData.duration / 5), // Create pattern based on duration (5min increments)
+        AptStatus: "Scheduled", //Using the correct string value from the API documentation
+        Op: appointmentData.operatoryId || 1, // Default to 1 if not provided
+        Note: appointmentData.notes || "",
+        ProcDescript: appointmentData.procedure,
+      };
+
+      const response = await axios.post('/api/appointments', formattedData, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+        },
+      });
+
+      console.log("✅ Appointment created successfully:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Failed to create appointment:", error);
+      throw error;
+    }
+  },
+
 };
+
+
+const procedureOptions = [
+  { value: "Ex.Pro.Flo", label: "Ex.Pro.Flo" },
+  { value: "Exam", label: "Exam" },
+  { value: "Prophy-Adult", label: "Prophy-Adult" },
+  { value: "Flo-Adult", label: "Flo-Adult" },
+  { value: "PA", label: "PA" },
+  { value: "2 BWX", label: "2 BWX" },
+  { value: "4 BWX", label: "4 BWX" },
+  { value: "Pano", label: "Pano" },
+  { value: "Office Visit", label: "Office Visit" }
+];
+
 
 const Appointments = () => {
   const dispatch = useDispatch();
@@ -78,12 +130,78 @@ const Appointments = () => {
     color: `rgb(${prov.provColor})`,
   }));
 
-  const [newAppointment, setNewAppointment] = useState({
+  const handleCreateAppointment = async (e) => {
+  e.preventDefault();
+
+ // Enhanced validation including procedure
+  if (!newAppointment.patientId || !newAppointment.providerId ||
+      !newAppointment.date || !newAppointment.startTime || !newAppointment.procedure) {
+    alert("Please fill in all required fields including procedure");
+    return;
+  }
+
+  try {
+    // Show loading state
+    setIsLoading(true);
+
+    // Format date and time properly for Open Dental
+    // The API expects ISO format: "YYYY-MM-DDThh:mm:ss"
+    const formattedDateTime = `${newAppointment.date}T${newAppointment.startTime}:00`;
+
+    // Calculate duration in minutes and create appropriate pattern
+    const durationMinutes = parseInt(newAppointment.duration) || 15;
+
+    // Create appointment data object
+    const appointmentData = {
+      patientId: newAppointment.patientId,
+      providerId: newAppointment.providerId,
+      aptDateTime: formattedDateTime,
+      duration: durationMinutes,
+      operatoryId: newAppointment.operatoryId || 0, // Default to 0 if not selected
+      notes: newAppointment.notes || "",
+      description: newAppointment.description || "Appointment"
+    };
+
+    // Call the create appointment API
+    await appointmentService.createAppointment(appointmentData);
+
+    // Reset form and close modal
+    setNewAppointment({
+      patientId: '',
+      providerId: '',
+      date: '',
+      startTime: '',
+      duration: 15,
+      operatoryId: 0,
+      notes: '',
+      description: ''
+    });
+
+    setShowCreateModal(false);
+
+    // Refresh appointments display
+    fetchAppointments();
+
+    // Optionally show success message
+    alert("Appointment created successfully!");
+
+  } catch (error) {
+    console.error("Error creating appointment:", error);
+    alert("Failed to create appointment. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const [newAppointment, setNewAppointment] = useState({
   patientId: '',
   providerId: '',
   date: '',
   startTime: '',
   duration: 15, // default 15 minutes
+  operatoryId: 0,
+  notes: '',
+  description: ''
 });
 
   useEffect(() => {
@@ -109,6 +227,13 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
 
 
   for (const apt of apiAppointments) {
+
+     console.log("🔍 Raw appointment from API:", {
+    id: apt.id || apt.AptNum,
+    ProcDescript: apt.ProcDescript, // Check if this exists and has a value
+    procedureDescription: apt.procedureDescription // Check alternate field names
+  });
+
     const startTimeRaw = apt.startTime || apt.AptDateTime;
     const normalizedDateTime = startTimeRaw?.replace(" ", "T");
     const startTime = new Date(normalizedDateTime);
@@ -149,17 +274,24 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
       duration: durationInMinutes,
       height: height,
-      type: apt.procedureDescription || apt.ProcDescript || "Appointment",
+      type: apt.ProcDescript || apt.procedureDescription || apt.procedure || apt.description || "",
       notes: apt.notes || apt.Note || "",
       status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
       staff: apt.providerName || apt.provAbbr || `Provider #${providerId}`,
       providerId,
       color: resolvedColor
     });
+
+  console.log("✅ Transformed appointment:", {
+  id: transformed[transformed.length-1].id,
+  type: transformed[transformed.length-1].type, // Check if type is set correctly
+  patientName: transformed[transformed.length-1].patientName
+});
   }
 
   return transformed;
 };
+
 
   const fetchAppointments = async () => {
     try {
@@ -288,64 +420,71 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
   };
 
   const handleAppointmentClick = (appointment) => {
+    console.log("🖱️ Clicked appointment:", appointment);
     setSelectedAppointment(appointment);
     setNotes(appointment.notes || "");
   };
 
 
-  //Fetching patients based on the search term
-useEffect(() => {
-  if (!searchTerm) {
-    setPatients([]); // Clear patients if no search term
-    return;
-  }
-
-  const fetchPatients = async () => {
-    setLoadingPatients(true);
-    try {
-      const token = localStorage.getItem("token");
-      console.log("Authorization Token:", token);  // Log the token to verify it's correct
-
-      const response = await axios.get(`/api/patients`, {
-        params: {
-          search: searchTerm,  // Use the search term in the API request
-          limit: 50,           // Adjust limit if needed
-        },
-        headers: {
-          "Authorization": `Bearer ${token}`, // Ensure the token is sent in the Authorization header
-        }
-      });
 
 
-      setPatients(response.data);  // Update the patient list
-    } catch (error) {
-      console.error("Error fetching patients:", error);
-    } finally {
-      setLoadingPatients(false);
+   // Debounced function to fetch patients
+  const debouncedFetch = useCallback(
+    debounce(async (inputValue) => {
+      setLoadingPatients(true);
+      try {
+        const token = localStorage.getItem("token");
+
+        const response = await axios.get(`/api/patients`, {
+          params: {
+            search: inputValue,  // Use the debounced search term
+            limit: 50,           // Adjust limit if needed
+          },
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          }
+        });
+
+        setPatients(response.data);  // Update the patient list
+      } catch (error) {
+        console.error("Error fetching patients:", error);
+      } finally {
+        setLoadingPatients(false);
+      }
+    }, 500),  // 500ms debounce delay
+    []
+  );
+
+    // Trigger the debounced fetch when searchTerm changes
+  useEffect(() => {
+    if (searchTerm) {
+      debouncedFetch(searchTerm);  // Call the debounced function with the search term
+    } else {
+      setPatients([]);  // Clear patients if no search term
     }
-  };
-
-  fetchPatients();  // Call fetch when the search term changes
-}, [searchTerm]);
+  }, [searchTerm, debouncedFetch]); // Re-run when searchTerm changes
 
 
-   // Auto-complete for the patient search input
-  const handleSearchChange = (selectedOption) => {
+// Update the handleSearchChange function to properly set the patient ID
+const handleSearchChange = (selectedOption) => {
+  console.log("Patient selected:", selectedOption); // Add this for debugging
+  if (selectedOption) {
     setNewAppointment({
       ...newAppointment,
-      patientId: selectedOption ? selectedOption.value : "",
+      patientId: selectedOption.value,
     });
-  };
+  }
+};
 
   const handleSearchInputChange = (inputValue) => {
-    setSearchTerm(inputValue);
-  };
+  setSearchTerm(inputValue);  // Update searchTerm based on user input
+};
 
-  const patientOptions = patients.map((patient) => ({
-    label: `${patient.FName} ${patient.LName}`,
-    value: patient.PatNum,
-  }));
-
+ // Pass patients as options for ReactSelect
+const patientOptions = patients.map((patient) => ({
+  label: `${patient.FName} ${patient.LName}`, // Show full name
+  value: patient.PatNum,  // Store patient ID in value
+}));
 
     return (
   <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
@@ -596,73 +735,131 @@ useEffect(() => {
             )}
           </div>
           </div>
- {/* Modal for creating new appointment */}
+
+          {/* Modal for creating new appointment */}
+
            {showCreateModal && (
-           <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-          <h3 className="text-lg font-semibold mb-4">Create New Appointment</h3>
-          <form>
-            {/* Patient Search Input with React Select */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Patient</label>
-              <ReactSelect
-                cacheOptions
-                loadOptions={handleSearchInputChange}  // Handle input change and update the searchTerm
-                options={patientOptions}
-                onInputChange={handleSearchInputChange} // Update the searchTerm on input change
-                onChange={handleSearchChange}  // Set selected patient ID
-                isLoading={loadingPatients}
-                placeholder="Search by name or ID..."
-                value={
-                  patients.find((patient) => patient.PatNum === newAppointment.patientId)
-                    ? {
-                        label: `${patients.find((patient) => patient.PatNum === newAppointment.patientId).FName} ${patients.find((patient) => patient.PatNum === newAppointment.patientId).LName}`,
-                        value: newAppointment.patientId,
-                      }
-                    : null
-                }
-              />
-            </div>
+  <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+      <h3 className="text-lg font-semibold mb-4">Create New Appointment</h3>
 
-            {/* Patient Dropdown (if no auto-complete) */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Select Patient</label>
-              <select
-                className="w-full border rounded p-2"
-                value={newAppointment.patientId}
-                onChange={(e) =>
-                  setNewAppointment({ ...newAppointment, patientId: e.target.value })
-                }
-              >
-                <option value="" disabled>Select Patient</option>
-                {patients.map((patient) => (
-                  <option key={patient.PatNum} value={patient.PatNum}>
-                    {patient.FName} {patient.LName}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <form onSubmit={handleCreateAppointment}>
 
-        {/* Other form fields for provider, date, etc. */}
+        {/* Patient Search Input with React Select */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Provider</label>
-          <input type="text" className="w-full border rounded p-2" />
+          <label className="block text-sm font-medium mb-1">Patient</label>
+          <ReactSelect
+            cacheOptions
+            options={patientOptions}
+            onInputChange={handleSearchInputChange}
+            onChange={handleSearchChange}
+            isLoading={loadingPatients}
+            placeholder="Search by last name..."
+            value={
+              newAppointment.patientId
+                ? patientOptions.find(option => option.value === newAppointment.patientId)
+                : null
+            }
+                    />
+                    <p className="text-xs text-gray-500 mt-1">For best results, search by patient's last name</p>
         </div>
 
-        <div className="mb-4">
+
+
+        {/* Provider Dropdown */}
+       <div className="mb-4">
+  <label className="block text-sm font-medium mb-1">Provider</label>
+  <select
+    className="w-full border rounded p-2"
+    value={newAppointment.providerId}
+    onChange={(e) =>
+      setNewAppointment({ ...newAppointment, providerId: e.target.value })
+    }
+     required
+  >
+    <option value="" disabled>Select Provider</option>
+    {staffMembers.map((provider) => (
+      <option key={provider.id} value={provider.id}>
+        {provider.fullName}
+      </option>
+    ))}
+  </select>
+</div>
+
+   {/* Date Picker */}
+         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Date</label>
-          <input type="date" className="w-full border rounded p-2" />
+          <input
+            type="date"
+            className="w-full border rounded p-2"
+            value={newAppointment.date}
+            onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
+            required
+          />
         </div>
 
+        {/* Time Picker */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Start Time</label>
-          <input type="time" className="w-full border rounded p-2" />
+          <input
+            type="time"
+            className="w-full border rounded p-2"
+            value={newAppointment.startTime}
+            onChange={(e) => setNewAppointment({ ...newAppointment, startTime: e.target.value })}
+            required
+          />
         </div>
 
-        <div className="mb-4">
+        {/* Duration Input */}
+         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Duration (mins)</label>
-          <input type="number" className="w-full border rounded p-2" />
-        </div>
+          <select
+            className="w-full border rounded p-2"
+            value={newAppointment.duration}
+            onChange={(e) => setNewAppointment({ ...newAppointment, duration: e.target.value })}
+            required
+          >
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">60 minutes</option>
+            <option value="90">90 minutes</option>
+          </select>
+                  </div>
+
+                  {/* Procedure Input */}
+                  <div className="mb-4">
+  <label className="block text-sm font-medium mb-1">
+    Procedure <span className="text-red-500">*</span>
+  </label>
+  <select
+    className="w-full border rounded p-2"
+    value={newAppointment.procedure || ""}
+    onChange={(e) => setNewAppointment({ ...newAppointment, procedure: e.target.value, description: e.target.value })}
+    required
+  >
+    <option value="" disabled>Select Procedure</option>
+    {procedureOptions.map((procedure) => (
+      <option key={procedure.value} value={procedure.value}>
+        {procedure.label}
+      </option>
+    ))}
+  </select>
+</div>
+
+                  {/* Notes Input */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Notes</label>
+                    <textarea
+                      className="w-full border rounded p-2"
+                      rows={3}
+                      placeholder="Enter any additional notes here..."
+                      value={newAppointment.notes || ""}
+                      onChange={(e) => setNewAppointment({ ...newAppointment, notes: e.target.value })}
+                    />
+                  </div>
+
+                  {/* Form Buttons*/}
 
         <div className="flex justify-end space-x-2 mt-4">
           <button
@@ -674,9 +871,10 @@ useEffect(() => {
           </button>
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                      className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                      disabled={isLoading}
           >
-            Create
+            {isLoading ? "Creating..." : "Create"}
           </button>
         </div>
       </form>
