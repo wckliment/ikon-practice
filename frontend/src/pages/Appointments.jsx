@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchProviders } from "../redux/providersSlice";
 import { fetchUsers } from "../redux/settingsSlice";
 import { fetchLocations } from "../redux/settingsSlice";
+import UpdateAppointmentModal from "../components/UpdateAppointmentModal";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -85,6 +86,95 @@ const appointmentService = {
     }
   },
 
+  // In your appointmentService.js or directly in your component
+async updateAppointment(appointmentData) {
+  try {
+    console.log("📅 Updating appointment:", appointmentData);
+
+    // Format the data to match Open Dental API expectations
+    const formattedData = {};
+
+    // Map your frontend fields to Open Dental API fields
+    if (appointmentData.providerId) formattedData.ProvNum = appointmentData.providerId;
+    if (appointmentData.aptDateTime) formattedData.AptDateTime = appointmentData.aptDateTime;
+    if (appointmentData.notes) formattedData.Note = appointmentData.notes;
+
+    // Try both field names for procedure since we're not sure which one works
+    if (appointmentData.procedure) {
+      formattedData.ProcDescript = appointmentData.procedure;
+      // Some APIs might use this field name instead
+      formattedData.procedure = appointmentData.procedure;
+    }
+
+    // Create pattern based on duration (5min increments) if duration is provided
+    if (appointmentData.duration) {
+      formattedData.Pattern = "X".repeat(appointmentData.duration / 5);
+    }
+
+    // Add other fields if needed
+    if (appointmentData.operatoryId) formattedData.Op = appointmentData.operatoryId;
+
+    console.log("Formatted data being sent:", formattedData);
+
+    const response = await axios.put(`/api/appointments/${appointmentData.id}`, formattedData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+      },
+    });
+
+    console.log("✅ Appointment updated successfully:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Failed to update appointment:", error);
+    throw error;
+  }
+},
+
+// Method to specifically update the notes
+async updateAppointmentNotes(appointmentId, notes) {
+  try {
+    console.log(`📝 Updating notes for appointment ${appointmentId}`);
+
+    const response = await axios.put(`/api/appointments/${appointmentId}/Note`, {
+      Note: notes
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+      },
+    });
+
+    console.log("✅ Appointment notes updated successfully");
+    return response.data;
+  } catch (error) {
+    console.error("❌ Failed to update appointment notes:", error);
+    throw error;
+  }
+},
+
+// Method to update appointment confirmation status
+async updateAppointmentConfirmation(appointmentId, confirmStatus) {
+  try {
+    console.log(`🔔 Updating confirmation status for appointment ${appointmentId}`);
+
+    const response = await axios.put(`/api/appointments/${appointmentId}/Confirm`, {
+      confirmVal: confirmStatus
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+      },
+    });
+
+    console.log("✅ Appointment confirmation updated successfully");
+    return response.data;
+  } catch (error) {
+    console.error("❌ Failed to update appointment confirmation:", error);
+    throw error;
+  }
+}
+
 };
 
 
@@ -111,6 +201,7 @@ const Appointments = () => {
   const [currentMonthName, setCurrentMonthName] = useState("");
   const [notes, setNotes] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const { list: providers, loading: providersLoading } = useSelector((state) => state.providers);
   const users = useSelector((state) => state.settings.users.data);
   const [searchTerm, setSearchTerm] = useState("");
@@ -203,6 +294,36 @@ const [newAppointment, setNewAppointment] = useState({
   notes: '',
   description: ''
 });
+
+
+// handler function for appointment updates
+const handleUpdateAppointment = async (updatedData) => {
+  try {
+    setIsLoading(true);
+
+    // Make sure the ID is included
+    if (!updatedData.id && selectedAppointment) {
+      updatedData.id = selectedAppointment.id;
+    }
+
+    // Call the update API
+    await appointmentService.updateAppointment(updatedData);
+
+    // Close the modal
+    setShowUpdateModal(false);
+
+    // Refresh the appointments list
+    fetchAppointments();
+
+    // Show success message
+    alert("Appointment updated successfully!");
+  } catch (error) {
+    console.error("Error updating appointment:", error);
+    alert("Failed to update appointment. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   useEffect(() => {
     const options = { month: "long", year: "numeric" };
@@ -729,6 +850,16 @@ const patientOptions = patients.map((patient) => ({
                       onChange={handleNotesChange}
                       onBlur={saveNotes}
                     />
+                    </div>
+
+                    {/* Update Appointment Button*/}
+                    <div className="flex justify-end mt-4">
+                    <button
+                    onClick={() => setShowUpdateModal(true)}
+                    className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                    >
+                    Update Appointment
+                  </button>
                   </div>
                 </div>
               </div>
@@ -880,9 +1011,19 @@ const patientOptions = patients.map((patient) => ({
       </form>
     </div>
   </div>
+          )}
+          {/* Modal for updating appointment */}
+{showUpdateModal && selectedAppointment && (
+  <UpdateAppointmentModal
+    isOpen={showUpdateModal}
+    onClose={() => setShowUpdateModal(false)}
+    appointment={selectedAppointment}
+    staffMembers={staffMembers}
+    procedureOptions={procedureOptions}
+    onUpdate={handleUpdateAppointment}
+    isLoading={isLoading}
+  />
 )}
-
-
       </div>
     </div>
   );

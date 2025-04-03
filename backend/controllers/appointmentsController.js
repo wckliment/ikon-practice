@@ -154,6 +154,43 @@ const getAppointment = async (req, res) => {
   }
 };
 
+
+// Update an appointment
+const updateAppointment = async (req, res) => {
+  try {
+    // Add these debugging logs
+    console.log("Request params:", req.params);
+    const appointmentId = req.params.id;
+    console.log("Extracted appointmentId:", appointmentId);
+
+    const updateData = req.body;
+    console.log(`Updating appointment ${appointmentId} with data:`, updateData);
+
+    // Validate required appointment ID
+    if (!appointmentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Appointment ID is required'
+      });
+    }
+
+    // Call Open Dental API to update the appointment
+    const updatedAppointment = await req.openDentalService.updateAppointment(appointmentId, updateData);
+
+    // Return the updated appointment
+    res.json({
+      success: true,
+      data: updatedAppointment
+    });
+  } catch (error) {
+    console.error('Error updating appointment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update appointment: ' + (error.message || 'Unknown error')
+    });
+  }
+};
+
 // Add or update appointment extension
 const updateAppointmentExtension = async (req, res) => {
   try {
@@ -215,5 +252,6 @@ module.exports = {
   getAppointments,
   getAppointment,
   updateAppointmentExtension,
-  createAppointment
+  createAppointment,
+  updateAppointment
 };

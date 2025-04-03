@@ -150,6 +150,27 @@ async searchPatients(searchTerm) {
   }
 }
 
+  async updateAppointment(appointmentId, updateData) {
+  try {
+    console.log(`Updating appointment ${appointmentId} with exact data sent to API:`, JSON.stringify(updateData));
+
+    // Make the PUT request to Open Dental API
+    const response = await axios.put(
+      `${this.baseUrl}/appointments/${appointmentId}`,
+      updateData,
+      { headers: this.headers }
+    );
+    
+    console.log('Open Dental API update response:', JSON.stringify(response.data));
+
+    // Transform and return the updated appointment data
+    return this._transformAppointment(response.data);
+  } catch (error) {
+    this._handleError('update appointment', error);
+    throw new Error(`Failed to update appointment: ${error.message}`);
+  }
+}
+
 
   _formatDate(date) {
     try {
