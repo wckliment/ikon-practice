@@ -610,7 +610,6 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     return days;
   };
 
-
 const fetchAndSetSelectedAppointment = async (appointmentId) => {
   try {
     const response = await axios.get(`/api/appointments/${appointmentId}`, {
@@ -623,26 +622,25 @@ const fetchAndSetSelectedAppointment = async (appointmentId) => {
     if (response.data && response.data.success) {
       const apt = response.data.data;
 
-      // 🧠 Try to fetch the real patient name
-      let patientName = `Patient #${apt.patientId}`;
-      try {
-        const patientResponse = await appointmentService.getPatientById(apt.patientId);
-        if (patientResponse?.FName || patientResponse?.LName) {
-          patientName = `${patientResponse.FName || ""} ${patientResponse.LName || ""}`.trim();
-        }
-      } catch (err) {
-        console.warn(`⚠️ Could not fetch full name for patient ${apt.patientId}`);
-      }
-
-      // Parse datetime
       const normalizedDateTime = apt.startTime?.replace(" ", "T") || apt.AptDateTime?.replace(" ", "T");
       const start = new Date(normalizedDateTime);
       const duration = apt.pattern?.length ? apt.pattern.length * 5 : 30;
       const end = new Date(start.getTime() + duration * 60000);
 
+      // 🧠 NEW: Fetch real patient name from API
+      let patientName = `Patient #${apt.patientId}`;
+      try {
+        const patientRes = await appointmentService.getPatientById(apt.patientId);
+        if (patientRes?.FName || patientRes?.LName) {
+          patientName = `${patientRes.FName || ""} ${patientRes.LName || ""}`.trim();
+        }
+      } catch (err) {
+        console.warn("Could not fetch patient details:", err);
+      }
+
       setSelectedAppointment({
         id: apt.id || apt.AptNum,
-        patientName: apt.patientName || `Patient #${apt.patientId}`,
+        patientName,
         date: start.toISOString().split("T")[0],
         startTime: start.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
         fullStartTime: start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
@@ -664,6 +662,7 @@ const fetchAndSetSelectedAppointment = async (appointmentId) => {
     console.error("❌ Failed to fetch full appointment:", error);
   }
 };
+
 
   const handleAppointmentClick = (appointment) => {
   console.log("🖱️ Clicked appointment:", appointment);
