@@ -1,5 +1,6 @@
 const AppointmentExtension = require('../models/appointmentExtensionModel');
 
+
 // Get appointments for current user's location
 const getAppointments = async (req, res) => {
   try {
@@ -77,12 +78,10 @@ const getAppointments = async (req, res) => {
 // Create a new appointment
 const createAppointment = async (req, res) => {
   try {
-    // Get appointment data from request body
     const appointmentData = req.body;
-
     console.log('Creating appointment with data:', appointmentData);
 
-    // Validate required fields
+    // Basic validation
     if (!appointmentData.PatNum || !appointmentData.ProvNum || !appointmentData.AptDateTime) {
       return res.status(400).json({
         success: false,
@@ -90,22 +89,20 @@ const createAppointment = async (req, res) => {
       });
     }
 
-    // Ensure AptStatus is a string and is valid
+    // Ensure valid status
     const validStatuses = ["Scheduled", "Complete", "UnschedList", "ASAP", "Broken", "Planned", "PtNote", "PtNoteCompleted"];
-
     if (!appointmentData.AptStatus || !validStatuses.includes(appointmentData.AptStatus)) {
-      appointmentData.AptStatus = "Scheduled"; // Default to Scheduled if missing or invalid
+      appointmentData.AptStatus = "Scheduled";
     }
 
-    // Call Open Dental API to create appointment
-    // The openDentalService was attached by middleware
+    // ✅ Use service, which now handles both appointment + procedure creation
     const createdAppointment = await req.openDentalService.createAppointment(appointmentData);
 
-    // Return the created appointment
     res.status(201).json({
       success: true,
       data: createdAppointment
     });
+
   } catch (error) {
     console.error('Error creating appointment:', error);
     res.status(500).json({
@@ -123,30 +120,33 @@ const getAppointment = async (req, res) => {
     // Fetch appointment from Open Dental
     const appointment = await req.openDentalService.getAppointment(appointmentId);
 
+     // 🔥 Fetch procedures linked to this specific appointment
+    const procedures = await req.openDentalService.getProceduresByAppointment(appointmentId);
+
     // Fetch any extension for this appointment
     const extension = await AppointmentExtension.findByAppointmentAndLocation(
       appointmentId,
       req.user.location_id
     );
 
-    // Combine appointment with extension if exists
-    let enhancedAppointment = appointment;
-    if (extension) {
-      enhancedAppointment = {
-        ...appointment,
+     // Combine everything together
+    const enhancedAppointment = {
+      ...appointment,
+      procedureLogs:procedures, // 👈 now you'll get procedure data in the response
+      ...(extension && {
         customTags: extension.customTags,
         internalNotes: extension.internal_notes,
         followupRequired: extension.followupRequired,
         followupDate: extension.followup_date,
-      };
-    }
+      }),
+    };
 
     res.json({
       success: true,
       data: enhancedAppointment
     });
   } catch (error) {
-    console.error('Error fetching appointment:', error);
+    console.error('Error fetching appointment:', error.message, error.stack);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch appointment'
@@ -187,6 +187,85 @@ const updateAppointment = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update appointment: ' + (error.message || 'Unknown error')
+    });
+  }
+};
+
+const getAppointmentProcedures = async (req, res) => {
+  try {
+    // This is incorrectly accessing req.params.id as if it were an object
+    // const { appointmentId } = req.params.id;  <-- This is wrong
+
+    // This is the correct way to access it
+    const appointmentId = req.params.id;
+
+    if (!appointmentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Appointment ID is required'
+      });
+    }
+
+    const procedures = await req.openDentalService.getProceduresByAppointment(appointmentId);
+
+    res.json({
+      success: true,
+      data: procedures
+    });
+  } catch (error) {
+    console.error('Error fetching procedures:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch procedures: ' + error.message
+    });
+  }
+};
+
+const updateProcedure = async (req, res) => {
+  try {
+    const { procNum } = req.params;
+    const updateData = req.body;
+
+    console.log(`Updating procedure ${procNum} with data:`, updateData);
+
+    if (!procNum) {
+      return res.status(400).json({
+        success: false,
+        error: 'Procedure number (ProcNum) is required'
+      });
+    }
+
+    // 🧠 If description is provided but no ProcCode, try to map it
+    if (updateData.Descript && !updateData.ProcCode) {
+      console.log(`Attempting to map procedure description: "${updateData.Descript}"`);
+
+      const match = await req.openDentalService.mapProcedureDescriptionToCode(updateData.Descript);
+
+      if (match) {
+        console.log(`✅ Matched description to code: ${match.ProcCode} (${match.Descript})`);
+        updateData.ProcCode = match.ProcCode;
+        updateData.ProcCat = match.ProcCat; // Optional, helps Open Dental categorize
+      } else {
+        console.warn(`❌ No match found for description: "${updateData.Descript}"`);
+        return res.status(400).json({
+          success: false,
+          error: `No matching procedure code found for description: "${updateData.Descript}"`
+        });
+      }
+    }
+
+    // 🚀 Update procedure with Open Dental
+    const updatedProcedure = await req.openDentalService.updateProcedureLog(procNum, updateData);
+
+    res.json({
+      success: true,
+      data: updatedProcedure
+    });
+  } catch (error) {
+    console.error('Error updating procedure:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update procedure: ' + error.message
     });
   }
 };
@@ -253,5 +332,7 @@ module.exports = {
   getAppointment,
   updateAppointmentExtension,
   createAppointment,
-  updateAppointment
+  updateAppointment,
+  getAppointmentProcedures,
+  updateProcedure
 };

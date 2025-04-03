@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { findProcedureCode } = require('../utils/procedureCodeMapper');
 
 class OpenDentalService {
   constructor(developerKey, customerKey) {
@@ -40,10 +41,9 @@ async createAppointment(appointmentData) {
   try {
     console.log('Creating appointment in Open Dental:', appointmentData);
 
-    // Make sure AptStatus is properly set as a string
+    // Normalize AptStatus
     if (typeof appointmentData.AptStatus === 'number') {
-      // Convert numeric status to string if needed
-      switch(appointmentData.AptStatus) {
+      switch (appointmentData.AptStatus) {
         case 1:
           appointmentData.AptStatus = "Scheduled";
           break;
@@ -64,18 +64,86 @@ async createAppointment(appointmentData) {
       }
     }
 
-    // Send the request to Open Dental API
+    // Step 1: Create the appointment
     const response = await axios.post(`${this.baseUrl}/appointments`, appointmentData, {
       headers: this.headers
     });
 
-    console.log('Open Dental API response:', response.data);
+    const createdAppointment = response.data;
+    console.log('✅ Appointment created:', createdAppointment);
 
-    // Transform the response data to match our appointment format
-    return this._transformAppointment(response.data);
+    // Step 2: If a procedure was passed, map and create procedure log
+    const procLabel = appointmentData.ProcDescript || appointmentData.description;
+if (procLabel) {
+  const mapped = findProcedureCode(procLabel);
+
+  if (Array.isArray(mapped)) {
+    for (const proc of mapped) {
+      const procedureLog = {
+        AptNum: createdAppointment.AptNum,
+        PatNum: createdAppointment.PatNum,
+        ProcCode: proc.ProcCode,
+        ProcStatus: "TP",
+        ProcDate: createdAppointment.AptDateTime.split("T")[0],
+        Note: proc.Descript
+      };
+      console.log("🧾 Creating procedure log for compound procedure:", procedureLog);
+      await this.createProcedureLog(procedureLog);
+    }
+  } else if (mapped) {
+    const procedureLog = {
+      AptNum: createdAppointment.AptNum,
+      PatNum: createdAppointment.PatNum,
+      ProcCode: mapped.ProcCode,
+      ProcStatus: "TP",
+      ProcDate: createdAppointment.AptDateTime.split("T")[0],
+      Note: mapped.Descript
+    };
+    console.log("🧾 Creating procedure log:", procedureLog);
+    await this.createProcedureLog(procedureLog);
+  } else {
+    console.warn(`⚠️ No CDT match found for: "${procLabel}" — skipping procedure log`);
+  }
+}
+
+    // Return transformed result
+    return this._transformAppointment(createdAppointment);
   } catch (error) {
     this._handleError('create appointment', error);
     throw new Error(`Failed to create appointment: ${error.message}`);
+  }
+}
+
+  async getAllProcedureCodes() {
+  try {
+    console.log("📦 Fetching all procedure codes from Open Dental");
+
+    const response = await axios.get(`${this.baseUrl}/procedurecodes`, {
+      headers: this.headers
+    });
+
+    return response.data;
+  } catch (error) {
+    this._handleError('procedurecodes', error);
+    throw new Error(`Failed to fetch procedure codes: ${error.message}`);
+  }
+  }
+
+
+
+  async createProcedureLog(procedureData) {
+  try {
+    console.log("🔨 Creating procedure log:", procedureData);
+
+    const response = await axios.post(`${this.baseUrl}/procedurelogs`, procedureData, {
+      headers: this.headers
+    });
+
+    console.log("✅ Procedure log created:", response.data);
+    return response.data;
+  } catch (error) {
+    this._handleError('create procedure log', error);
+    throw new Error(`Failed to create procedure log: ${error.message}`);
   }
 }
 
@@ -160,7 +228,7 @@ async searchPatients(searchTerm) {
       updateData,
       { headers: this.headers }
     );
-    
+
     console.log('Open Dental API update response:', JSON.stringify(response.data));
 
     // Transform and return the updated appointment data
@@ -168,6 +236,42 @@ async searchPatients(searchTerm) {
   } catch (error) {
     this._handleError('update appointment', error);
     throw new Error(`Failed to update appointment: ${error.message}`);
+  }
+  }
+
+  async getProceduresByAppointment(appointmentId) {
+  try {
+    console.log(`Fetching procedures for appointment ${appointmentId}`);
+
+    // This URL should be adjusted to match your OpenDental API
+    const response = await axios.get(`${this.baseUrl}/procedurelogs`, {
+      headers: this.headers,
+      params: { AptNum: appointmentId }
+    });
+
+    console.log(`Found ${response.data.length} procedures for appointment`);
+    return response.data;
+  } catch (error) {
+    this._handleError('get procedures', error);
+    throw new Error(`Failed to fetch procedures: ${error.message}`);
+  }
+  }
+
+  async updateProcedureLog(procNum, procedureData) {
+  try {
+    console.log(`Updating procedure log ${procNum} with data:`, procedureData);
+
+    const response = await axios.put(
+      `${this.baseUrl}/procedurelogs/${procNum}`,
+      procedureData,
+      { headers: this.headers }
+    );
+
+    console.log('Open Dental API procedure update response:', response.data);
+    return response.data;
+  } catch (error) {
+    this._handleError('update procedure', error);
+    throw new Error(`Failed to update procedure: ${error.message}`);
   }
 }
 

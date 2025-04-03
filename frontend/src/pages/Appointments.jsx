@@ -69,6 +69,7 @@ const appointmentService = {
         Op: appointmentData.operatoryId || 1, // Default to 1 if not provided
         Note: appointmentData.notes || "",
         ProcDescript: appointmentData.procedure,
+        description: appointmentData.procedure,
       };
 
       const response = await axios.post('/api/appointments', formattedData, {
@@ -104,6 +105,7 @@ async updateAppointment(appointmentData) {
       formattedData.ProcDescript = appointmentData.procedure;
       // Some APIs might use this field name instead
       formattedData.procedure = appointmentData.procedure;
+      formattedData.description = appointmentData.procedure;
     }
 
     // Create pattern based on duration (5min increments) if duration is provided
@@ -171,6 +173,41 @@ async updateAppointmentConfirmation(appointmentId, confirmStatus) {
     return response.data;
   } catch (error) {
     console.error("❌ Failed to update appointment confirmation:", error);
+    throw error;
+  }
+},
+
+async getProceduresByAppointment(appointmentId) {
+  try {
+    const response = await axios.get(`/api/appointments/${appointmentId}/procedures`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+      },
+    });
+
+    return response.data.data;
+  } catch (error) {
+    console.error("❌ Failed to fetch procedures:", error);
+    throw error;
+  }
+},
+
+async updateProcedure(procNum, procedureData) {
+  try {
+    console.log(`📝 Updating procedure ${procNum} with data:`, procedureData);
+
+    const response = await axios.put(`/api/appointments/procedurelogs/${procNum}`, procedureData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+      },
+    });
+
+    console.log("✅ Procedure updated successfully:", response.data);
+    return response.data.data;
+  } catch (error) {
+    console.error("❌ Failed to update procedure:", error);
     throw error;
   }
 }
@@ -296,6 +333,8 @@ const [newAppointment, setNewAppointment] = useState({
 });
 
 
+
+
 // handler function for appointment updates
 const handleUpdateAppointment = async (updatedData) => {
   try {
@@ -306,8 +345,38 @@ const handleUpdateAppointment = async (updatedData) => {
       updatedData.id = selectedAppointment.id;
     }
 
-    // Call the update API
+    // Call the update API for the main appointment data
     await appointmentService.updateAppointment(updatedData);
+
+    // If procedure changed, handle procedure update
+    if (updatedData.procedure && updatedData.procedure !== selectedAppointment.type) {
+      try {
+        // First, get the procedures for this appointment
+        console.log("Fetching procedures for appointment:", updatedData.id);
+        const procedures = await appointmentService.getProceduresByAppointment(updatedData.id);
+
+        console.log("Found procedures:", procedures);
+
+        if (procedures && procedures.length > 0) {
+          // Assuming the first procedure is the main one
+          const mainProcedure = procedures[0];
+
+          console.log("Updating procedure:", mainProcedure.ProcNum);
+
+          // Update the procedure with the new code
+          await appointmentService.updateProcedure(mainProcedure.ProcNum, {
+            procCode: updatedData.procedure
+          });
+
+          console.log("Procedure update successful");
+        } else {
+          console.log("No procedures found to update");
+        }
+      } catch (procError) {
+        console.error("Error updating procedure:", procError);
+        // Continue with the rest of the function even if procedure update fails
+      }
+    }
 
     // Close the modal
     setShowUpdateModal(false);
@@ -400,7 +469,8 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
       staff: apt.providerName || apt.provAbbr || `Provider #${providerId}`,
       providerId,
-      color: resolvedColor
+      color: resolvedColor,
+      procedureLogs: apt.procedureLogs || []
     });
 
   console.log("✅ Transformed appointment:", {
@@ -540,12 +610,71 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     return days;
   };
 
-  const handleAppointmentClick = (appointment) => {
-    console.log("🖱️ Clicked appointment:", appointment);
-    setSelectedAppointment(appointment);
-    setNotes(appointment.notes || "");
-  };
 
+const fetchAndSetSelectedAppointment = async (appointmentId) => {
+  try {
+    const response = await axios.get(`/api/appointments/${appointmentId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+      },
+    });
+
+    if (response.data && response.data.success) {
+      const apt = response.data.data;
+
+      // 🧠 Try to fetch the real patient name
+      let patientName = `Patient #${apt.patientId}`;
+      try {
+        const patientResponse = await appointmentService.getPatientById(apt.patientId);
+        if (patientResponse?.FName || patientResponse?.LName) {
+          patientName = `${patientResponse.FName || ""} ${patientResponse.LName || ""}`.trim();
+        }
+      } catch (err) {
+        console.warn(`⚠️ Could not fetch full name for patient ${apt.patientId}`);
+      }
+
+      // Parse datetime
+      const normalizedDateTime = apt.startTime?.replace(" ", "T") || apt.AptDateTime?.replace(" ", "T");
+      const start = new Date(normalizedDateTime);
+      const duration = apt.pattern?.length ? apt.pattern.length * 5 : 30;
+      const end = new Date(start.getTime() + duration * 60000);
+
+      setSelectedAppointment({
+        id: apt.id || apt.AptNum,
+        patientName: apt.patientName || `Patient #${apt.patientId}`,
+        date: start.toISOString().split("T")[0],
+        startTime: start.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+        fullStartTime: start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+        endTime: end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+        duration: duration,
+        height: duration * 3.2,
+        type: apt.ProcDescript || apt.procedureDescription || "",
+        notes: apt.notes || apt.Note || "",
+        status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
+        staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId}`,
+        providerId: apt.providerId || apt.ProvNum,
+        color: `rgb(${apt.provColor || "160,233,249"})`,
+        procedureLogs: apt.procedureLogs || [],
+      });
+
+      setNotes(apt.notes || "");
+    }
+  } catch (error) {
+    console.error("❌ Failed to fetch full appointment:", error);
+  }
+};
+
+  const handleAppointmentClick = (appointment) => {
+  console.log("🖱️ Clicked appointment:", appointment);
+
+  if (!appointment?.id) {
+    console.warn("No appointment ID found for selected appointment:", appointment);
+    return;
+  }
+
+  fetchAndSetSelectedAppointment(appointment.id);
+};
 
 
 
@@ -820,49 +949,66 @@ const patientOptions = patients.map((patient) => ({
 
             {/* Appointment Details */}
             {selectedAppointment && (
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <h3 className="font-medium text-lg mb-4">Appointment Details</h3>
-                <div className="space-y-4 text-sm text-gray-700">
-                  <div>
-                    <strong>Patient:</strong> {selectedAppointment.patientName}
-                  </div>
-                  <div>
-                    <strong>Date & Time:</strong>{" "}
-                    {new Date(selectedAppointment.date).toLocaleDateString("en-US")} at{" "}
-                    {selectedAppointment.fullStartTime} – {selectedAppointment.endTime}
-                  </div>
-                  <div>
-                    <strong>Provider:</strong> {selectedAppointment.staff}
-                  </div>
-                  <div>
-                    <strong>Procedure:</strong> {selectedAppointment.type}
-                  </div>
-                  <div>
-                    <strong>Status:</strong> {selectedAppointment.status}
-                  </div>
-                  <div>
-                    <strong>Medical Notes:</strong>
-                    <textarea
-                      className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1"
-                      rows={4}
-                      placeholder="Message text goes here..."
-                      value={notes}
-                      onChange={handleNotesChange}
-                      onBlur={saveNotes}
-                    />
+  <div className="bg-white rounded-lg shadow-md p-4">
+    <h3 className="font-medium text-lg mb-4">Appointment Details</h3>
+    <div className="space-y-4 text-sm text-gray-700">
+      <div>
+        <strong>Patient:</strong> {selectedAppointment.patientName}
+      </div>
+      <div>
+        <strong>Date & Time:</strong>{" "}
+        {new Date(selectedAppointment.date).toLocaleDateString("en-US")} at{" "}
+        {selectedAppointment.fullStartTime} – {selectedAppointment.endTime}
+      </div>
+      <div>
+        <strong>Provider:</strong> {selectedAppointment.staff}
+      </div>
+
+      {/* ✅ NEW: Actual Procedures */}
+      {selectedAppointment.procedureLogs && selectedAppointment.procedureLogs.length > 0 ? (
+  <div>
+    <strong>Procedures:</strong>
+    <ul className="ml-4 list-disc text-sm mt-1">
+      {selectedAppointment.procedureLogs.map((proc) => (
+        <li key={proc.ProcNum}>
+          {proc.descript || "Unnamed"} ({proc.procCode})
+        </li>
+      ))}
+    </ul>
+  </div>
+) : (
+  <div>
+    <strong>Procedures:</strong> <span className="italic text-gray-500">None found</span>
+  </div>
+)}
+
+      <div>
+        <strong>Status:</strong> {selectedAppointment.status}
                     </div>
 
-                    {/* Update Appointment Button*/}
-                    <div className="flex justify-end mt-4">
-                    <button
-                    onClick={() => setShowUpdateModal(true)}
-                    className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                    >
-                    Update Appointment
-                  </button>
-                  </div>
-                </div>
-              </div>
+      <div>
+        <strong>Medical Notes:</strong>
+        <textarea
+          className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1"
+          rows={4}
+          placeholder="Message text goes here..."
+          value={notes}
+          onChange={handleNotesChange}
+          onBlur={saveNotes}
+        />
+      </div>
+
+      {/* Update Appointment Button */}
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={() => setShowUpdateModal(true)}
+          className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+        >
+          Update Appointment
+        </button>
+      </div>
+    </div>
+  </div>
             )}
           </div>
           </div>

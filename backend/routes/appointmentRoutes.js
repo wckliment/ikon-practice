@@ -6,7 +6,9 @@ const {
   getAppointment,
   updateAppointmentExtension,
   createAppointment,
-  updateAppointment
+  updateAppointment,
+  getAppointmentProcedures,
+  updateProcedure
 } = require('../controllers/appointmentsController');
 const authenticateUser = require('../middleware/authMiddleware');
 const { initializeOpenDental } = require('../middleware/appointmentMiddleware');
@@ -31,4 +33,6 @@ router.get('/:id', getAppointment);
 router.patch('/:appointmentId/extension', updateAppointmentExtension);
 router.post('/', createAppointment);
 router.put('/:id', updateAppointment);
+router.get('/:id/procedures', getAppointmentProcedures);
+router.put('/procedurelogs/:procNum', updateProcedure);
 module.exports = router;
