@@ -243,9 +243,16 @@ async getProceduresByAppointment(appointmentId) {
 
 async updateProcedure(procNum, procedureData) {
   try {
-    console.log(`📝 Updating procedure ${procNum} with data:`, procedureData);
+    // Capitalize keys if needed
+    const payload = {
+      ProcCode: procedureData.ProcCode || procedureData.procCode,
+      Descript: procedureData.Descript || procedureData.descript || "",
+      status: procedureData.status || "TP"
+    };
 
-    const response = await axios.put(`/api/appointments/procedurelogs/${procNum}`, procedureData, {
+    console.log(`📝 Updating procedure ${procNum} with payload:`, payload);
+
+    const response = await axios.put(`/api/appointments/procedurelogs/${procNum}`, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
@@ -381,59 +388,59 @@ const [newAppointment, setNewAppointment] = useState({
 });
 
 
-
-
-// handler function for appointment updates
 const handleUpdateAppointment = async (updatedData) => {
   try {
     setIsLoading(true);
 
-    // Make sure the ID is included
     if (!updatedData.id && selectedAppointment) {
       updatedData.id = selectedAppointment.id;
     }
 
-    // Call the update API for the main appointment data
     await appointmentService.updateAppointment(updatedData);
 
-    // If procedure changed, handle procedure update
+    // ✅ Flag to know if we updated procedure or not
+    let updatedProcedure = false;
+
     if (updatedData.procedure && updatedData.procedure !== selectedAppointment.type) {
       try {
-        // First, get the procedures for this appointment
         console.log("Fetching procedures for appointment:", updatedData.id);
         const procedures = await appointmentService.getProceduresByAppointment(updatedData.id);
-
         console.log("Found procedures:", procedures);
 
         if (procedures && procedures.length > 0) {
-          // Assuming the first procedure is the main one
           const mainProcedure = procedures[0];
-
           console.log("Updating procedure:", mainProcedure.ProcNum);
 
-          // Update the procedure with the new code
-          await appointmentService.updateProcedure(mainProcedure.ProcNum, {
-            procCode: updatedData.procedure
-          });
+          const mapped = findProcedureCode(updatedData.procedure);
+          if (!mapped) {
+            console.warn("❌ No procedure code mapping found for:", updatedData.procedure);
+          }
 
-          console.log("Procedure update successful");
+          const procedurePayload = {
+            ProcCode: mapped?.ProcCode || updatedData.procedure,
+            Descript: mapped?.Descript || updatedData.procedure,
+            status: "TP"
+          };
+
+          await appointmentService.updateProcedure(mainProcedure.ProcNum, procedurePayload);
+          console.log("✅ Procedure update successful");
+          updatedProcedure = true; // ✅
         } else {
           console.log("No procedures found to update");
         }
       } catch (procError) {
-        console.error("Error updating procedure:", procError);
-        // Continue with the rest of the function even if procedure update fails
+        console.error("❌ Error updating procedure:", procError);
       }
     }
 
-    // Close the modal
     setShowUpdateModal(false);
 
-    // Refresh the appointments list
-    fetchAppointments();
+    // ✅ Always refresh appointments after update
+    await fetchAppointments();
 
-    // Show success message
-    alert("Appointment updated successfully!");
+    // ✅ Optional success feedback (for next step)
+    // toast.success("Appointment updated!");
+
   } catch (error) {
     console.error("Error updating appointment:", error);
     alert("Failed to update appointment. Please try again.");
@@ -441,6 +448,9 @@ const handleUpdateAppointment = async (updatedData) => {
     setIsLoading(false);
   }
 };
+
+
+
 
   useEffect(() => {
     const options = { month: "long", year: "numeric" };
