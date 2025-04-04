@@ -283,10 +283,8 @@ const handleSendMessage = (e) => {
     return;
   }
 
-  // Use 'patient-check-in' type if continuing a patient check-in conversation
   const messageType = selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general';
 
-  // Create a temporary message to display immediately
   const tempMessage = {
     id: `temp-${Date.now()}`,
     sender_id: currentUser.id,
@@ -297,34 +295,33 @@ const handleSendMessage = (e) => {
     is_temporary: true
   };
 
-  // Add the temporary message to the localMessages array
   setLocalMessages(prev => [tempMessage, ...prev]);
 
-  // Dispatch the action to send the message
   dispatch(sendMessage({
     sender_id: currentUser.id,
     receiver_id: selectedUser.id,
     message: newMessageText,
     type: messageType
-  })).then(() => {
-    // After the message is sent successfully, clear the temporary messages
-    // and fetch the updated conversation
-    setLocalMessages([]);
-    dispatch(fetchConversation({
-      userId: selectedUser.id,
-      conversationType: messageType
-    }));
-  }).catch(error => {
-    console.error("Error sending message:", error);
-    // Keep the temporary message but mark it as failed
-    setLocalMessages(prev =>
-      prev.map(msg =>
-        msg.id === tempMessage.id
-          ? { ...msg, failed: true }
-          : msg
-      )
-    );
-  });
+  }))
+    .then(() => {
+      // Fetch latest conversation first, THEN clear local messages
+      dispatch(fetchConversation({
+        userId: selectedUser.id,
+        conversationType: messageType
+      })).then(() => {
+        setLocalMessages([]); // Now safe to clear
+      });
+    })
+    .catch(error => {
+      console.error("Error sending message:", error);
+      setLocalMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempMessage.id
+            ? { ...msg, failed: true }
+            : msg
+        )
+      );
+    });
 
   setNewMessageText("");
 };
@@ -411,21 +408,16 @@ const handleSendMessage = (e) => {
   };
 
   // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const month = date.toLocaleString('default', { month: 'short' });
-    const year = date.getFullYear().toString().substr(-2);
-    return `${day} ${month}, ${year}`;
-  };
-
+const formatDate = (dateString) => {
+  if (!dateString || isNaN(new Date(dateString))) return "Invalid date";
+  const date = new Date(dateString);
+  return `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })}, ${date.getFullYear().toString().slice(-2)}`;
+};
   // Format time for display
-  const formatTime = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+ const formatTime = (dateString) => {
+  if (!dateString || isNaN(new Date(dateString))) return "Invalid time";
+  return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
 
   // Get user initials from name
   const getUserInitials = (name) => {
@@ -1153,23 +1145,24 @@ console.log("User filtering details:", {
         <div className="flex items-start">
   <span className="text-gray-500 text-sm w-24">Last Message:</span>
   <span className="text-sm">
-    {messages.length > 0 && messages.filter(msg =>
-      selectedUserContext === 'patient-check-in' ?
-        msg.type === 'patient-check-in' :
-        (msg.type === 'general' || msg.type === null || msg.type === undefined)
-    ).length > 0 ?
-      (() => {
-        const filteredMessages = messages.filter(msg =>
-          selectedUserContext === 'patient-check-in' ?
-            msg.type === 'patient-check-in' :
-            (msg.type === 'general' || msg.type === null || msg.type === undefined)
-        );
-        return `${formatDate(filteredMessages[0].created_at)}, "${filteredMessages[0].message?.substring(0, 20)}${filteredMessages[0].message?.length > 20 ? '...' : ''}"`;
-      })() :
-      'No messages yet'
-    }
+    {(() => {
+      const filteredMessages = messages.filter(msg =>
+        selectedUserContext === 'patient-check-in'
+          ? msg.type === 'patient-check-in'
+          : (msg.type === 'general' || msg.type === null || msg.type === undefined)
+      );
+
+                               console.log("🧪 Last message debug:", filteredMessages);
+
+      const lastMsg = filteredMessages[filteredMessages.length - 1];
+
+      return lastMsg
+        ? `${formatDate(lastMsg.created_at)}, "${lastMsg.message?.substring(0, 20) ?? ''}${lastMsg.message?.length > 20 ? '...' : ''}"`
+        : 'No messages yet';
+    })()}
   </span>
 </div>
+
 {selectedUserContext === 'patient-check-in' && (
   <div className="flex items-start">
     <span className="text-gray-500 text-sm w-24">Status:</span>

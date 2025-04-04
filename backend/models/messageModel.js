@@ -10,7 +10,8 @@ Message.getAllMessages = async () => {
     LEFT JOIN users u ON m.sender_id = u.id
     ORDER BY m.created_at DESC
   `;
-  return ikonDB.query(query);
+  const [rows] = await ikonDB.query(query);
+  return rows;
 };
 
 // ✅ Get conversation for a user
@@ -23,10 +24,11 @@ Message.getConversation = async (userId) => {
     WHERE (m.sender_id = ? OR m.receiver_id = ?)
     ORDER BY m.created_at DESC
   `;
-  return ikonDB.query(query, [userId, userId]);
+  const [rows] = await ikonDB.query(query, [userId, userId]);
+  return rows;
 };
 
-// ✅ Get messages between two users (with optional type)
+// ✅ Get messages between two users
 Message.getConversationBetweenUsers = async (currentUserId, otherUserId, type = null) => {
   let query = `
     SELECT m.*, s.name AS sender_name, r.name AS receiver_name
@@ -43,7 +45,8 @@ Message.getConversationBetweenUsers = async (currentUserId, otherUserId, type = 
   }
   query += ` ORDER BY m.created_at DESC`;
 
-  return ikonDB.query(query, params);
+  const [rows] = await ikonDB.query(query, params);
+  return rows;
 };
 
 // ✅ Get unread count (placeholder until 'read' column is implemented)
@@ -78,7 +81,8 @@ Message.getAllUserMessages = async (userId) => {
     WHERE m.sender_id = ? OR m.receiver_id = ?
     ORDER BY m.created_at DESC
   `;
-  return ikonDB.query(query, [userId, userId]);
+  const [rows] = await ikonDB.query(query, [userId, userId]);
+  return rows;
 };
 
 // ✅ Get messages by type
@@ -91,10 +95,11 @@ Message.getMessagesByType = async (type) => {
     WHERE m.type = ?
     ORDER BY m.created_at DESC
   `;
-  return ikonDB.query(query, [type]);
-
+  const [rows] = await ikonDB.query(query, [type]);
+  return rows;
 };
 
+// ✅ Get patient check-in messages by location
 Message.getPatientCheckInsByLocation = async (userId, locationId) => {
   const query = `
     SELECT m.*, sender.name AS sender_name,
@@ -129,7 +134,8 @@ Message.getAllUserMessagesByLocation = async (userId, locationId) => {
       )
     ORDER BY m.created_at DESC
   `;
-  return ikonDB.query(query, [userId, userId, locationId, locationId, locationId, locationId]);
+  const [rows] = await ikonDB.query(query, [userId, userId, locationId, locationId, locationId, locationId]);
+  return rows;
 };
 
 // ✅ Get patient check-in messages for a user
@@ -147,7 +153,9 @@ Message.getPatientCheckInsForUser = async (userId) => {
       AND (m.receiver_id IS NULL OR m.receiver_id = ? OR m.sender_id = ?)
     ORDER BY m.created_at DESC
   `;
-  return ikonDB.query(query, [userId, userId]);
+  const [rows] = await ikonDB.query(query, [userId, userId]);
+  return rows;
 };
 
 module.exports = Message;
+

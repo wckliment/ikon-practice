@@ -1,5 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Login from "./routes/Login";
 import Signup from "./routes/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -19,6 +21,7 @@ export default function App() {
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
+      <ToastContainer position="bottom-right" autoClose={3000} />
     </Router>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import ReactSelect from "react-select";
+import { toast } from "react-toastify";
 import { Calendar, Clock, User, Filter, ChevronLeft, ChevronRight } from "react-feather";
 import { debounce } from "lodash";
 import { useSelector, useDispatch } from "react-redux";
@@ -398,7 +399,6 @@ const handleUpdateAppointment = async (updatedData) => {
 
     await appointmentService.updateAppointment(updatedData);
 
-    // ✅ Flag to know if we updated procedure or not
     let updatedProcedure = false;
 
     if (updatedData.procedure && updatedData.procedure !== selectedAppointment.type) {
@@ -424,7 +424,7 @@ const handleUpdateAppointment = async (updatedData) => {
 
           await appointmentService.updateProcedure(mainProcedure.ProcNum, procedurePayload);
           console.log("✅ Procedure update successful");
-          updatedProcedure = true; // ✅
+          updatedProcedure = true;
         } else {
           console.log("No procedures found to update");
         }
@@ -435,11 +435,11 @@ const handleUpdateAppointment = async (updatedData) => {
 
     setShowUpdateModal(false);
 
-    // ✅ Always refresh appointments after update
+    // ✅ Refresh appointments so UI reflects change
     await fetchAppointments();
 
-    // ✅ Optional success feedback (for next step)
-    // toast.success("Appointment updated!");
+    // ✅ Trigger toast after success
+    toast.success("✅ Appointment updated successfully!");
 
   } catch (error) {
     console.error("Error updating appointment:", error);
@@ -448,7 +448,6 @@ const handleUpdateAppointment = async (updatedData) => {
     setIsLoading(false);
   }
 };
-
 
 
 
