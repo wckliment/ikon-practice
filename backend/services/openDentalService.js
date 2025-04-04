@@ -1,5 +1,6 @@
 const axios = require('axios');
-const { findProcedureCode } = require('../utils/procedureCodeMapper');
+const { findProcedureCode } = require('../../common/utils/procedureCodeMapper');
+
 
 class OpenDentalService {
   constructor(developerKey, customerKey) {
@@ -131,17 +132,30 @@ if (procLabel) {
 
 
 
-  async createProcedureLog(procedureData) {
+ async createProcedureLog(procedureData) {
   try {
-    console.log("🔨 Creating procedure log:", procedureData);
+    // 🔍 Step 1: Log the incoming data
+    console.log("🔨 Creating procedure log with the following data:");
+    console.log(`  - AptNum: ${procedureData.AptNum}`);
+    console.log(`  - PatNum: ${procedureData.PatNum}`);
+    console.log(`  - ProcCode: ${procedureData.ProcCode}`);
+    console.log(`  - ProvNum: ${procedureData.ProvNum}`);
+    console.log(`  - Descript: ${procedureData.Descript}`);
+    console.log(`  - Status: ${procedureData.status}`);
+    console.log(`  - API Endpoint: ${this.baseUrl}/procedurelogs`);
 
+    // 🛰️ Send the request
     const response = await axios.post(`${this.baseUrl}/procedurelogs`, procedureData, {
       headers: this.headers
     });
 
-    console.log("✅ Procedure log created:", response.data);
+    // ✅ Step 2: Log the success response
+    console.log("✅ Open Dental API response:", response.data);
+
     return response.data;
   } catch (error) {
+    // ❌ Step 3: Log the failure in detail
+    console.error("❌ Failed to create procedure log:", error.response?.data || error.message);
     this._handleError('create procedure log', error);
     throw new Error(`Failed to create procedure log: ${error.message}`);
   }

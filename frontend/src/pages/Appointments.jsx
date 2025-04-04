@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchProviders } from "../redux/providersSlice";
 import { fetchUsers } from "../redux/settingsSlice";
 import { fetchLocations } from "../redux/settingsSlice";
+import { findProcedureCode } from "../../../common/utils/procedureCodeMapper";
 import UpdateAppointmentModal from "../components/UpdateAppointmentModal";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
@@ -51,43 +52,90 @@ const appointmentService = {
   },
 
   async createAppointment(appointmentData) {
-    try {
-      console.log("📅 Creating new appointment:", appointmentData);
+  try {
+    console.log("📅 [STEP 1] Creating new appointment with data:", appointmentData);
 
-    // Change this validation to check for description field instead
     if (!appointmentData.description) {
-      throw new Error("Procedure is required for appointment creation");
+      throw new Error("❌ Procedure is required for appointment creation");
     }
 
-      // Format the data to match Open Dental API expectations
-      const formattedData = {
-        PatNum: appointmentData.patientId,
-        ProvNum: appointmentData.providerId,
-        AptDateTime: appointmentData.aptDateTime, // Format: "YYYY-MM-DDThh:mm:ss"
-        Pattern: "X".repeat(appointmentData.duration / 5), // Create pattern based on duration (5min increments)
-        AptStatus: "Scheduled", //Using the correct string value from the API documentation
-        Op: appointmentData.operatoryId || 1, // Default to 1 if not provided
-        Note: appointmentData.notes || "",
-        ProcDescript: appointmentData.procedure,
-        description: appointmentData.procedure,
-      };
+    // ✅ Fix: Ensure procedure is populated from description
+appointmentData.procedure = appointmentData.procedure || appointmentData.description;
 
-      const response = await axios.post('/api/appointments', formattedData, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
-        },
-      });
+    const formattedData = {
+      PatNum: appointmentData.patientId,
+      ProvNum: appointmentData.providerId,
+      AptDateTime: appointmentData.aptDateTime,
+      Pattern: "X".repeat(appointmentData.duration / 5),
+      AptStatus: "Scheduled",
+      Op: appointmentData.operatoryId || 1,
+      Note: appointmentData.notes || "",
+      ProcDescript: appointmentData.procedure,
+      description: appointmentData.procedure,
+    };
 
-      console.log("✅ Appointment created successfully:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error("❌ Failed to create appointment:", error);
-      throw error;
+    console.log("📦 Formatted appointment payload:", formattedData);
+
+    const response = await axios.post('/api/appointments', formattedData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+      },
+    });
+
+    const createdAppointment = response.data;
+    const appointmentId = createdAppointment?.AptNum || createdAppointment?.id;
+
+    console.log("✅ [STEP 1 COMPLETE] Appointment created:", createdAppointment);
+
+    // 🔎 STEP 2: Create procedure log(s)
+    if (appointmentId && appointmentData.procedure) {
+      console.log("🧠 [STEP 2] Mapping procedure label:", appointmentData.procedure);
+
+      const codeEntry = findProcedureCode(appointmentData.procedure);
+      const procedureLogs = Array.isArray(codeEntry) ? codeEntry : [codeEntry];
+
+      console.log("📋 Mapped procedure(s):", procedureLogs);
+
+      for (const log of procedureLogs) {
+        if (!log?.ProcCode) {
+          console.warn("⚠️ Skipping invalid procedure log entry:", log);
+          continue;
+        }
+
+        const payload = {
+          AptNum: appointmentId,
+          PatNum: appointmentData.patientId,
+          ProcCode: log.ProcCode,
+          ProvNum: appointmentData.providerId,
+          Descript: log.Descript || appointmentData.procedure,
+          status: "TP",
+        };
+
+        console.log("📤 Sending procedure log payload:", payload);
+
+        await axios.post(`/api/appointments/procedurelogs`, payload, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+          },
+        });
+
+        console.log(`✅ Procedure log created: ${log.ProcCode} (${log.Descript})`);
+      }
+    } else {
+      console.warn("⚠️ No procedure label provided or appointment ID missing.");
     }
-  },
 
-  // In your appointmentService.js or directly in your component
+    return createdAppointment;
+  } catch (error) {
+    console.error("❌ Failed to create appointment:", error.message, error.stack);
+    throw error;
+  }
+}
+,
+
+
 async updateAppointment(appointmentData) {
   try {
     console.log("📅 Updating appointment:", appointmentData);
@@ -441,7 +489,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       if (apt.patientId) {
         const patient = await appointmentService.getPatientById(apt.patientId);
         if (patient && (patient.FName || patient.LName)) {
-          console.log("🧑‍⚕️ Patient fetched:", patient);
+
           patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
         } else {
           console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
@@ -473,11 +521,6 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       procedureLogs: apt.procedureLogs || []
     });
 
-  console.log("✅ Transformed appointment:", {
-  id: transformed[transformed.length-1].id,
-  type: transformed[transformed.length-1].type, // Check if type is set correctly
-  patientName: transformed[transformed.length-1].patientName
-});
   }
 
   return transformed;
@@ -754,7 +797,7 @@ const patientOptions = patients.map((patient) => ({
       setNewAppointment({ ...newAppointment, patientId: e.target.value })
     }
   >
-    <option value="" disabled>Select Patient</option>
+
     {patients.map((patient) => (
       <option key={patient.PatNum} value={patient.PatNum}>
         {patient.FName} {patient.LName}

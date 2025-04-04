@@ -13,7 +13,7 @@ export const fetchUsers = createAsyncThunk("settings/fetchUsers", async (_, { ge
   const headers = getAuthHeader(getState);
   const response = await axios.get("/api/users", { headers });
 
-  console.log('Fetched users:', response.data);
+
 
   // Ensure each user has location information
   const processedUsers = response.data.map(user => ({
@@ -483,7 +483,7 @@ const settingsSlice = createSlice({
       })
 
       .addCase(fetchLocations.fulfilled, (state, action) => {
-         console.log("Fetched locations:", action.payload.locations);  // Log the fetched locations
+         
   state.locations.status = "succeeded";
 
   // Get userLocationId from the action payload

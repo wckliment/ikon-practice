@@ -38,7 +38,7 @@ const initializeOpenDental = async (req, res, next) => {
     }
 
     const location = rows[0];
-    console.log('Location found:', location);
+    
 
     if (!location.developer_key || !location.customer_key) {
       console.log('Missing keys in location record');

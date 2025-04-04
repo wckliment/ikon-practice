@@ -76,6 +76,4 @@ function findProcedureCode(label) {
   return procedureCodeMap[label] || null;
 }
 
-module.exports = {
-  findProcedureCode,
-};
+export { findProcedureCode, procedureCodeMap, compoundProcedureMap };
