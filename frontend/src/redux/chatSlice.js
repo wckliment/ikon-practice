@@ -480,6 +480,13 @@ const chatSlice = createSlice({
     clearSelectedUser: (state) => {
       state.selectedUser = null;
       state.messages = [];
+    },
+    updateUnreadCount: (state, action) => {
+      const { userId, unreadCount } = action.payload;
+      const user = state.users.find(u => u.id === userId);
+      if (user) {
+        user.unread_count = unreadCount;
+      }
     }
   },
   extraReducers: (builder) => {
@@ -726,5 +733,5 @@ const chatSlice = createSlice({
   }
 });
 
-export const { selectUser, clearSelectedUser } = chatSlice.actions;
+export const { selectUser, clearSelectedUser, updateUnreadCount } = chatSlice.actions;
 export default chatSlice.reducer;

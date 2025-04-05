@@ -14,7 +14,8 @@ import {
   fetchPatientCheckIns,
   createNewChat,
   deleteMessage,
-  deleteConversation
+  deleteConversation,
+  updateUnreadCount
 } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
@@ -155,20 +156,33 @@ useEffect(() => {
 
   useEffect(() => {
   if (selectedUser) {
-    const messageType = selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general';
+    const messageType =
+      selectedUserContext === 'patient-check-in'
+        ? 'patient-check-in'
+        : 'general';
 
-    dispatch(fetchConversation({
-      userId: selectedUser.id,
-      conversationType: messageType
-    }));
+    // Fetch the conversation
+    dispatch(
+      fetchConversation({
+        userId: selectedUser.id,
+        conversationType: messageType,
+      })
+    );
 
-    // Mark messages as read
+    // Mark messages as read on the backend
     fetch(`http://localhost:5000/api/messages/mark-read/${selectedUser.id}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem("token")}`
-      }
-    });
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    })
+      .then(() => {
+        // 🔄 Update unread count in Redux immediately
+        dispatch(updateUnreadCount({ userId: selectedUser.id, unreadCount: 0 }));
+      })
+      .catch((error) => {
+        console.error('Failed to mark messages as read:', error);
+      });
   }
 }, [selectedUser, selectedUserContext, dispatch]);
 
