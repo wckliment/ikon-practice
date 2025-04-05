@@ -150,3 +150,18 @@ exports.createPatientCheckIn = async (req, res) => {
   }
 };
 
+// ✅ Mark all messages from otherUser to currentUser as read
+exports.markMessagesAsRead = async (req, res) => {
+  try {
+    const currentUserId = req.user.userId;
+    const otherUserId = Number(req.params.id);
+
+    const result = await Message.markMessagesAsRead(currentUserId, otherUserId);
+
+    res.json({ success: true, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("Error marking messages as read:", err);
+    res.status(500).json({ error: "Database error", details: err.message });
+  }
+};
+

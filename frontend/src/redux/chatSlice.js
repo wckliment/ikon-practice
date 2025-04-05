@@ -490,9 +490,41 @@ const chatSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchAllMessages.fulfilled, (state, action) => {
-        state.allMessages = action.payload;
-        state.loading = false;
-      })
+  state.allMessages = action.payload;
+  state.loading = false;
+
+  // ✅ LOG ALL MESSAGES
+  console.log("📦 All fetched messages:", action.payload);
+
+  const currentUserId = parseInt(localStorage.getItem("userId"), 10);
+  console.log("🧑 Current User ID:", currentUserId);
+
+  if (currentUserId) {
+    const counts = {};
+
+    action.payload.forEach(msg => {
+      // ✅ LOG EACH MSG BEING COUNTED
+      if (msg.receiver_id === currentUserId && !msg.is_read) {
+        console.log("🔵 Unread message from:", msg.sender_id, "→", msg);
+        counts[msg.sender_id] = (counts[msg.sender_id] || 0) + 1;
+      }
+    });
+
+    // ✅ LOG FINAL COUNTS OBJECT
+    console.log("📊 Final unread counts:", counts);
+
+    // ✅ LOG USERS BEFORE ATTACHING
+    console.log("👥 Users before attaching unread counts:", state.users);
+
+    state.users = state.users.map(user => ({
+      ...user,
+      unread_count: counts[user.id] || 0
+    }));
+
+    // ✅ LOG USERS AFTER ATTACHING
+    console.log("👥 Users after attaching unread counts:", state.users);
+  }
+})
       .addCase(fetchAllMessages.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;

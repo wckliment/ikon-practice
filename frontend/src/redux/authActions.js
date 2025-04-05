@@ -11,6 +11,7 @@ export const handleLogin = (email, password) => async (dispatch) => {
     // Store both tokens in localStorage
     localStorage.setItem("token", data.token);
     localStorage.setItem("refreshToken", data.refreshToken);
+    localStorage.setItem("userId", data.user.id); 
   } catch (error) {
     console.error("Login failed:", error.message);
   }

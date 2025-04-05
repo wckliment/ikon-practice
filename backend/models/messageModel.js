@@ -56,7 +56,8 @@ Message.getUnreadCount = async (userId) => {
 
 // ✅ Mark message as read (placeholder until 'read' column is implemented)
 Message.markAsRead = async (messageId) => {
-  return { affectedRows: 1 };
+  const query = `UPDATE messages SET is_read = TRUE WHERE id = ?`;
+  return ikonDB.query(query, [messageId]);
 };
 
 // ✅ Create new message
@@ -157,5 +158,14 @@ Message.getPatientCheckInsForUser = async (userId) => {
   return rows;
 };
 
-module.exports = Message;
+// ✅ Mark all messages from one user to another as read
+Message.markMessagesAsRead = async (currentUserId, otherUserId) => {
+  const query = `
+    UPDATE messages
+    SET is_read = TRUE
+    WHERE receiver_id = ? AND sender_id = ? AND is_read = FALSE
+  `;
+  return ikonDB.query(query, [currentUserId, otherUserId]);
+};
 
+module.exports = Message;

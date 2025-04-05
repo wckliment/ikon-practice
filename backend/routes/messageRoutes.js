@@ -56,4 +56,8 @@ router.get('/debug/patient-check-ins', authenticateUser, (req, res) => {
 // Patient check-in route
 router.post('/patient-check-in', authenticateUser, messagesController.createPatientCheckIn);
 
+// Mark messages as read
+router.post('/mark-read/:id', authenticateUser, messagesController.markMessagesAsRead);
+
+
 module.exports = router;

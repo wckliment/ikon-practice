@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -30,6 +30,7 @@ const CommunicationHub = () => {
   const [optionsMenuOpen, setOptionsMenuOpen] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [localMessages, setLocalMessages] = useState([]);
+  const bottomRef = useRef(null);
 
   // Add debugging for token
   console.log("Current token:", localStorage.getItem('token'));
@@ -39,20 +40,13 @@ const CommunicationHub = () => {
 // Fetch initial data when component mounts
 useEffect(() => {
   const fetchData = async () => {
-    try {
-      console.log("Starting to fetch data...");
-      // Using Promise.all to wait for all async actions to complete
-      await Promise.all([
-        dispatch(fetchUsers()),
-        dispatch(fetchAllMessages()),
-        dispatch(fetchPatientCheckIns())
-      ]);
-
-      console.log("All data fetched successfully");
-      setDataLoaded(true);
-    } catch (error) {
-      console.error("Error fetching initial data:", error);
-    }
+    console.log("🔄 Fetching initial data...");
+    await Promise.all([
+      dispatch(fetchUsers()),
+      dispatch(fetchAllMessages()),
+      dispatch(fetchPatientCheckIns())
+    ]);
+    console.log("✅ Finished fetching initial data.");
   };
 
   fetchData();
@@ -126,7 +120,7 @@ useEffect(() => {
   testAuth();
 }, []); // Empty dependency array means this runs once on mount
 
-  // Add this useEffect after your existing useEffect hooks
+
 useEffect(() => {
   if (allMessages.length > 0) {
     console.log("All message types:", [...new Set(allMessages.map(msg => msg.type))]);
@@ -159,15 +153,24 @@ useEffect(() => {
     }
   }, [selectedUser]);
 
-  // Fetch messages when a user is selected
   useEffect(() => {
-    if (selectedUser) {
-      dispatch(fetchConversation({
-        userId: selectedUser.id,
-        conversationType: selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general'
-      }));
-    }
-  }, [selectedUser, selectedUserContext, dispatch]);
+  if (selectedUser) {
+    const messageType = selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general';
+
+    dispatch(fetchConversation({
+      userId: selectedUser.id,
+      conversationType: messageType
+    }));
+
+    // Mark messages as read
+    fetch(`http://localhost:5000/api/messages/mark-read/${selectedUser.id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("token")}`
+      }
+    });
+  }
+}, [selectedUser, selectedUserContext, dispatch]);
 
   // Add this new useEffect after your existing ones
 useEffect(() => {
@@ -196,7 +199,13 @@ useEffect(() => {
   return () => {
     document.removeEventListener('mousedown', handleClickOutside);
   };
-}, [optionsMenuOpen]);
+  }, [optionsMenuOpen]);
+
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, localMessages]);
 
   // Function to render the patient check-in section in the sidebar
   const patientCheckInSection = () => {
@@ -238,6 +247,9 @@ useEffect(() => {
 
   // Handle user selection
   const handleSelectUser = (user, context = 'regular') => {
+
+    console.log("📲 Selected user:", user);
+
     dispatch(selectUser(user));
     setSelectedUserContext(context);
     setSelectedPatientCheckIns(false);
@@ -282,6 +294,14 @@ const handleSendMessage = (e) => {
   if (!selectedUser || !newMessageText.trim() || !currentUser.id) {
     return;
   }
+
+    // Log what's being sent
+  console.log("✉️ Sending message:", {
+    from: currentUser?.id,
+    to: selectedUser?.id,
+    text: newMessageText,
+    type: selectedUserContext
+  });
 
   const messageType = selectedUserContext === 'patient-check-in' ? 'patient-check-in' : 'general';
 
@@ -647,8 +667,10 @@ console.log("User filtering details:", {
                           <div className="ml-2 flex-1 min-w-0">
                             <div className="flex justify-between items-center">
                               <p className={`font-medium text-sm truncate ${
-                                selectedUser?.id === user.id ? 'text-blue-600' : ''
-                              }`}>{user.name}</p>
+  selectedUser?.id === user.id ? 'text-blue-600' : ''
+} ${user.unread_count > 0 ? 'font-bold' : ''}`}>
+  {user.name}
+</p>
                               <span className="text-xs text-gray-500">
                                 {user.last_message_time ? formatTime(user.last_message_time) : ''}
                               </span>
@@ -664,6 +686,11 @@ console.log("User filtering details:", {
                                   : 'No messages';
                               })()}
                             </p>
+{(() => {
+  console.log("🔍 Rendered user unread count:", user.name, user.unread_count);
+  return null;
+})()}
+
                           </div>
                           {user.unread_count > 0 && (
                             <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
@@ -772,9 +799,17 @@ console.log("User filtering details:", {
                           }`}
                           onClick={() => handleSelectUser(user, 'regular')}
                         >
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
-                            {getUserInitials(user.name)}
-                          </div>
+                         <div className="relative">
+  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
+    {getUserInitials(user.name)}
+  </div>
+                            {user.unread_count > 0 && (
+                              <>
+    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-blue-400 rounded-full animate-ping opacity-75" />
+                                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white" />
+                           </>
+  )}
+</div>
                           <div className="ml-2 flex-1 min-w-0">
                             <div className="flex justify-between items-center">
                               <p className={`font-medium text-sm truncate ${
@@ -799,11 +834,7 @@ console.log("User filtering details:", {
                               })()}
                             </p>
                           </div>
-                          {user.unread_count > 0 && (
-                            <div className="ml-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">
-                              {user.unread_count}
-                            </div>
-                          )}
+
 
                           {/* Add pin button */}
                           <button
@@ -860,18 +891,7 @@ console.log("User filtering details:", {
                     <p className="text-gray-500">Select a user to start chatting</p>
                   )}
                 </div>
-                {/* <div className="flex items-center">
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="border rounded-md px-2 py-1 text-sm mr-2"
-                  />
-                  <button className="text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                    </svg>
-                  </button>
-                </div> */}
+
 <div className="flex items-center">
   <input
     type="text"
@@ -963,91 +983,102 @@ console.log("User filtering details:", {
     <div className="p-3 text-center text-sm text-gray-500">No messages yet. Start a conversation!</div>
   ) : (
     // Create a combined messages array for grouping by date
-    (() => {
-      const combinedMessages = localMessages.length > 0 ?
-        [...localMessages, ...messages.filter(m => !localMessages.some(lm => lm.id === m.id))] :
-        messages;
+   (() => {
+  const combinedMessages =
+    localMessages.length > 0
+      ? [...localMessages, ...messages.filter(m => !localMessages.some(lm => lm.id === m.id))]
+      : messages;
 
-      // Group the combined messages by date
-      const combinedGroupedMessages = {};
-      combinedMessages.forEach(message => {
-        const date = new Date(message.created_at);
-        const dateStr = date.toDateString();
+  // Group combined messages by date
+  const combinedGroupedMessages = {};
+  combinedMessages.forEach(message => {
+    const date = new Date(message.created_at);
+    const dateStr = date.toDateString();
 
-        if (!combinedGroupedMessages[dateStr]) {
-          combinedGroupedMessages[dateStr] = [];
-        }
+    if (!combinedGroupedMessages[dateStr]) {
+      combinedGroupedMessages[dateStr] = [];
+    }
 
-        combinedGroupedMessages[dateStr].push(message);
-      });
+    combinedGroupedMessages[dateStr].push(message);
+  });
 
-      // Get dates sorted
-      const combinedMessagesByDate = Object.keys(combinedGroupedMessages)
-        .sort((a, b) => new Date(b) - new Date(a));
+  // 🔁 FIX 1: Sort messages within each date group from oldest to newest
+  Object.keys(combinedGroupedMessages).forEach(date => {
+    combinedGroupedMessages[date].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  });
 
-      return combinedMessagesByDate.map(date => (
-        <div key={date}>
-          {/* Date Header */}
-          <div className="py-2 px-4 text-center">
-            <span className="text-xs text-gray-500">{formatDate(date)}</span>
-          </div>
+  // 🔁 FIX 2: Sort date groups from oldest to newest
+  const combinedMessagesByDate = Object.keys(combinedGroupedMessages)
+    .sort((a, b) => new Date(a) - new Date(b));
 
-          {/* Messages for this date */}
-          {combinedGroupedMessages[date]
-            .filter(message => {
-              // Only show messages of the appropriate type based on context
-              if (selectedUserContext === 'patient-check-in') {
-                return message.type === 'patient-check-in';
-              } else if (selectedUserContext === 'regular') {
-                return message.type === 'general' || message.type === null;
-              }
-              return true; // Fallback case
-            })
-            .map(message => {
-              const isSentByMe = message.sender_id === currentUser?.id;
-              const isPatientCheckIn = message.type === 'patient-check-in';
-              const isTemporary = message.is_temporary;
+  return combinedMessagesByDate.map(date => (
+    <div key={date}>
+      {/* Date Header */}
+      <div className="py-2 px-4 text-center">
+        <span className="text-xs text-gray-500">{formatDate(date)}</span>
+      </div>
 
-              return (
-              <div key={message.id}>
-  <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
-    <div className={`relative max-w-xs lg:max-w-md rounded-lg ${
-      isSentByMe ?
-        isTemporary ? 'bg-green-50' : 'bg-green-100' :
-        isPatientCheckIn ? 'bg-blue-100 border-l-4 border-green-500' : 'bg-blue-100'
-                      } p-3 text-sm`}>
+      {/* Messages for this date */}
+      {combinedGroupedMessages[date]
+        .filter(message => {
+          if (selectedUserContext === 'patient-check-in') {
+            return message.type === 'patient-check-in';
+          } else if (selectedUserContext === 'regular') {
+            return message.type === 'general' || message.type === null;
+          }
+          return true;
+        })
+        .map(message => {
+          const isSentByMe = message.sender_id === currentUser?.id;
+          const isPatientCheckIn = message.type === 'patient-check-in';
+          const isTemporary = message.is_temporary;
 
-      {/* Simplified delete button condition */}
-  {isSentByMe && (
-  <button
-    className="absolute -top-6 right-0 bg-white bg-opacity-80 hover:bg-red-100 text-gray-500 hover:text-red-600 p-1 rounded-full shadow-sm z-10"
-    onClick={(e) => {
-      e.stopPropagation();
-      handleDeleteMessage(message.id);
-    }}
-    title="Delete message"
-  >
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
-  </button>
-)}
+          return (
+            <div key={message.id}>
+              <div className={`flex ${isSentByMe ? 'justify-end' : ''}`}>
+                <div className={`relative max-w-xs lg:max-w-md rounded-lg ${
+                  isSentByMe
+                    ? isTemporary
+                      ? 'bg-green-50'
+                      : 'bg-green-100'
+                    : isPatientCheckIn
+                      ? 'bg-blue-100 border-l-4 border-green-500'
+                      : 'bg-blue-100'
+                } p-3 text-sm`}>
 
-      <p>{message.message}</p>
-      {isTemporary && (
-        <div className="text-xs text-gray-400 mt-1">Sending...</div>
-      )}
+                  {/* Delete button (only for sender) */}
+                  {isSentByMe && (
+                    <button
+                      className="absolute -top-6 right-0 bg-white bg-opacity-80 hover:bg-red-100 text-gray-500 hover:text-red-600 p-1 rounded-full shadow-sm z-10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteMessage(message.id);
+                      }}
+                      title="Delete message"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+
+                  <p>{message.message}</p>
+                  {isTemporary && (
+                    <div className="text-xs text-gray-400 mt-1">Sending...</div>
+                  )}
+                </div>
+              </div>
+              <div className="text-right text-xs text-gray-500">
+                {formatTime(message.created_at)}
+              </div>
+            </div>
+          );
+        })}
+       {/* scroll feature */}
+      <div ref={bottomRef} />
     </div>
-  </div>
-  <div className="text-right text-xs text-gray-500">
-    {formatTime(message.created_at)}
-  </div>
-</div>
-              );
-            })}
-        </div>
-      ));
-    })()
+  ));
+})()
   )}
 </div>
 

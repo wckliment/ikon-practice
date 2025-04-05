@@ -13,12 +13,13 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     loginSuccess: (state, action) => {
-      state.user = action.payload.user; // ✅ Fix: Store user in Redux
+      state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
 
-      localStorage.setItem("user", JSON.stringify(action.payload.user)); // ✅ Persist user
+      localStorage.setItem("user", JSON.stringify(action.payload.user));
       localStorage.setItem("token", action.payload.token);
+      localStorage.setItem("userId", action.payload.user.id);
     },
     logout: (state) => {
       state.user = null;
