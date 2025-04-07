@@ -1,5 +1,8 @@
 const AppointmentExtension = require('../models/appointmentExtensionModel');
+const confirmationStatusMap = require('../utils/confirmationStatusMap');
 
+
+console.log("🗺️ Confirmation status map keys:", Object.keys(confirmationStatusMap));
 
 // Get appointments for current user's location
 const getAppointments = async (req, res) => {
@@ -20,6 +23,8 @@ const getAppointments = async (req, res) => {
       end,
       providerId || null
     );
+
+    console.log("🔎 Sample raw appointment from OpenDental:", appointments[0]);
 
     // If no appointments found, return empty array
     if (!appointments.length) {
@@ -45,20 +50,30 @@ const getAppointments = async (req, res) => {
       extensionMap[ext.open_dental_appointment_id] = ext;
     });
 
-    // Combine appointments with extensions
-    const enhancedAppointments = appointments.map(apt => {
-      const extension = extensionMap[apt.id];
-      if (extension) {
-        return {
-          ...apt,
-          customTags: extension.customTags,
-          internalNotes: extension.internal_notes,
-          followupRequired: extension.followupRequired,
-          followupDate: extension.followup_date,
-        };
-      }
-      return apt;
-    });
+ const enhancedAppointments = appointments.map(apt => {
+   const extension = extensionMap[apt.id];
+
+    console.log(`📛 apt.id=${apt.id} → Confirmed=${apt.Confirmed}, mapped=${confirmationStatusMap[apt.Confirmed]}`);
+
+  const readableConfirmationStatus = confirmationStatusMap[apt.Confirmed] || 'Unknown';
+
+  const baseAppointment = {
+    ...apt,
+    confirmationLabel: readableConfirmationStatus
+  };
+
+  if (extension) {
+    return {
+      ...baseAppointment,
+      customTags: extension.customTags,
+      internalNotes: extension.internal_notes,
+      followupRequired: extension.followupRequired,
+      followupDate: extension.followup_date,
+    };
+  }
+
+  return baseAppointment;
+});
 
     // Return enhanced appointments to client
     res.json({
@@ -119,6 +134,10 @@ const getAppointment = async (req, res) => {
 
     // Fetch appointment from Open Dental
     const appointment = await req.openDentalService.getAppointment(appointmentId);
+
+    // Add readable confirmation label
+    const confirmationLabel = confirmationStatusMap[appointment.Confirmed] || 'Unknown';
+    appointment.confirmationLabel = confirmationLabel;
 
      // 🔥 Fetch procedures linked to this specific appointment
     const procedures = await req.openDentalService.getProceduresByAppointment(appointmentId);

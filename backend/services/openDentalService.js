@@ -338,6 +338,7 @@ async searchPatients(searchTerm) {
         isHygiene: apt.IsHygiene === 'true',
         isNewPatient: apt.IsNewPatient === 'true',
         procedureDescription: apt.ProcDescript || '',
+        Confirmed: apt.Confirmed,
       };
     } catch (error) {
       console.error('Error transforming appointment:', error, apt);

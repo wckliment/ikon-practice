@@ -12,6 +12,7 @@ import UpdateAppointmentModal from "../components/UpdateAppointmentModal";
 import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
+import confirmationStatusMap from "../../constants/confirmationStatusMap";
 
 const appointmentService = {
   async getAppointments(startDate, endDate, providerId = null) {
@@ -471,9 +472,21 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     }
   });
 
+    // 🎨 Status colors based on readable status
+  const statusColors = {
+    "Unconfirmed": "#9ca3af",      // gray
+    "Confirmed": "#3b82f6",        // blue
+    "Arrived": "#10b981",          // green
+    "Ready to go Back": "#facc15", // yellow
+    "In Treatment Room": "#f97316",// orange
+    "Check Out": "#ef4444",        // red
+    "Unknown": "#9ca3af"           // default gray
+  };
+
 
 
   for (const apt of apiAppointments) {
+     console.log("🔍 Full appointment object:", apt);
 
      console.log("🔍 Raw appointment from API:", {
     id: apt.id || apt.AptNum,
@@ -510,7 +523,10 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
 
     const resolvedColor = providerColorMap[String(providerId)] || `rgb(${apt.provColor || "249,231,160"})`;
 
-    console.log(`🎨 Color resolved for provider ${providerId}:`, resolvedColor);
+    console.log("📛 Confirmation status (string):", apt.confirmed);
+
+    const readableStatus = apt.confirmationLabel || apt.status || "Unknown";
+    const statusColor = statusColors[readableStatus] || "#9ca3af";
 
     transformed.push({
       id: apt.id || apt.AptNum,
@@ -523,13 +539,13 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       height: height,
       type: apt.ProcDescript || apt.procedureDescription || apt.procedure || apt.description || "",
       notes: apt.notes || apt.Note || "",
-      status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
+      status: readableStatus,
+      statusColor,
       staff: apt.providerName || apt.provAbbr || `Provider #${providerId}`,
       providerId,
       color: resolvedColor,
       procedureLogs: apt.procedureLogs || []
     });
-
   }
 
   return transformed;
@@ -679,6 +695,23 @@ const fetchAndSetSelectedAppointment = async (appointmentId) => {
       const duration = apt.pattern?.length ? apt.pattern.length * 5 : 30;
       const end = new Date(start.getTime() + duration * 60000);
 
+      // 🔎 Resolve confirmation status code to readable label and color
+
+    const readableStatus = apt.confirmationLabel || apt.status || "Unknown";
+
+const statusColors = {
+  "Unconfirmed": "#9ca3af",
+  "Confirmed": "#3b82f6",
+  "Scheduled": "#60a5fa",        // 🔵 NEW: map Scheduled if that's what your DB uses
+  "Arrived": "#10b981",
+  "Ready to go Back": "#facc15",
+  "In Treatment Room": "#f97316",
+  "Check Out": "#ef4444",
+  "Unknown": "#9ca3af"
+};
+
+const statusColor = statusColors[readableStatus] || "#9ca3af";
+
       // 🧠 NEW: Fetch real patient name from API
       let patientName = `Patient #${apt.patientId}`;
       try {
@@ -701,7 +734,9 @@ const fetchAndSetSelectedAppointment = async (appointmentId) => {
         height: duration * 3.2,
         type: apt.ProcDescript || apt.procedureDescription || "",
         notes: apt.notes || apt.Note || "",
-        status: apt.status || apt.confirmed || apt.Confirmed || "Unknown",
+        status: readableStatus,
+        statusColor, // ✅ Add this for your badge display
+       rawStatusCode: apt.Confirmed || apt.confirmed || null,
         staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId}`,
         providerId: apt.providerId || apt.ProvNum,
         color: `rgb(${apt.provColor || "160,233,249"})`,
@@ -714,7 +749,6 @@ const fetchAndSetSelectedAppointment = async (appointmentId) => {
     console.error("❌ Failed to fetch full appointment:", error);
   }
 };
-
 
   const handleAppointmentClick = (appointment) => {
   console.log("🖱️ Clicked appointment:", appointment);
@@ -937,7 +971,16 @@ const patientOptions = patients.map((patient) => ({
                           onClick={() => handleAppointmentClick(app)}
                         >
                           <div className="font-medium">{app.patientName}</div>
-                          <div className="text-xs">{app.type}</div>
+               <div className="text-xs">{app.type}</div>
+               <div
+  className="text-[10px] mt-1 px-2 py-0.5 rounded-full text-white inline-block"
+  style={{
+    backgroundColor: app.statusColor || "#9ca3af",
+    width: "fit-content"
+  }}
+>
+  {app.status}
+</div>
                         </div>
                       );
                     })}
@@ -1027,6 +1070,10 @@ const patientOptions = patients.map((patient) => ({
       ))}
     </ul>
   </div>
+) : selectedAppointment.type ? (
+  <div>
+    <strong>Procedures:</strong> <span>{selectedAppointment.type}</span>
+  </div>
 ) : (
   <div>
     <strong>Procedures:</strong> <span className="italic text-gray-500">None found</span>
@@ -1034,7 +1081,17 @@ const patientOptions = patients.map((patient) => ({
 )}
 
       <div>
-        <strong>Status:</strong> {selectedAppointment.status}
+        <div className="flex items-center gap-2">
+  <strong>Status:</strong>
+  <span
+    className="px-2 py-0.5 rounded-full text-white text-xs"
+    style={{
+      backgroundColor: selectedAppointment.statusColor || "#9ca3af"
+    }}
+  >
+    {selectedAppointment.status}
+  </span>
+</div>
                     </div>
 
       <div>
