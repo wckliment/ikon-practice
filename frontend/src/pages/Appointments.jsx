@@ -490,7 +490,6 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
 
      console.log("🔍 Raw appointment from API:", {
     id: apt.id || apt.AptNum,
-    ProcDescript: apt.ProcDescript, // Check if this exists and has a value
     procedureDescription: apt.procedureDescription // Check alternate field names
   });
 
@@ -690,60 +689,76 @@ const fetchAndSetSelectedAppointment = async (appointmentId) => {
     if (response.data && response.data.success) {
       const apt = response.data.data;
 
-      const normalizedDateTime = apt.startTime?.replace(" ", "T") || apt.AptDateTime?.replace(" ", "T");
-      const start = new Date(normalizedDateTime);
-      const duration = apt.pattern?.length ? apt.pattern.length * 5 : 30;
-      const end = new Date(start.getTime() + duration * 60000);
+      if (response.data && response.data.success) {
+        const apt = response.data.data;
 
-      // 🔎 Resolve confirmation status code to readable label and color
+        // 🔎 Fetch procedure logs separately
+        const procedureRes = await axios.get(`/api/appointments/${appointmentId}/procedures`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+          },
+        });
 
-    const readableStatus = apt.confirmationLabel || apt.status || "Unknown";
+        const procedureLogs = procedureRes.data?.data || [];
 
-const statusColors = {
-  "Unconfirmed": "#9ca3af",
-  "Confirmed": "#3b82f6",
-  "Scheduled": "#60a5fa",        // 🔵 NEW: map Scheduled if that's what your DB uses
-  "Arrived": "#10b981",
-  "Ready to go Back": "#facc15",
-  "In Treatment Room": "#f97316",
-  "Check Out": "#ef4444",
-  "Unknown": "#9ca3af"
-};
+        console.log("🧾 Procedure logs fetched:", procedureLogs);
 
-const statusColor = statusColors[readableStatus] || "#9ca3af";
+        const normalizedDateTime = apt.startTime?.replace(" ", "T") || apt.AptDateTime?.replace(" ", "T");
+        const start = new Date(normalizedDateTime);
+        const duration = apt.pattern?.length ? apt.pattern.length * 5 : 30;
+        const end = new Date(start.getTime() + duration * 60000);
 
-      // 🧠 NEW: Fetch real patient name from API
-      let patientName = `Patient #${apt.patientId}`;
-      try {
-        const patientRes = await appointmentService.getPatientById(apt.patientId);
-        if (patientRes?.FName || patientRes?.LName) {
-          patientName = `${patientRes.FName || ""} ${patientRes.LName || ""}`.trim();
+
+
+        const readableStatus = apt.confirmationLabel || apt.status || "Unknown";
+
+        const statusColors = {
+          "Unconfirmed": "#9ca3af",
+          "Confirmed": "#3b82f6",
+          "Scheduled": "#60a5fa",
+          "Arrived": "#10b981",
+          "Ready to go Back": "#facc15",
+          "In Treatment Room": "#f97316",
+          "Check Out": "#ef4444",
+          "Unknown": "#9ca3af"
+        };
+
+        const statusColor = statusColors[readableStatus] || "#9ca3af";
+
+
+        let patientName = `Patient #${apt.patientId}`;
+        try {
+          const patientRes = await appointmentService.getPatientById(apt.patientId);
+          if (patientRes?.FName || patientRes?.LName) {
+            patientName = `${patientRes.FName || ""} ${patientRes.LName || ""}`.trim();
+          }
+        } catch (err) {
+          console.warn("Could not fetch patient details:", err);
         }
-      } catch (err) {
-        console.warn("Could not fetch patient details:", err);
+
+        setSelectedAppointment({
+          id: apt.id || apt.AptNum,
+          patientName,
+          date: start.toISOString().split("T")[0],
+          startTime: start.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+          fullStartTime: start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+          endTime: end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+          duration: duration,
+          height: duration * 3.2,
+          type: apt.ProcDescript || apt.procedureDescription || "",
+          notes: apt.notes || apt.Note || "",
+          status: readableStatus,
+          statusColor,
+          rawStatusCode: apt.Confirmed || apt.confirmed || null,
+          staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId}`,
+          providerId: apt.providerId || apt.ProvNum,
+          color: `rgb(${apt.provColor || "160,233,249"})`,
+          procedureLogs
+        });
+
+        setNotes(apt.notes || "");
       }
-
-      setSelectedAppointment({
-        id: apt.id || apt.AptNum,
-        patientName,
-        date: start.toISOString().split("T")[0],
-        startTime: start.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
-        fullStartTime: start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-        endTime: end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-        duration: duration,
-        height: duration * 3.2,
-        type: apt.ProcDescript || apt.procedureDescription || "",
-        notes: apt.notes || apt.Note || "",
-        status: readableStatus,
-        statusColor, // ✅ Add this for your badge display
-       rawStatusCode: apt.Confirmed || apt.confirmed || null,
-        staff: apt.providerName || apt.provAbbr || `Provider #${apt.providerId}`,
-        providerId: apt.providerId || apt.ProvNum,
-        color: `rgb(${apt.provColor || "160,233,249"})`,
-        procedureLogs: apt.procedureLogs || [],
-      });
-
-      setNotes(apt.notes || "");
     }
   } catch (error) {
     console.error("❌ Failed to fetch full appointment:", error);
