@@ -17,6 +17,7 @@ import {
   deleteConversation,
   updateUnreadCount
 } from "../redux/chatSlice";
+import { socket, connectSocket } from "../socket";
 
 const CommunicationHub = () => {
   const dispatch = useDispatch();
@@ -33,8 +34,35 @@ const CommunicationHub = () => {
   const [localMessages, setLocalMessages] = useState([]);
   const bottomRef = useRef(null);
 
-  // Add debugging for token
-  console.log("Current token:", localStorage.getItem('token'));
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    connectSocket(token);
+
+    socket.on("connect", () => {
+      console.log("🧩 Connected to socket server");
+    });
+
+    socket.on("disconnect", () => {
+      console.log("🔌 Disconnected from socket server");
+    });
+
+    socket.on("newMessage", (message) => {
+      console.log("📨 New message received via socket:", message);
+
+      // Update messages in real time
+      dispatch(fetchAllMessages());
+      dispatch(fetchPatientCheckIns());
+    });
+  }
+
+  return () => {
+    socket.off("connect");
+    socket.off("disconnect");
+    socket.off("newMessage");
+  };
+}, [dispatch]);
+
 
 
 

@@ -71,6 +71,10 @@ exports.createMessage = async (req, res) => {
       created_at: new Date()
     };
 
+    // ✅ EMIT to all connected sockets
+    const io = req.app.get("io");
+    io.emit("newMessage", newMessage);
+
     res.status(201).json(newMessage);
   } catch (err) {
     console.error("Error creating message:", err);
@@ -128,7 +132,7 @@ exports.getPatientCheckIns = async (req, res) => {
   }
 };
 
-// Create a patient check-in
+// Create new patient check-in message
 exports.createPatientCheckIn = async (req, res) => {
   try {
     const { patientName, appointmentTime, doctorName, sender_id } = req.body;
@@ -139,6 +143,19 @@ exports.createPatientCheckIn = async (req, res) => {
 
     const message = `Patient ${patientName} has checked in for their ${appointmentTime} appointment with Dr. ${doctorName || 'Smith'}`;
     const result = await Message.create(sender_id, null, message, 'patient-check-in');
+
+    const newCheckInMessage = {
+      id: result.insertId,
+      sender_id,
+      receiver_id: null,
+      message,
+      type: 'patient-check-in',
+      created_at: new Date()
+    };
+
+    // ✅ EMIT to all sockets
+    const io = req.app.get("io");
+    io.emit("newMessage", newCheckInMessage);
 
     res.status(201).json({
       message: 'Patient check-in message created successfully',
@@ -164,4 +181,3 @@ exports.markMessagesAsRead = async (req, res) => {
     res.status(500).json({ error: "Database error", details: err.message });
   }
 };
-
