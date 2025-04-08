@@ -4,6 +4,8 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 require("dotenv").config();
 const app = express();
+const pollForCheckInUpdates = require('./polling/checkInWatcher');
+const db = require('./config/db');
 
 // Middleware
 app.use(express.json());
@@ -36,6 +38,30 @@ app.use("/api/providers", providerRoutes);
 
 const patientRoutes = require("./routes/patientRoutes");
 app.use("/api/patients", patientRoutes);
+
+const pollRoutes = require("./routes/pollRoutes");
+app.use("/api/poll", pollRoutes);
+
+// 🔁 Global background polling: runs every 30 seconds for all locations
+setInterval(async () => {
+  try {
+    const [locations] = await db.query('SELECT id FROM locations');
+
+    if (!locations.length) {
+      console.warn('⚠️ No locations found for polling.');
+      return;
+    }
+
+    for (const loc of locations) {
+      const locationId = loc.id;
+      console.log(`🛰️ Background polling: location ${locationId}`);
+      await pollForCheckInUpdates(locationId);
+    }
+  } catch (err) {
+    console.error('❌ Global polling loop failed:', err.message);
+  }
+}, 30000); // every 30 seconds
+
 
 // Start server
 const PORT = process.env.PORT || 5000;
