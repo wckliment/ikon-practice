@@ -22,6 +22,9 @@ import { socket, connectSocket } from "../socket";
 const CommunicationHub = () => {
   const dispatch = useDispatch();
   const { users = [], messages = [], allMessages = [], patientCheckIns = [], selectedUser, loading } = useSelector((state) => state.chat);
+  useEffect(() => {
+  console.log("🔄 Redux messages state updated:", messages);
+}, [messages]);
   const { user: currentUser, isAuthenticated } = useSelector((state) => state.auth);
 
   const [newMessageText, setNewMessageText] = useState("");
@@ -34,8 +37,9 @@ const CommunicationHub = () => {
   const [localMessages, setLocalMessages] = useState([]);
   const bottomRef = useRef(null);
 
-  useEffect(() => {
+ useEffect(() => {
   const token = localStorage.getItem("token");
+
   if (token) {
     connectSocket(token);
 
@@ -50,9 +54,27 @@ const CommunicationHub = () => {
     socket.on("newMessage", (message) => {
       console.log("📨 New message received via socket:", message);
 
-      // Update messages in real time
+      // Always refresh global messages + check-ins for sidebar + badge updates
       dispatch(fetchAllMessages());
       dispatch(fetchPatientCheckIns());
+
+      // 🔁 If you're currently chatting with this user, refresh that specific conversation
+      if (
+        selectedUser &&
+        (message.sender_id === selectedUser.id || message.receiver_id === selectedUser.id)
+      ) {
+        const messageType =
+          selectedUserContext === "patient-check-in" ? "patient-check-in" : "general";
+
+        console.log("🧵 Fetching updated conversation for selected user:", selectedUser.id);
+
+        dispatch(fetchConversation({
+          userId: selectedUser.id,
+          conversationType: messageType
+        }));
+      } else {
+        console.log("🧵 Skipped fetchConversation — selected user does not match message sender/receiver");
+      }
     });
   }
 
@@ -61,7 +83,7 @@ const CommunicationHub = () => {
     socket.off("disconnect");
     socket.off("newMessage");
   };
-}, [dispatch]);
+}, [dispatch, selectedUser, selectedUserContext]);
 
 
 
@@ -228,7 +250,11 @@ useEffect(() => {
 }, [loading, allMessages, users]);
 
   useEffect(() => {
-  if (!optionsMenuOpen) return;
+    if (!optionsMenuOpen) return;
+
+    useEffect(() => {
+  console.log("🔄 Chat.messages updated:", messages);
+}, [messages]);
 
   const handleClickOutside = (event) => {
     if (!event.target.closest('[data-options-menu]') &&

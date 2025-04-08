@@ -68,7 +68,7 @@ exports.createMessage = async (req, res) => {
       receiver_id,
       message,
       type,
-      created_at: new Date()
+      created_at: new Date().toISOString()
     };
 
     // ✅ EMIT to all connected sockets
