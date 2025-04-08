@@ -1241,22 +1241,35 @@ console.log("User filtering details:", {
                           <span className="text-gray-500 text-sm w-24">DOB:</span>
                           <span className="text-sm">{selectedUser.dob ? formatDate(selectedUser.dob) : 'N/A'}</span>
                         </div>
-        <div className="flex items-start">
+      <div className="flex items-start">
   <span className="text-gray-500 text-sm w-24">Last Message:</span>
   <span className="text-sm">
     {(() => {
-      const filteredMessages = messages.filter(msg =>
-        selectedUserContext === 'patient-check-in'
-          ? msg.type === 'patient-check-in'
-          : (msg.type === 'general' || msg.type === null || msg.type === undefined)
-      );
+      const combined = [
+        ...localMessages,
+        ...messages.filter(m => !localMessages.some(lm => lm.id === m.id))
+      ];
 
-                               console.log("🧪 Last message debug:", filteredMessages);
+      // Log for debugging
+      console.log("🧪 Raw combined messages:", combined);
 
-      const lastMsg = filteredMessages[filteredMessages.length - 1];
+      const validMessages = combined
+        .filter(msg => {
+          const isTypeMatch = selectedUserContext === 'patient-check-in'
+            ? msg.type === 'patient-check-in'
+            : msg.type === 'general' || msg.type === null || msg.type === undefined;
+
+          const isValidDate = msg.created_at && !isNaN(new Date(msg.created_at));
+          return isTypeMatch && isValidDate;
+        })
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+      const lastMsg = validMessages[validMessages.length - 1];
+
+      console.log("🧪 Sorted + filtered lastMsg:", lastMsg);
 
       return lastMsg
-        ? `${formatDate(lastMsg.created_at)}, "${lastMsg.message?.substring(0, 20) ?? ''}${lastMsg.message?.length > 20 ? '...' : ''}"`
+        ? `${formatDate(lastMsg.created_at)}, "${lastMsg.message?.substring(0, 20)}${lastMsg.message?.length > 20 ? '...' : ''}"`
         : 'No messages yet';
     })()}
   </span>
