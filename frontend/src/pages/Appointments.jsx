@@ -844,26 +844,7 @@ const patientOptions = patients.map((patient) => ({
           <TopBar />
 
 
-        {/* Display Patients List */}
-        {loadingPatients ? (
-  <div>Loading patients...</div>
-) : (
-  <select
-    className="w-full border rounded p-2"
-    value={newAppointment.patientId}
-    onChange={(e) =>
-      setNewAppointment({ ...newAppointment, patientId: e.target.value })
-    }
-  >
-
-    {patients.map((patient) => (
-      <option key={patient.PatNum} value={patient.PatNum}>
-        {patient.FName} {patient.LName}
-      </option>
-    ))}
-  </select>
-)}
-
+    
 
           {/* Header */}
           <div className="px-4 pt-0 pb-2 ml-16">
@@ -1167,24 +1148,26 @@ const patientOptions = patients.map((patient) => ({
 
 
         {/* Provider Dropdown */}
-       <div className="mb-4">
-  <label className="block text-sm font-medium mb-1">Provider</label>
-  <select
-    className="w-full border rounded p-2"
-    value={newAppointment.providerId}
-    onChange={(e) =>
-      setNewAppointment({ ...newAppointment, providerId: e.target.value })
-    }
-     required
-  >
-    <option value="" disabled>Select Provider</option>
-    {staffMembers.map((provider) => (
-      <option key={provider.id} value={provider.id}>
-        {provider.fullName}
-      </option>
-    ))}
-  </select>
-</div>
+       {false && (
+  <div className="mb-4">
+    <label className="block text-sm font-medium mb-1">Provider</label>
+    <select
+      className="w-full border rounded p-2"
+      value={newAppointment.providerId}
+      onChange={(e) =>
+        setNewAppointment({ ...newAppointment, providerId: e.target.value })
+      }
+      required
+    >
+      <option value="" disabled>Select Provider</option>
+      {staffMembers.map((provider) => (
+        <option key={provider.id} value={provider.id}>
+          {provider.fullName}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
 
    {/* Date Picker */}
          <div className="mb-4">
