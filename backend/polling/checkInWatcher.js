@@ -45,22 +45,24 @@ const pollForCheckInUpdates = async (locationId) => {
   }
 
   // This is the key condition check
-  if (prevStatus !== Confirmed && Confirmed === READY_TO_GO_BACK_CODE) {
-    console.log(`✨ Status change detected: from ${prevStatus} to ${Confirmed} (READY_TO_GO_BACK_CODE=${READY_TO_GO_BACK_CODE})`);
+ if (prevStatus !== Confirmed && Confirmed === READY_TO_GO_BACK_CODE) {
+  console.log(`✨ Status change detected: from ${prevStatus} to ${Confirmed} (READY_TO_GO_BACK_CODE=${READY_TO_GO_BACK_CODE})`);
 
-    try {
-      const patient = await openDental.getPatient(PatNum);
-      console.log(`🧑 Patient info retrieved: ${patient.FName} ${patient.LName}`);
+  try {
+    const patient = await openDental.getPatient(PatNum);
+    console.log(`🧑 Patient info retrieved: ${patient.FName} ${patient.LName}`);
 
-      const message = `🦷 ${patient.FName} ${patient.LName} has checked in and is ready to go back.`;
-      console.log(`📝 Creating system message: "${message}"`);
+    const message = `🦷 ${patient.FName} ${patient.LName} has checked in and is ready to go back.`;
 
-      const result = await sendSystemMessage(message, locationId);
-      console.log(`✅ [${locationId}] Auto-message sent: ${message}, result:`, result);
-    } catch (error) {
-      console.error(`❌ Error processing ready-to-go-back status for appointment ${AptNum}:`, error);
-    }
+    console.log("🚀 Sending system message to socket...");
+    const result = await sendSystemMessage(message, locationId);
+
+    console.log("📨 System message result:", result);
+  } catch (error) {
+    console.error(`❌ Error processing ready-to-go-back status for appointment ${AptNum}:`, error);
   }
+}
+
 
   previousStatusesByLocation[locationId][AptNum] = Confirmed;
 }
