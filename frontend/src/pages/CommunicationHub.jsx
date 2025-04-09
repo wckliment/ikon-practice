@@ -24,7 +24,10 @@ const CommunicationHub = () => {
   const { users = [], messages = [], allMessages = [], patientCheckIns = [], selectedUser, loading } = useSelector((state) => state.chat);
   useEffect(() => {
   console.log("🔄 Redux messages state updated:", messages);
-}, [messages]);
+  }, [messages]);
+  console.log("🧠 allMessages from Redux:", allMessages); // <--- add this here
+  console.log("👨‍⚕️ patientCheckIns from Redux:", patientCheckIns); // ✅ add this
+
   const { user: currentUser, isAuthenticated } = useSelector((state) => state.auth);
 
   const [newMessageText, setNewMessageText] = useState("");
@@ -180,22 +183,17 @@ useEffect(() => {
   }
 }, [allMessages]);
 
-  // Temporary fix: populate patientCheckIns from allMessages if empty
   useEffect(() => {
-    if (patientCheckIns.length === 0 && allMessages.length > 0) {
-      const broadcastMessages = allMessages.filter(msg =>
-        msg.type === 'patient-check-in' &&
-        (msg.receiver_id === -1 || msg.receiver_id === null)
-      );
+  const broadcastMessages = allMessages.filter(msg =>
+    msg.type === 'patient-check-in' &&
+    (msg.receiver_id === -1 || msg.receiver_id === null)
+  );
 
-      if (broadcastMessages.length > 0) {
-        dispatch({
-          type: 'chat/fetchPatientCheckIns/fulfilled',
-          payload: broadcastMessages
-        });
-      }
-    }
-  }, [patientCheckIns, allMessages, dispatch]);
+  dispatch({
+    type: 'chat/fetchPatientCheckIns/fulfilled',
+    payload: broadcastMessages
+  });
+}, [allMessages, dispatch]);
 
   // Reset selected patient check-ins when a user is selected
   useEffect(() => {

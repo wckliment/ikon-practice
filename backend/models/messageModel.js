@@ -21,7 +21,9 @@ Message.getConversation = async (userId) => {
     FROM messages m
     LEFT JOIN users s ON m.sender_id = s.id
     LEFT JOIN users r ON m.receiver_id = r.id
-    WHERE (m.sender_id = ? OR m.receiver_id = ?)
+    WHERE
+      (m.sender_id = ? OR m.receiver_id = ?)
+      OR (m.type = 'patient-check-in' AND m.receiver_id IS NULL)
     ORDER BY m.created_at DESC
   `;
   const [rows] = await ikonDB.query(query, [userId, userId]);

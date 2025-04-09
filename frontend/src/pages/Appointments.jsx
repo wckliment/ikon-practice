@@ -844,7 +844,7 @@ const patientOptions = patients.map((patient) => ({
           <TopBar />
 
 
-    
+
 
           {/* Header */}
           <div className="px-4 pt-0 pb-2 ml-16">
@@ -1147,27 +1147,25 @@ const patientOptions = patients.map((patient) => ({
 
 
 
-        {/* Provider Dropdown */}
-       {false && (
-  <div className="mb-4">
-    <label className="block text-sm font-medium mb-1">Provider</label>
-    <select
-      className="w-full border rounded p-2"
-      value={newAppointment.providerId}
-      onChange={(e) =>
-        setNewAppointment({ ...newAppointment, providerId: e.target.value })
-      }
-      required
-    >
-      <option value="" disabled>Select Provider</option>
-      {staffMembers.map((provider) => (
-        <option key={provider.id} value={provider.id}>
-          {provider.fullName}
-        </option>
-      ))}
-    </select>
-  </div>
-)}
+        {/* ✅ Provider Dropdown (fixed) */}
+<div className="mb-4">
+  <label className="block text-sm font-medium mb-1">Provider</label>
+  <select
+    className="w-full border rounded p-2"
+    value={newAppointment.providerId}
+    onChange={(e) =>
+      setNewAppointment({ ...newAppointment, providerId: e.target.value })
+    }
+    required
+  >
+    <option value="" disabled>Select Provider</option>
+    {staffMembers.map((provider) => (
+      <option key={provider.id} value={provider.id}>
+        {provider.fullName}
+      </option>
+    ))}
+  </select>
+</div>
 
    {/* Date Picker */}
          <div className="mb-4">
