@@ -18,6 +18,7 @@ import {
   updateUnreadCount
 } from "../redux/chatSlice";
 import { socket, connectSocket } from "../socket";
+import { addMessageViaSocket } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
   const dispatch = useDispatch();
@@ -37,6 +38,7 @@ const CommunicationHub = () => {
   const [selectedPatientCheckIns, setSelectedPatientCheckIns] = useState(false);
   const [optionsMenuOpen, setOptionsMenuOpen] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [systemAlert, setSystemAlert] = useState(null);
   const [localMessages, setLocalMessages] = useState([]);
   const bottomRef = useRef(null);
 
@@ -54,31 +56,58 @@ const CommunicationHub = () => {
       console.log("🔌 Disconnected from socket server");
     });
 
-    socket.on("newMessage", (message) => {
-      console.log("📨 New message received via socket:", message);
-
-      // Always refresh global messages + check-ins for sidebar + badge updates
-      dispatch(fetchAllMessages());
-      dispatch(fetchPatientCheckIns());
-
-      // 🔁 If you're currently chatting with this user, refresh that specific conversation
-      if (
-        selectedUser &&
-        (message.sender_id === selectedUser.id || message.receiver_id === selectedUser.id)
-      ) {
-        const messageType =
-          selectedUserContext === "patient-check-in" ? "patient-check-in" : "general";
-
-        console.log("🧵 Fetching updated conversation for selected user:", selectedUser.id);
-
-        dispatch(fetchConversation({
-          userId: selectedUser.id,
-          conversationType: messageType
-        }));
-      } else {
-        console.log("🧵 Skipped fetchConversation — selected user does not match message sender/receiver");
-      }
+        // Add this test event listener
+    socket.on("test", (data) => {
+      console.log("🧪 Received test message:", data);
     });
+
+   socket.on("newMessage", (message) => {
+   console.log("🔎 SOCKET DEBUGGING - Raw message received:", message);
+  console.log("🔎 SOCKET DEBUGGING - Is system message?",
+    message.is_system === true,
+    "Type:", message.type
+  );
+
+
+  dispatch(addMessageViaSocket(message));
+
+  // New condition for system messages
+  if (message.is_system === true) {
+    console.log("🔔 System message detected:", message);
+
+
+    // If viewing patient check-ins already, refresh that view
+    if (selectedPatientCheckIns) {
+    }
+
+    // If this is a "ready to go back" message, set an alert
+    if (message.message.includes("ready to go back")) {
+      setSystemAlert(message);
+
+      // Auto-dismiss after 10 seconds
+      setTimeout(() => {
+        setSystemAlert(null);
+      }, 10000);
+    }
+  }
+  // Existing logic for regular messages
+  else if (
+    selectedUser &&
+    (message.sender_id === selectedUser.id || message.receiver_id === selectedUser.id)
+  ) {
+    // const messageType =
+    //   selectedUserContext === "patient-check-in" ? "patient-check-in" : "general";
+
+    // console.log("🧵 Fetching updated conversation for selected user:", selectedUser.id);
+
+    // dispatch(fetchConversation({
+    //   userId: selectedUser.id,
+    //   conversationType: messageType
+    // }));
+  } else {
+    console.log("🧵 Message handled via socket - no fetch needed");
+  }
+});
   }
 
   return () => {
@@ -274,36 +303,48 @@ useEffect(() => {
   }, [messages, localMessages]);
 
   // Function to render the patient check-in section in the sidebar
-  const patientCheckInSection = () => {
-    // Filter broadcast messages (with null receiver_id)
-    const broadcastCheckIns = patientCheckIns.filter(msg => msg.receiver_id === null);
+const patientCheckInSection = () => {
+  // Filter broadcast messages AND system messages
+  const broadcastCheckIns = patientCheckIns.filter(msg =>
+     msg => msg.type === 'patient-check-in' || msg.is_system === true
+  );
 
-    if (broadcastCheckIns.length === 0) {
-      return <div className="p-2 text-xs text-gray-500">No patient check-ins</div>;
-    }
+  if (broadcastCheckIns.length === 0) {
+    return <div className="p-2 text-xs text-gray-500">No patient check-ins</div>;
+  }
 
-    // Display a clickable patient check-in item
-    return (
-      <div
-        className={`p-2 hover:bg-gray-50 rounded-md cursor-pointer ${selectedPatientCheckIns ? 'bg-blue-50' : ''}`}
-        onClick={() => handleSelectPatientCheckIns()}
-      >
-        <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium text-xs">
-            🏥
-          </div>
-          <div className="ml-2 flex-1 min-w-0">
-            <p className={`font-medium text-sm truncate ${selectedPatientCheckIns ? 'text-blue-600' : ''}`}>
-              Patient Check-ins
-            </p>
-            <p className="text-xs text-gray-500 truncate">
-              {broadcastCheckIns.length} recent check-ins
-            </p>
-          </div>
+  // Count system messages specially
+  const systemMessages = broadcastCheckIns.filter(msg => msg.is_system === true);
+  const hasReadyToGoBack = systemMessages.some(msg =>
+    msg.message.includes("ready to go back")
+  );
+
+  // Display a clickable patient check-in item
+  return (
+    <div
+      className={`p-2 hover:bg-gray-50 rounded-md cursor-pointer ${selectedPatientCheckIns ? 'bg-blue-50' : ''} ${hasReadyToGoBack ? 'border-l-4 border-amber-400' : ''}`}
+      onClick={() => handleSelectPatientCheckIns()}
+    >
+      <div className="flex items-center">
+        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium text-xs">
+          🏥
         </div>
+        <div className="ml-2 flex-1 min-w-0">
+          <p className={`font-medium text-sm truncate ${selectedPatientCheckIns ? 'text-blue-600' : ''}`}>
+            Patient Check-ins
+          </p>
+          <p className="text-xs text-gray-500 truncate">
+            {broadcastCheckIns.length} recent check-ins
+            {systemMessages.length > 0 && ` (${systemMessages.length} system)`}
+          </p>
+        </div>
+        {hasReadyToGoBack && (
+          <div className="ml-2 w-2 h-2 bg-amber-600 rounded-full animate-pulse"></div>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   // Handle selecting patient check-ins
   const handleSelectPatientCheckIns = () => {
@@ -672,7 +713,37 @@ console.log("User filtering details:", {
         {/* Top Bar */}
         <TopBar />
 
-    {/* Custom Header for Communication Hub */}
+              {/* System Alert Notification - Add it here */}
+      {systemAlert && (
+        <div className="fixed top-20 right-4 max-w-md bg-yellow-100 border-l-4 border-yellow-500 p-4 shadow-lg rounded-md z-50 animate-bounce">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">{systemAlert.message}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  onClick={() => setSystemAlert(null)}
+                  className="inline-flex rounded-md p-1.5 text-yellow-500 hover:bg-yellow-200 focus:outline-none"
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
 {/* Custom Header for Communication Hub */}
 <div className="px-4 pt-0 pb-2 ml-10">
   <h1 className="text-4xl font-bold text-gray-800">

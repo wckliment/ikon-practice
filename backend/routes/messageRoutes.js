@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const messagesController = require("../controllers/messagesController");
 const authenticateUser = require("../middleware/authMiddleware");
+const { sendSystemMessage } = require('../utils/systemMessaging');
 
 // Get all messages
 router.get("/", authenticateUser, messagesController.getAllMessages);
@@ -51,6 +52,25 @@ router.get('/debug/patient-check-ins', authenticateUser, (req, res) => {
     }
     res.json({ count: results.length, results });
   });
+});
+
+//TEST ROUTE for Patient Check-in-Websocket
+router.post('/test-system', async (req, res) => {
+  try {
+    const { message, locationId } = req.body || {};
+    console.log(`Attempting to send test system message: "${message}" to location ${locationId}`);
+
+    const result = await sendSystemMessage(
+      message || "🦷 Test Patient has checked in and is ready to go back.",
+      locationId || 6 // Default to location 6 if not provided
+    );
+
+    console.log(`Test system message sent, result:`, result);
+    res.json({ success: true, message: result });
+  } catch (err) {
+    console.error(`Error sending test system message:`, err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Patient check-in route

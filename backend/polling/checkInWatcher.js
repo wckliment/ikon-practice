@@ -31,20 +31,39 @@ const pollForCheckInUpdates = async (locationId) => {
       previousStatusesByLocation[locationId] = {};
     }
 
-    for (const apt of appointments) {
-      const { id: AptNum, patientId: PatNum, Confirmed } = apt;
-      const prevStatus = previousStatusesByLocation[locationId][AptNum];
+   for (const apt of appointments) {
+  const { id: AptNum, patientId: PatNum, Confirmed } = apt;
 
-      if (prevStatus !== Confirmed && Confirmed === READY_TO_GO_BACK_CODE) {
-        const patient = await openDental.getPatient(PatNum);
-        const message = `🦷 ${patient.FName} ${patient.LName} has checked in and is ready to go back.`;
+  // Add detailed logging for each appointment
+  console.log(`📊 Appointment ${AptNum}: Patient=${PatNum}, Status=${Confirmed}, Previous=${previousStatusesByLocation[locationId][AptNum] || 'none'}`);
 
-        await sendSystemMessage(message, locationId);
-        console.log(`✅ [${locationId}] Auto-message sent: ${message}`);
-      }
+  const prevStatus = previousStatusesByLocation[locationId][AptNum];
 
-      previousStatusesByLocation[locationId][AptNum] = Confirmed;
+  // Log specifically when detecting status 23
+  if (Confirmed === READY_TO_GO_BACK_CODE) {
+    console.log(`🎯 Found appointment with READY_TO_GO_BACK status (${READY_TO_GO_BACK_CODE}): AptNum=${AptNum}, PatNum=${PatNum}`);
+  }
+
+  // This is the key condition check
+  if (prevStatus !== Confirmed && Confirmed === READY_TO_GO_BACK_CODE) {
+    console.log(`✨ Status change detected: from ${prevStatus} to ${Confirmed} (READY_TO_GO_BACK_CODE=${READY_TO_GO_BACK_CODE})`);
+
+    try {
+      const patient = await openDental.getPatient(PatNum);
+      console.log(`🧑 Patient info retrieved: ${patient.FName} ${patient.LName}`);
+
+      const message = `🦷 ${patient.FName} ${patient.LName} has checked in and is ready to go back.`;
+      console.log(`📝 Creating system message: "${message}"`);
+
+      const result = await sendSystemMessage(message, locationId);
+      console.log(`✅ [${locationId}] Auto-message sent: ${message}, result:`, result);
+    } catch (error) {
+      console.error(`❌ Error processing ready-to-go-back status for appointment ${AptNum}:`, error);
     }
+  }
+
+  previousStatusesByLocation[locationId][AptNum] = Confirmed;
+}
   } catch (error) {
     console.error(`❌ Error polling check-ins for location ${locationId}:`, error.message);
   }

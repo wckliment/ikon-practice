@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 
 // API base URL - use full URL with port
@@ -49,12 +49,12 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Function to check if token is expired - ADD THIS HERE
+// Function to check if token is expired
 const isTokenExpired = (token) => {
   if (!token) return true;
 
   try {
-    // Extract the expiration time
+
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
@@ -117,6 +117,7 @@ export const fetchAllMessages = createAsyncThunk(
   }
 );
 
+
 export const fetchPatientCheckIns = createAsyncThunk(
   'chat/fetchPatientCheckIns',
   async (_, { rejectWithValue }) => {
@@ -139,7 +140,7 @@ export const fetchPatientCheckIns = createAsyncThunk(
   }
 );
 
-// In chatSlice.js - Modify the fetchUsers function
+
 export const fetchUsers = createAsyncThunk(
   'chat/fetchUsers',
   async (_, { rejectWithValue }) => {
@@ -151,7 +152,7 @@ export const fetchUsers = createAsyncThunk(
       }
 
       console.log('Making API request to fetch users from current location');
-      // The location filtering is now handled server-side
+
       const response = await api.get('/users');
       console.log('API response:', response.data);
       return response.data;
@@ -162,8 +163,7 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
-// The rest of the file remains unchanged
-// UPDATED: Modified to accept an object with userId and conversationType
+
 export const fetchConversation = createAsyncThunk(
   'chat/fetchConversation',
   async ({ userId, conversationType }, { rejectWithValue }) => {
@@ -216,6 +216,8 @@ export const sendMessage = createAsyncThunk(
     }
   }
 );
+
+
 
 // New: Send a patient check-in message
 export const sendPatientCheckIn = createAsyncThunk(
@@ -294,14 +296,14 @@ export const deleteConversation = createAsyncThunk(
 );
 
 
-// Add new action for Patient Check-In creation
+
 export const createPatientCheckIn = createAsyncThunk(
   'chat/createPatientCheckIn',
   async ({ patientName, appointmentTime, doctorName, sender_id, additionalMessage }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
 
-      // Check if token is expired
+
       if (isTokenExpired(token)) {
         console.log('Token is expired, need to refresh');
         return rejectWithValue({ error: 'Token expired' });
@@ -347,14 +349,14 @@ export const markMessageAsRead = createAsyncThunk(
   }
 );
 
-// Add new toggle pin user action
+
 export const togglePinUser = createAsyncThunk(
   'chat/togglePinUser',
   async ({ userId, isPinned }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
 
-      // Check if token is expired
+
       if (isTokenExpired(token)) {
         console.log('Token is expired, need to refresh');
         return rejectWithValue({ error: 'Token expired' });
@@ -377,7 +379,7 @@ export const createNewChat = createAsyncThunk(
     try {
       const token = localStorage.getItem('token');
 
-      // Check if token is expired
+
       if (isTokenExpired(token)) {
         console.log('Token is expired, need to refresh');
         return rejectWithValue({ error: 'Token expired' });
@@ -391,7 +393,7 @@ export const createNewChat = createAsyncThunk(
         throw new Error('User not authenticated');
       }
 
-      // For patient check-ins (no specific user)
+
       if (type === 'patient-check-in' && !userId) {
         if (!message) {
           throw new Error('Patient check-in requires a message');
@@ -458,13 +460,15 @@ export const deleteMessage = createAsyncThunk(
   }
 );
 
+//Add message via socket action
+export const addMessageViaSocket = createAction('chat/addMessageViaSocket');
 
 // Initial state - updated to include patientCheckIns
 const initialState = {
   users: [],
   messages: [],
   allMessages: [],
-  patientCheckIns: [], // New state for patient check-in messages
+  patientCheckIns: [],
   selectedUser: null,
   loading: false,
   error: null
@@ -491,6 +495,29 @@ const chatSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+// Add handler for socket messages
+      .addCase(addMessageViaSocket, (state, action) => {
+        console.log('💾 Adding message via socket to Redux:', action.payload);
+
+        // Add to allMessages at the beginning of the array
+        state.allMessages = [action.payload, ...state.allMessages];
+
+        // If it's a patient check-in or system message about patient ready to go back
+        if (action.payload.type === 'patient-check-in' ||
+            (action.payload.is_system === true &&
+             action.payload.message.includes('ready to go back'))) {
+          console.log('📱 Adding to patientCheckIns collection:', action.payload);
+          state.patientCheckIns = [action.payload, ...state.patientCheckIns];
+        }
+
+        // If we're currently viewing a conversation with this user, add it there too
+        if (state.selectedUser &&
+            (action.payload.sender_id === state.selectedUser.id ||
+             action.payload.receiver_id === state.selectedUser.id)) {
+          state.messages = [action.payload, ...state.messages];
+        }
+      })
+
       // fetchAllMessages reducers
       .addCase(fetchAllMessages.pending, (state) => {
         state.loading = true;
@@ -500,7 +527,6 @@ const chatSlice = createSlice({
   state.allMessages = action.payload;
   state.loading = false;
 
-  // ✅ LOG ALL MESSAGES
   console.log("📦 All fetched messages:", action.payload);
 
   const currentUserId = parseInt(localStorage.getItem("userId"), 10);
