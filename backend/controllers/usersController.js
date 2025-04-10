@@ -145,3 +145,20 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ error: "Database error", details: error.message });
   }
 };
+
+exports.updateAppointmentColor = async (req, res) => {
+  const userId = req.params.id;
+  const { appointment_color } = req.body;
+
+  if (!appointment_color) {
+    return res.status(400).json({ error: "Color is required" });
+  }
+
+  try {
+    await User.updateAppointmentColor(userId, appointment_color);
+    res.status(200).json({ message: "Color updated successfully" });
+  } catch (error) {
+    console.error("❌ Error updating appointment color:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
+  }
+};

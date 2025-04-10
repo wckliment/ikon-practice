@@ -54,6 +54,20 @@ export const removeUser = createAsyncThunk(
   }
 );
 
+export const updateUserColor = createAsyncThunk(
+  "settings/updateUserColor",
+  async ({ userId, appointmentColor }, { getState, rejectWithValue }) => {
+    try {
+      const headers = getAuthHeader(getState);
+      const response = await axios.put(`/api/users/${userId}/color`, { appointmentColor }, { headers });
+      return response.data;
+    } catch (error) {
+      console.error("Error in updateUserColor:", error);
+      return rejectWithValue(error.response?.data || { message: error.message });
+    }
+  }
+);
+
 
 export const fetchUsersByLocation = createAsyncThunk(
   "settings/fetchUsersByLocation",
@@ -374,6 +388,32 @@ const settingsSlice = createSlice({
     state.users.error = action.payload || action.error.message;
   })
 
+     // Update user color
+.addCase(updateUserColor.fulfilled, (state, action) => {
+  const updatedUser = action.payload;
+
+  // Update in the main users list
+  const index = state.users.data.findIndex(user => user.id === updatedUser.id);
+  if (index !== -1) {
+    state.users.data[index] = {
+      ...state.users.data[index],
+      appointment_color: updatedUser.appointment_color
+    };
+  }
+
+  // Update in usersByLocation list if present
+  const locIndex = state.usersByLocation.data.findIndex(user => user.id === updatedUser.id);
+  if (locIndex !== -1) {
+    state.usersByLocation.data[locIndex] = {
+      ...state.usersByLocation.data[locIndex],
+      appointment_color: updatedUser.appointment_color
+    };
+  }
+})
+.addCase(updateUserColor.rejected, (state, action) => {
+  state.users.error = action.payload || action.error.message;
+})
+
 // Remove user cases
 .addCase(removeUser.pending, (state) => {
   state.users.status = "loading";
@@ -483,7 +523,7 @@ const settingsSlice = createSlice({
       })
 
       .addCase(fetchLocations.fulfilled, (state, action) => {
-         
+
   state.locations.status = "succeeded";
 
   // Get userLocationId from the action payload

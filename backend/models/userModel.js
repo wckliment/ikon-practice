@@ -167,4 +167,15 @@ User.delete = async (id) => {
   return result;
 };
 
+User.updateAppointmentColor = async (id, color) => {
+  const query = `
+    UPDATE users
+    SET appointment_color = ?
+    WHERE id = ?
+  `;
+  const [result] = await ikonDB.query(query, [color, id]);
+  return result;
+};
+
+
 module.exports = User;

@@ -36,4 +36,7 @@ router.put("/:id", usersController.updateUser);
 // Delete user
 router.delete("/:id", usersController.deleteUser);
 
+// Update user appointment color
+router.put("/:id/color", usersController.updateAppointmentColor);
+
 module.exports = router;

@@ -19,7 +19,8 @@ import {
   updateSystemPreferences,
   fetchUserLocations,
   updateUser,
-  removeUser
+  removeUser,
+  updateUserColor
 } from "../redux/settingsSlice";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
@@ -228,14 +229,10 @@ useEffect(() => {
     }
   };
 
-  const handleUpdateUserColor = async (userId, color) => {
+ const handleUpdateUserColor = async (userId, color) => {
   try {
-    await dispatch(updateUser({
-      userId: userId,
-      userData: { appointmentColor: color }
-    })).unwrap();
+    await dispatch(updateUserColor({ userId, appointmentColor: color })).unwrap();
 
-    // Refresh the user list to show the updated color
     if (selectedLocationFilter) {
       dispatch(fetchUsersByLocation(selectedLocationFilter));
     } else {
@@ -643,24 +640,14 @@ const handleRemoveUser = async () => {
                     {user.location_name || user.location || user.location_id || 'No Location'}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div
-                      className="w-6 h-6 rounded-full mr-2"
-                      style={{ backgroundColor: userColor }}
-                    ></div>
-                    <button
-  className="text-xs text-blue-600 hover:text-blue-800"
-  onClick={() => {
-    console.log('Updating color for user:', user.id, 'to color:', userColor);
-    // Call handleUpdateUserColor directly instead of opening the edit modal
-    handleUpdateUserColor(user.id, userColor);
-  }}
->
-  Change
-</button>
-                  </div>
-                </td>
+               <td className="px-6 py-4 whitespace-nowrap">
+  <div className="flex items-center">
+    <div
+      className="w-6 h-6 rounded-full"
+      style={{ backgroundColor: userColor }}
+    ></div>
+  </div>
+</td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     className="text-blue-600 hover:text-blue-900 mr-3"
