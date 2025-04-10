@@ -46,9 +46,9 @@ User.create = async (name, dob, email, password, role, location_id) => {
   const formattedLocationId = location_id || null;
   const query = `
     INSERT INTO users (name, dob, email, password, role, location_id, appointment_color)
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
-  const [result] = await ikonDB.query(query, [name.trim(), formattedDob, email.trim(), password, formattedRole, formattedLocationId]);
+  const [result] = await ikonDB.query(query, [name.trim(), formattedDob, email.trim(), password, formattedRole, formattedLocationId, null]);
   return result;
 };
 
