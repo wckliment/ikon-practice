@@ -1,11 +1,34 @@
 import { useState } from "react";
+import axios from "axios";
 
 const CheckInChecklist = ({ patient, appointment, locationCode, onComplete }) => {
   const [formsCompleted, setFormsCompleted] = useState(false);
   const [paymentCollected, setPaymentCollected] = useState(false);
   const [contactVerified, setContactVerified] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const isReady = formsCompleted && paymentCollected && contactVerified;
+
+  const handleCompleteCheckIn = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      await axios.post("/api/tablet/tablet-checkin", {
+        patient,
+        appointment,
+        locationCode,
+      });
+
+      onComplete(); // Proceed to the final screen
+    } catch (err) {
+      console.error("❌ Tablet check-in failed:", err);
+      setError("Check-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-xl mx-auto mt-10 bg-white p-6 rounded-xl shadow-md text-center">
@@ -27,14 +50,16 @@ const CheckInChecklist = ({ patient, appointment, locationCode, onComplete }) =>
         onToggle={() => setContactVerified(prev => !prev)}
       />
 
+      {error && <p className="text-red-600 mt-4">{error}</p>}
+
       <button
-        onClick={onComplete}
+        onClick={handleCompleteCheckIn}
         className={`mt-8 w-full py-3 rounded ${
           isReady ? "bg-green-600 hover:bg-green-700 text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed"
         }`}
-        disabled={!isReady}
+        disabled={!isReady || loading}
       >
-        Complete Check-In
+        {loading ? "Submitting..." : "Complete Check-In"}
       </button>
     </div>
   );
@@ -51,5 +76,6 @@ const ChecklistItem = ({ label, checked, onToggle }) => {
     </div>
   );
 };
+
 
 export default CheckInChecklist;

@@ -1,4 +1,6 @@
 const Message = require("../models/messageModel");
+const { sendSystemMessage } = require("../utils/systemMessaging");
+const { getLocationIdByCode } = require("../utils/locationUtils");
 
 // Get all messages for the logged-in user
 exports.getAllMessages = async (req, res) => {
@@ -179,5 +181,28 @@ exports.markMessagesAsRead = async (req, res) => {
   } catch (err) {
     console.error("Error marking messages as read:", err);
     res.status(500).json({ error: "Database error", details: err.message });
+  }
+};
+
+exports.sendTabletCheckInMessage = async (req, res) => {
+  try {
+    const { patient, appointment, locationCode } = req.body;
+
+    // Optional: Resolve locationId from code
+    const locationId = await getLocationIdByCode(locationCode); // returns ID or null if not found
+
+    const time = new Date(appointment.startTime).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const messageText = `Patient ${patient.FName} ${patient.LName} has checked in for their ${time} appointment with Dr. ${appointment.providerName}`;
+
+    const message = await sendSystemMessage(messageText, locationId);
+
+    res.status(200).json({ success: true, message });
+  } catch (error) {
+    console.error("❌ Failed to send tablet check-in message:", error);
+    res.status(500).json({ error: "Failed to send message" });
   }
 };
