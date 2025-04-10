@@ -1,81 +1,24 @@
-import { useState } from "react";
-import axios from "axios";
+import { Link } from "react-router-dom";
 
-const PatientLookupForm = ({ locationCode, onSuccess }) => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [dob, setDob] = useState(""); // YYYY-MM-DD
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await axios.post("/api/tablet/patient-lookup", {
-        firstName,
-        lastName,
-        dob,
-        locationCode,
-      });
-
-      const { patient, appointment } = res.data;
-      if (patient && appointment) {
-        onSuccess(patient, appointment);
-      } else {
-        setError("Patient not found for today’s appointments.");
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+const CompletionScreen = () => {
   return (
-    <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded-xl shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-center">Check In</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="First Name"
-          className="w-full p-3 border rounded"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Last Name"
-          className="w-full p-3 border rounded"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          required
-        />
-        <input
-          type="date"
-          placeholder="Date of Birth"
-          className="w-full p-3 border rounded"
-          value={dob}
-          onChange={(e) => setDob(e.target.value)}
-          required
-        />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="bg-white rounded-xl shadow-md p-8 text-center max-w-md">
+        <h2 className="text-3xl font-bold mb-4 text-green-600">You're All Checked In!</h2>
+        <p className="text-lg text-gray-600 mb-6">
+          Please have a seat — someone will be with you shortly.
+        </p>
 
-        {error && <p className="text-red-500">{error}</p>}
-
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700"
-          disabled={loading}
+        {/* Optional: Go back to start */}
+        <Link
+          to="/"
+          className="inline-block mt-4 text-blue-600 underline hover:text-blue-800"
         >
-          {loading ? "Searching..." : "Find My Appointment"}
-        </button>
-      </form>
+          Return to Home
+        </Link>
+      </div>
     </div>
   );
 };
 
-export default PatientLookupForm;
+export default CompletionScreen;

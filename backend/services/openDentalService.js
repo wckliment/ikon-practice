@@ -289,6 +289,79 @@ async searchPatients(searchTerm) {
   }
 }
 
+  async findPatientByNameAndDOB(firstName, lastName, dob) {
+  try {
+    const response = await axios.get(`${this.baseUrl}/patients`, {
+      headers: this.headers,
+      params: {
+        FName: firstName,
+        LName: lastName
+      }
+    });
+
+    const allMatches = response.data;
+
+    // Filter by DOB (exact match)
+    const match = allMatches.find(p => p.Birthdate === dob);
+
+    if (!match) {
+      console.log(`❌ No patient found matching name + DOB`);
+      return null;
+    }
+
+    console.log(`✅ Found patient: ${match.FName} ${match.LName}, PatNum: ${match.PatNum}`);
+    return match;
+  } catch (error) {
+    this._handleError('findPatientByNameAndDOB', error);
+    throw new Error(`Failed to search patient by name and DOB: ${error.message}`);
+  }
+  }
+
+ async getTodayAppointmentForPatient(patNum) {
+  try {
+    const today = new Date();
+    const formattedDate = this._formatDate(today);
+
+    const response = await axios.get(`${this.baseUrl}/appointments`, {
+      headers: this.headers,
+      params: {
+        PatNum: patNum,
+        startDate: formattedDate,
+        endDate: formattedDate
+      }
+    });
+
+    const appointments = response.data;
+
+    if (!appointments.length) {
+      console.log(`❌ No appointments found for PatNum ${patNum} today`);
+      return null;
+    }
+
+    // Use first appointment
+    const match = appointments[0];
+
+    console.log(`✅ Found appointment for PatNum ${patNum}: AptNum ${match.AptNum}`);
+
+    // 🔍 Fetch provider list
+    const providersRes = await axios.get(`${this.baseUrl}/providers`, {
+      headers: this.headers
+    });
+
+    const provider = providersRes.data.find(p => p.ProvNum === match.ProvNum);
+
+    // Replace provAbbr with full name if found
+    if (provider) {
+      match.provAbbr = `${provider.FName} ${provider.LName}`;
+    }
+
+    return this._transformAppointment(match);
+  } catch (error) {
+    this._handleError('getTodayAppointmentForPatient', error);
+    throw new Error(`Failed to fetch today's appointment: ${error.message}`);
+  }
+}
+
 
   _formatDate(date) {
     try {

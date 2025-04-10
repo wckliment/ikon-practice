@@ -74,6 +74,10 @@ setInterval(async () => {
   }
 }, 30000);
 
+const tabletRoutes = require("./routes/tabletRoutes");
+app.use("/api/tablet", tabletRoutes);
+
+
 // ✅ Start server with HTTP + WebSocket support
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
