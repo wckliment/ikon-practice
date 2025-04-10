@@ -56,58 +56,51 @@ const CommunicationHub = () => {
       console.log("🔌 Disconnected from socket server");
     });
 
-        // Add this test event listener
     socket.on("test", (data) => {
       console.log("🧪 Received test message:", data);
     });
 
-   socket.on("newMessage", (message) => {
-   console.log("🔎 SOCKET DEBUGGING - Raw message received:", message);
-  console.log("🔎 SOCKET DEBUGGING - Is system message?",
-    message.is_system === true,
-    "Type:", message.type
-  );
+    socket.on("newMessage", (message) => {
+      console.log("🔎 SOCKET DEBUGGING - Raw message received:", message);
+      console.log("🔎 SOCKET DEBUGGING - Is system message?", message.is_system === true, "Type:", message.type);
 
+      dispatch(addMessageViaSocket(message));
 
-  dispatch(addMessageViaSocket(message));
+      // ✅ Real-time update unread badge
+      if (message.receiver_id === currentUser?.id && !message.is_read) {
+        dispatch(updateUnreadCount({
+          userId: message.sender_id,
+          unreadCount: (users.find(u => u.id === message.sender_id)?.unread_count || 0) + 1
+        }));
+      }
 
-  // New condition for system messages
-  if (message.is_system === true) {
-    console.log("🔔 System message detected:", message);
+      // 🔔 System message logic
+      if (message.is_system === true) {
+        console.log("🔔 System message detected:", message);
 
+        if (selectedPatientCheckIns) {
+          // Could refresh view or highlight
+        }
 
-    // If viewing patient check-ins already, refresh that view
-    if (selectedPatientCheckIns) {
-    }
+        if (message.message.includes("ready to go back")) {
+          setSystemAlert(message);
 
-    // If this is a "ready to go back" message, set an alert
-    if (message.message.includes("ready to go back")) {
-      setSystemAlert(message);
+          setTimeout(() => {
+            setSystemAlert(null);
+          }, 10000);
+        }
+      }
 
-      // Auto-dismiss after 10 seconds
-      setTimeout(() => {
-        setSystemAlert(null);
-      }, 10000);
-    }
-  }
-  // Existing logic for regular messages
-  else if (
-    selectedUser &&
-    (message.sender_id === selectedUser.id || message.receiver_id === selectedUser.id)
-  ) {
-    // const messageType =
-    //   selectedUserContext === "patient-check-in" ? "patient-check-in" : "general";
-
-    // console.log("🧵 Fetching updated conversation for selected user:", selectedUser.id);
-
-    // dispatch(fetchConversation({
-    //   userId: selectedUser.id,
-    //   conversationType: messageType
-    // }));
-  } else {
-    console.log("🧵 Message handled via socket - no fetch needed");
-  }
-});
+      // 🧵 Regular conversation updates (if needed)
+      else if (
+        selectedUser &&
+        (message.sender_id === selectedUser.id || message.receiver_id === selectedUser.id)
+      ) {
+        // You could optionally re-fetch here
+      } else {
+        console.log("🧵 Message handled via socket - no fetch needed");
+      }
+    });
   }
 
   return () => {
@@ -115,7 +108,7 @@ const CommunicationHub = () => {
     socket.off("disconnect");
     socket.off("newMessage");
   };
-}, [dispatch, selectedUser, selectedUserContext]);
+}, [dispatch, selectedUser, selectedUserContext, users, currentUser, selectedPatientCheckIns]);
 
 
 
