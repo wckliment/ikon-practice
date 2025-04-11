@@ -67,12 +67,12 @@ exports.patientLookup = async (req, res) => {
       return res.status(404).json({ message: "Patient not found." });
     }
 
-    // 2. Get today's appointment
-    const appointment = await openDentalService.getTodayAppointmentForPatient(patient.PatNum);
+   // 2. Get the next upcoming appointment
+  const appointment = await openDentalService.getNextAppointmentForPatient(patient.PatNum);
 
-    if (!appointment) {
-      return res.status(404).json({ message: "No appointment found for today." });
-    }
+if (!appointment) {
+  return res.status(404).json({ message: "No upcoming appointment found." });
+}
 
     // 3. Return both
     res.json({ patient, appointment });

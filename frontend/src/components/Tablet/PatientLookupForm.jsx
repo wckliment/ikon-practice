@@ -32,12 +32,12 @@ const PatientLookupForm = ({ locationCode, onSuccess }) => {
       );
 
       const { patient, appointment } = res.data;
-      
-console.log("✅ Lookup Result:");
-console.log("Patient:", patient);
-console.log("Appointment:", appointment);
-console.log("👉 appointment.AptDateTime:", appointment.AptDateTime);
-console.log("👉 appointment.startTime:", appointment.startTime);
+
+      console.log("✅ Lookup Result:");
+      console.log("Patient:", patient);
+      console.log("Appointment:", appointment);
+      console.log("👉 appointment.AptDateTime:", appointment.AptDateTime);
+      console.log("👉 appointment.startTime:", appointment.startTime);
 
       if (patient && appointment) {
         onSuccess(patient, appointment);
@@ -53,44 +53,56 @@ console.log("👉 appointment.startTime:", appointment.startTime);
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded-xl shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-center">Check In</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="First Name"
-          className="w-full p-3 border rounded"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Last Name"
-          className="w-full p-3 border rounded"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          required
-        />
-        <input
-          type="date"
-          placeholder="Date of Birth"
-          className="w-full p-3 border rounded"
-          value={dob}
-          onChange={(e) => setDob(e.target.value)}
-          required
-        />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">
+      {/* 👇 ikonFlow Branding */}
+      <div className="mb-6 text-center">
+        <h1 className="text-4xl font-extrabold text-blue-700 tracking-tight">
+          ikonFlow
+        </h1>
+        <p className="text-lg text-gray-600 mt-1 italic">The moment care begins.</p>
+      </div>
 
-        {error && <p className="text-red-500">{error}</p>}
+      {/* 🧾 Lookup Form */}
+      <div className="w-full max-w-md bg-white p-6 rounded-xl shadow-md">
+        <h2 className="text-xl font-semibold mb-4 text-center">Patient Check In</h2>
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700"
-          disabled={loading}
-        >
-          {loading ? "Searching..." : "Find My Appointment"}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            placeholder="First Name"
+            className="w-full p-3 border rounded"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Last Name"
+            className="w-full p-3 border rounded"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+          <input
+            type="date"
+            placeholder="Date of Birth"
+            className="w-full p-3 border rounded"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
+            required
+          />
+
+          {error && <p className="text-red-500">{error}</p>}
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700"
+            disabled={loading}
+          >
+            {loading ? "Searching..." : "Find My Appointment"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

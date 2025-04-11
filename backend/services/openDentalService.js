@@ -368,6 +368,60 @@ async searchPatients(searchTerm) {
     this._handleError("getTodayAppointmentForPatient", error);
     throw new Error(`Failed to fetch today's appointment: ${error.message}`);
   }
+ }
+
+  async getNextAppointmentForPatient(patNum) {
+  try {
+    const today = new Date();
+    const startDate = this._formatDate(today);
+
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 30); // Look 30 days ahead
+    const endDate = this._formatDate(futureDate);
+
+    const response = await axios.get(`${this.baseUrl}/appointments`, {
+      headers: this.headers,
+      params: {
+        PatNum: patNum,
+        startDate,
+        endDate,
+      },
+    });
+
+    const appointments = response.data;
+
+    if (!appointments.length) {
+      console.log(`❌ No upcoming appointments found for PatNum ${patNum}`);
+      return null;
+    }
+
+    // Sort and pick the earliest one after now
+    const now = new Date();
+    const upcoming = appointments
+      .map(apt => ({
+        ...apt,
+        AptDateTimeObj: new Date(apt.AptDateTime),
+      }))
+      .filter(apt => apt.AptDateTimeObj >= now)
+      .sort((a, b) => a.AptDateTimeObj - b.AptDateTimeObj);
+
+    const match = upcoming[0];
+    console.log(`✅ Next appointment for PatNum ${patNum}: AptNum ${match.AptNum}`);
+
+    const providersRes = await axios.get(`${this.baseUrl}/providers`, {
+      headers: this.headers,
+    });
+
+    const provider = providersRes.data.find(p => p.ProvNum === match.ProvNum);
+    if (provider) {
+      match.provAbbr = `${provider.FName} ${provider.LName}`;
+    }
+
+    return this._transformAppointment(match);
+  } catch (error) {
+    this._handleError('getNextAppointmentForPatient', error);
+    throw new Error(`Failed to fetch next appointment: ${error.message}`);
+  }
 }
 
 

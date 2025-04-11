@@ -3,11 +3,8 @@ const ConfirmAppointment = ({ appointment, onConfirm, onReject }) => {
 
   const rawTime = appointment.startTime;
 
-  // 🛑 DO NOT convert it to a Date object — that applies timezone logic
-  // ✅ Just extract the "HH:mm" part directly
-  const displayTime = rawTime.slice(11, 16); // e.g., "11:00"
-
-  // Optionally convert "13:00" to "1:00 PM"
+  // Format time
+  const displayTime = rawTime.slice(11, 16);
   const formatTo12Hour = (time24) => {
     const [hourStr, minute] = time24.split(":");
     const hour = parseInt(hourStr, 10);
@@ -15,16 +12,44 @@ const ConfirmAppointment = ({ appointment, onConfirm, onReject }) => {
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minute} ${ampm}`;
   };
-
   const formattedTime = formatTo12Hour(displayTime);
+
+  // Format date
+const dateObj = new Date(rawTime);
+const formattedDate = dateObj.toLocaleDateString("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
 
   return (
     <div className="flex flex-col items-center justify-center h-screen px-4">
-      <div className="bg-white p-6 rounded-xl shadow-md max-w-md text-center">
-        <p className="text-xl font-medium mb-6">
-          Is your appointment at <strong>{formattedTime}</strong> with{" "}
-          <strong>{appointment.providerName || "your provider"}</strong>?
+      {/* Branding */}
+      <div className="mb-4 text-center">
+        <h1 className="text-4xl font-extrabold text-blue-700 tracking-tight">
+          ikonFlow
+        </h1>
+        <p className="text-lg text-gray-600 italic">The moment care begins.</p>
+      </div>
+
+      {/* Greeting */}
+      <div className="text-center mb-4">
+        <p className="text-xl font-semibold">
+          Welcome, {appointment.patientName}!
         </p>
+      </div>
+
+      {/* Confirmation Prompt */}
+      <div className="bg-white p-6 rounded-xl shadow-md max-w-md text-center">
+        <p className="text-lg text-gray-700 mb-2">
+          Confirm your appointment:
+        </p>
+        <p className="text-xl font-medium mb-6">
+          {formattedDate} at <strong>{formattedTime}</strong> with{" "}
+          <strong>{appointment.providerName || "your provider"}</strong>
+        </p>
+
+        {/* Action Buttons */}
         <div className="flex justify-center space-x-6">
           <button
             onClick={onConfirm}
