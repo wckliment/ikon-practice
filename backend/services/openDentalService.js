@@ -327,8 +327,8 @@ async searchPatients(searchTerm) {
       params: {
         PatNum: patNum,
         startDate: formattedDate,
-        endDate: formattedDate
-      }
+        endDate: formattedDate,
+      },
     });
 
     const appointments = response.data;
@@ -338,26 +338,34 @@ async searchPatients(searchTerm) {
       return null;
     }
 
-    // Use first appointment
-    const match = appointments[0];
+    // 🧠 Instead of just picking the first one, find the one with the latest AptDateTime
+    const now = new Date();
+    const upcoming = appointments
+      .map((apt) => ({
+        ...apt,
+        AptDateTimeObj: new Date(apt.AptDateTime),
+      }))
+      .filter((apt) => apt.AptDateTimeObj >= now) // only future or current
+      .sort((a, b) => a.AptDateTimeObj - b.AptDateTimeObj); // ascending sort
+
+    const match = upcoming[0] || appointments[0]; // fallback to first if none are upcoming
 
     console.log(`✅ Found appointment for PatNum ${patNum}: AptNum ${match.AptNum}`);
 
     // 🔍 Fetch provider list
     const providersRes = await axios.get(`${this.baseUrl}/providers`, {
-      headers: this.headers
+      headers: this.headers,
     });
 
-    const provider = providersRes.data.find(p => p.ProvNum === match.ProvNum);
+    const provider = providersRes.data.find((p) => p.ProvNum === match.ProvNum);
 
-    // Replace provAbbr with full name if found
     if (provider) {
       match.provAbbr = `${provider.FName} ${provider.LName}`;
     }
 
     return this._transformAppointment(match);
   } catch (error) {
-    this._handleError('getTodayAppointmentForPatient', error);
+    this._handleError("getTodayAppointmentForPatient", error);
     throw new Error(`Failed to fetch today's appointment: ${error.message}`);
   }
 }
@@ -402,7 +410,7 @@ async searchPatients(searchTerm) {
         patientName: apt.PatientName || `Patient #${apt.PatNum}`,
         providerId: apt.ProvNum,
         providerName: apt.provAbbr || `Provider #${apt.ProvNum}`,
-        startTime: apt.AptDateTime,
+        startTime: apt.AptDateTime?.replace(" ", "T"),
         endTime: this._calculateEndTime(apt.AptDateTime, apt.Pattern),
         pattern: apt.Pattern,
         operatoryId: apt.Op,

@@ -25,34 +25,44 @@ const TabletLogin = ({ onLogin }) => {
   };
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-6 bg-white rounded shadow-md text-center">
-      <h2 className="text-2xl font-bold mb-4">Tablet Login</h2>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">
+      {/* 👇 ikonFlow Branding */}
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-extrabold text-blue-700 tracking-tight">
+          ikonFlow
+        </h1>
+      </div>
 
-      <form onSubmit={handleLogin}>
-        <input
-          className="w-full mb-3 p-2 border rounded"
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          className="w-full mb-3 p-2 border rounded"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      {/* 🖥️ Login Card */}
+      <div className="w-full max-w-sm p-6 bg-white rounded-xl shadow-md text-center">
+        
 
-        {error && <p className="text-red-600 mb-2">{error}</p>}
+        <form onSubmit={handleLogin}>
+          <input
+            className="w-full mb-3 p-2 border rounded"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            className="w-full mb-3 p-2 border rounded"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
-        >
-          Log In
-        </button>
-      </form>
+          {error && <p className="text-red-600 mb-2">{error}</p>}
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
+          >
+            Log In
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
