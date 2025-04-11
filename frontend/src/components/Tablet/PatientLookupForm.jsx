@@ -14,12 +14,22 @@ const PatientLookupForm = ({ locationCode, onSuccess }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post("/api/tablet/patient-lookup", {
-        firstName,
-        lastName,
-        dob,
-        locationCode,
-      });
+      const token = localStorage.getItem("tabletToken");
+
+      const res = await axios.post(
+        "/api/tablet/patient-lookup",
+        {
+          firstName,
+          lastName,
+          dob,
+          locationCode,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       const { patient, appointment } = res.data;
       if (patient && appointment) {
@@ -28,7 +38,7 @@ const PatientLookupForm = ({ locationCode, onSuccess }) => {
         setError("Patient not found for today’s appointments.");
       }
     } catch (err) {
-      console.error(err);
+      console.error("❌ Lookup error:", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);

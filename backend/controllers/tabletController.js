@@ -1,7 +1,50 @@
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const db = require("../config/db");
 const OpenDentalService = require("../services/openDentalService");
 const { getKeysFromLocation } = require("../utils/locationUtils");
 const { getLocationIdByCode } = require("../utils/locationUtils");
 const { sendSystemMessage } = require("../utils/systemMessaging");
+
+
+exports.tabletLogin = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const [[user]] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Create a token valid for 12 hours (or shorter if preferred)
+    const token = jwt.sign(
+      { userId: user.id, location_id: user.location_id },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" }
+    );
+
+    // Only return what’s needed by the frontend
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        location_id: user.location_id,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Tablet login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 exports.patientLookup = async (req, res) => {
   const { firstName, lastName, dob, locationCode } = req.body;
@@ -42,9 +85,8 @@ exports.patientLookup = async (req, res) => {
 
 exports.sendTabletCheckInMessage = async (req, res) => {
   try {
-    const { patient, appointment, locationCode } = req.body;
-
-    const locationId = await getLocationIdByCode(locationCode);
+    const { patient, appointment } = req.body;
+    const locationId = req.user.location_id;
 
     const time = new Date(appointment.startTime).toLocaleTimeString([], {
       hour: "2-digit",
@@ -52,7 +94,6 @@ exports.sendTabletCheckInMessage = async (req, res) => {
     });
 
     const messageText = `Patient ${patient.FName} ${patient.LName} has checked in for their ${time} appointment with Dr. ${appointment.providerName}`;
-
     const message = await sendSystemMessage(messageText, locationId);
 
     res.status(200).json({ success: true, message });

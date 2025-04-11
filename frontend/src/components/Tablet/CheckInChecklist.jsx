@@ -15,11 +15,21 @@ const CheckInChecklist = ({ patient, appointment, locationCode, onComplete }) =>
     setError("");
 
     try {
-      await axios.post("/api/tablet/tablet-checkin", {
-        patient,
-        appointment,
-        locationCode,
-      });
+      const token = localStorage.getItem("tabletToken");
+
+      await axios.post(
+        "/api/tablet/tablet-checkin",
+        {
+          patient,
+          appointment,
+          locationCode,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       onComplete(); // Proceed to the final screen
     } catch (err) {
@@ -72,10 +82,13 @@ const ChecklistItem = ({ label, checked, onToggle }) => {
       onClick={onToggle}
     >
       <span className="text-lg">{label}</span>
-      <span className={`w-5 h-5 border-2 rounded-full ${checked ? "bg-green-600 border-green-600" : "border-gray-400"}`}></span>
+      <span
+        className={`w-5 h-5 border-2 rounded-full ${
+          checked ? "bg-green-600 border-green-600" : "border-gray-400"
+        }`}
+      ></span>
     </div>
   );
 };
-
 
 export default CheckInChecklist;
