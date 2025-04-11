@@ -42,11 +42,12 @@ const TabletCheckIn = () => {
         />
       )}
       {step === 2 && (
-        <ConfirmAppointment
-          appointment={appointment}
-          onConfirm={goToNext}
-          onReject={() => setStep(1)}
-        />
+       <ConfirmAppointment
+  appointment={appointment}
+  patient={patientData}
+  onConfirm={goToNext}
+  onReject={() => setStep(1)}
+/>
       )}
       {step === 3 && (
         <CheckInChecklist

@@ -83,14 +83,19 @@ const PatientLookupForm = ({ locationCode, onSuccess }) => {
             onChange={(e) => setLastName(e.target.value)}
             required
           />
-          <input
-            type="date"
-            placeholder="Date of Birth"
-            className="w-full p-3 border rounded"
-            value={dob}
-            onChange={(e) => setDob(e.target.value)}
-            required
-          />
+          <div>
+  <label htmlFor="dob" className="block text-left text-sm font-medium text-gray-700 mb-1">
+    Date of Birth
+  </label>
+  <input
+    id="dob"
+    type="date"
+    className="w-full p-3 border rounded"
+    value={dob}
+    onChange={(e) => setDob(e.target.value)}
+    required
+  />
+</div>
 
           {error && <p className="text-red-500">{error}</p>}
 

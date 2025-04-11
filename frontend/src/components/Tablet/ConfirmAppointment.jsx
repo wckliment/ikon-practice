@@ -1,4 +1,4 @@
-const ConfirmAppointment = ({ appointment, onConfirm, onReject }) => {
+const ConfirmAppointment = ({ appointment, patient,onConfirm, onReject }) => {
   if (!appointment) return null;
 
   const rawTime = appointment.startTime;
@@ -35,8 +35,8 @@ const formattedDate = dateObj.toLocaleDateString("en-US", {
       {/* Greeting */}
       <div className="text-center mb-4">
         <p className="text-xl font-semibold">
-          Welcome, {appointment.patientName}!
-        </p>
+  Welcome, {patient?.FName} {patient?.LName}!
+</p>
       </div>
 
       {/* Confirmation Prompt */}
