@@ -32,6 +32,13 @@ const PatientLookupForm = ({ locationCode, onSuccess }) => {
       );
 
       const { patient, appointment } = res.data;
+      
+console.log("✅ Lookup Result:");
+console.log("Patient:", patient);
+console.log("Appointment:", appointment);
+console.log("👉 appointment.AptDateTime:", appointment.AptDateTime);
+console.log("👉 appointment.startTime:", appointment.startTime);
+
       if (patient && appointment) {
         onSuccess(patient, appointment);
       } else {
