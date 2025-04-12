@@ -491,24 +491,37 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
 
 
 
-  for (const apt of apiAppointments) {
-     console.log("🔍 Full appointment object:", apt);
+for (const apt of apiAppointments) {
+  console.log("🔍 Full appointment object:", apt);
 
-     console.log("🔍 Raw appointment from API:", {
+  console.log("🔍 Raw appointment from API:", {
     id: apt.id || apt.AptNum,
-    procedureDescription: apt.procedureDescription // Check alternate field names
+    procedureDescription: apt.procedureDescription
   });
 
-    const startTimeRaw = apt.startTime || apt.AptDateTime;
-    const normalizedDateTime = startTimeRaw?.replace(" ", "T");
-    const startTime = new Date(normalizedDateTime);
-    const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
-    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-    const pixelsPerMinute = 2.4;
-    const height = durationInMinutes * pixelsPerMinute;
+const startTimeRaw = apt.startTime || apt.AptDateTime;
 
-    // 🧾 Log providerId for debugging
-    const providerId = apt.providerId || apt.ProvNum;
+const parseLocalDateTime = (isoString) => {
+  if (!isoString || !isoString.includes("T")) return null;
+  const [datePart, timePart] = isoString.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute, second] = timePart.split(":").map(Number);
+  return new Date(year, month - 1, day, hour, minute, second || 0);
+};
+
+const startTime = parseLocalDateTime(startTimeRaw);
+if (!startTime) {
+  console.warn("⚠️ Invalid or missing start time format for appointment:", apt);
+  continue;
+}
+
+const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
+const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+const pixelsPerMinute = 2.4; // or 1.6 if compact view
+const height = durationInMinutes * pixelsPerMinute;
+
+  // 🧾 Log providerId for debugging
+  const providerId = apt.providerId || apt.ProvNum;
 
 
     let patientName = `Patient #${apt.patientId}`;
@@ -895,15 +908,31 @@ const patientOptions = patients.map((patient) => ({
                     }}
                   >
         {/* Time Labels */}
-                    {timeSlots.map((time, i) => (
-                      <div
-                        key={`time-${i}`}
-                        className="text-xs text-gray-500 p-2 border-b border-r bg-white z-10"
-                        style={{ gridColumn: 1, gridRow: i + 2 }}
-                      >
-                        {time}
-                      </div>
-                    ))}
+                  {timeSlots.map((time, i) => {
+  const [hour, minuteWithAmPm] = time.split(":");
+  const [minute, ampm] = minuteWithAmPm.split(" ");
+  const isTopOfHour = minute === "00";
+
+  const hourLabel = `${hour}${ampm.toLowerCase()}`; // e.g., "7am"
+  const minuteLabel = `:${minute}`;                 // e.g., ":10"
+
+  return (
+    <div
+      key={`time-${i}`}
+      className={`px-2 py-1 border-b border-r bg-white z-10 text-xs leading-none
+        ${isTopOfHour ? "font-semibold text-gray-800" : "text-gray-400"}`}
+      style={{
+        gridColumn: 1,
+        gridRow: i + 2,
+        display: "flex",
+        alignItems: "center",
+        height: "100%", // ensures full row fill
+      }}
+    >
+      {isTopOfHour ? hourLabel : minuteLabel}
+    </div>
+  );
+})}
 
 
 
