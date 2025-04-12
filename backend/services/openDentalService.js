@@ -176,6 +176,19 @@ if (procLabel) {
     }
   }
 
+  async getOperatories() {
+  try {
+    console.log("🏥 Fetching operatories from Open Dental");
+    const response = await axios.get(`${this.baseUrl}/operatories`, {
+      headers: this.headers
+    });
+    return response.data;
+  } catch (error) {
+    this._handleError("getOperatories", error);
+    throw new Error(`Failed to fetch operatories: ${error.message}`);
+  }
+}
+
   async getAppointment(appointmentId) {
     try {
       const response = await axios.get(`${this.baseUrl}/appointments/${appointmentId}`, {

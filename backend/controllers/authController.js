@@ -69,7 +69,8 @@ exports.login = async (req, res) => {
         email: user.email,
         role: user.role,
         location_id: user.location_id,
-        location_name: user.location_name
+        location_name: user.location_name,
+        location_code: user.location_code
       }
     });
   } catch (error) {

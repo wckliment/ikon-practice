@@ -7,6 +7,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchProviders } from "../redux/providersSlice";
 import { fetchUsers } from "../redux/settingsSlice";
 import { fetchLocations } from "../redux/settingsSlice";
+import { fetchOperatories } from "../redux/operatoriesSlice";
 import { findProcedureCode } from "../../../common/utils/procedureCodeMapper";
 import UpdateAppointmentModal from "../components/UpdateAppointmentModal";
 import axios from "axios";
@@ -298,14 +299,19 @@ const Appointments = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const { list: providers, loading: providersLoading } = useSelector((state) => state.providers);
   const users = useSelector((state) => state.settings.users.data);
+  const fullState = useSelector((state) => state);
+console.log("🧠 Full Redux state (debug):", fullState);
   const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
+  const operatories = useSelector((state) => state.operatories?.list || []);
+
 
   useEffect(() => {
     dispatch(fetchProviders());
     dispatch(fetchUsers());
     dispatch(fetchLocations());
+    dispatch(fetchOperatories());
   }, [dispatch]);
 
   const staffMembers = providers.map((prov) => ({
@@ -543,7 +549,8 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       staff: apt.providerName || apt.provAbbr || `Provider #${providerId}`,
       providerId,
       color: resolvedColor,
-      procedureLogs: apt.procedureLogs || []
+      procedureLogs: apt.procedureLogs || [],
+       operatoryId: apt.Op || apt.operatoryId || null
     });
   }
 
@@ -836,6 +843,10 @@ const patientOptions = patients.map((patient) => ({
   value: patient.PatNum,  // Store patient ID in value
 }));
 
+
+
+  console.log("🧠 Operatories:", operatories);
+
     return (
   <div className="h-screen" style={{ backgroundColor: "#EBEAE6" }}>
     <Sidebar />
@@ -877,7 +888,7 @@ const patientOptions = patients.map((patient) => ({
                   <div
                     className="grid"
                     style={{
-                      gridTemplateColumns: `80px repeat(${staffMembers.length}, minmax(130px, 1fr))`,
+                      gridTemplateColumns: `80px repeat(${operatories.length}, minmax(130px, 1fr))`,
                       gridTemplateRows: `auto repeat(${timeSlots.length}, 48px)`,
                       width: "fit-content",
                       minWidth: "100%"
@@ -894,32 +905,35 @@ const patientOptions = patients.map((patient) => ({
                       </div>
                     ))}
 
-        {/* Staff Headers */}
-                    {staffMembers.map((staff, index) => (
-                      <div
-                        key={`header-${staff.id}`}
-                        className="text-center text-sm font-medium p-2 border-b border-l bg-gray-100 sticky top-0 z-20"
-                        style={{ gridColumn: index + 2, gridRow: 1 }}
-                      >
-                        {staff.fullName}
-                      </div>
-                    ))}
+
+
+
+        {/* Operatory Headers */}
+{operatories.map((op, index) => (
+  <div
+    key={`header-${op.OperatoryNum}`}
+    className="text-center text-sm font-medium p-2 border-b border-l bg-gray-100 sticky top-0 z-20"
+    style={{ gridColumn: index + 2, gridRow: 1 }}
+  >
+    {op.OpName}
+  </div>
+))}
 
 
         {/* Grid Cells (striped) */}
-                    {timeSlots.map((_, rowIdx) =>
-                      staffMembers.map((_, colIdx) => (
-                        <div
-                          key={`cell-${rowIdx}-${colIdx}`}
-                          className={`border-r ${rowIdx % 2 === 0 ? "border-b" : ""}`}
-                          style={{
-                            gridColumn: colIdx + 2,
-                            gridRow: rowIdx + 2,
-                            backgroundColor: rowIdx % 2 === 0 ? "#f9f9f9" : "#ffffff",
-                          }}
-                        />
-                      ))
-                    )}
+                   {timeSlots.map((_, rowIdx) =>
+  operatories.map((_, colIdx) => (
+    <div
+      key={`cell-${rowIdx}-${colIdx}`}
+      className={`border-r ${rowIdx % 2 === 0 ? "border-b" : ""}`}
+      style={{
+        gridColumn: colIdx + 2,
+        gridRow: rowIdx + 2,
+        backgroundColor: rowIdx % 2 === 0 ? "#f9f9f9" : "#ffffff",
+      }}
+    />
+  ))
+)}
 
         {/* Appointments */}
 {appointments
@@ -946,7 +960,9 @@ const patientOptions = patients.map((patient) => ({
       const totalMinutes = (hour - 7) * 60 + minute;
       rowIndex = Math.floor(totalMinutes / 15) + 2;
       span = Math.ceil(app.duration / 15);
-      providerIndex = staffMembers.findIndex((s) => s.name === app.staff);
+      providerIndex = operatories.findIndex(
+  (op) => Number(op.OperatoryNum) === Number(app.operatoryId)
+);
     } catch (err) {
       console.error("⛔ Error parsing appointment time:", app, err);
       return null;

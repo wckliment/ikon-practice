@@ -30,7 +30,11 @@ User.getUserById = async (id) => {
 // ✅ Find user by email (For Login)
 User.findByEmail = async (email) => {
   const query = `
-    SELECT u.*, l.name AS location_name, u.appointment_color, l.id AS location_id
+    SELECT u.*,
+       l.name AS location_name,
+       l.code AS location_code,   
+       u.appointment_color,
+       l.id AS location_id
     FROM users u
     LEFT JOIN locations l ON u.location_id = l.id
     WHERE u.email = ?

@@ -77,6 +77,8 @@ app.set("io", io); // Optional if you want access via req.app.get('io')
 const tabletRoutes = require("./routes/tabletRoutes");
 app.use("/api/tablet", tabletRoutes);
 
+const operatoriesRoutes = require("./routes/operatoriesRoutes");
+app.use("/api/operatories", operatoriesRoutes);
 
 // ✅ Start server with HTTP + WebSocket support
 const PORT = process.env.PORT || 5000;
