@@ -504,7 +504,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     const startTime = new Date(normalizedDateTime);
     const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
     const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-    const pixelsPerMinute = 3.2;
+    const pixelsPerMinute = 2.4;
     const height = durationInMinutes * pixelsPerMinute;
 
     // 🧾 Log providerId for debugging
@@ -605,7 +605,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
   const timeSlots = [];
 
   for (let hour = 7; hour <= 19; hour++) {
-    for (let minute = 0; minute < 60; minute += 15) {
+    for (let minute = 0; minute < 60; minute += 10){
       const displayHour = hour > 12 ? hour - 12 : hour;
       const ampm = hour >= 12 ? "PM" : "AM";
       const displayMinute = minute === 0 ? "00" : minute.toString().padStart(2, "0");
@@ -889,7 +889,7 @@ const patientOptions = patients.map((patient) => ({
                     className="grid"
                     style={{
                       gridTemplateColumns: `80px repeat(${operatories.length}, minmax(130px, 1fr))`,
-                      gridTemplateRows: `auto repeat(${timeSlots.length}, 48px)`,
+                      gridTemplateRows: `auto repeat(${timeSlots.length}, 24px)`,
                       width: "fit-content",
                       minWidth: "100%"
                     }}
