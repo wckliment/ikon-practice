@@ -529,8 +529,8 @@ for (const apt of apiAppointments) {
 
   const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
   const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-  const pixelsPerMinute = 2.4; // or adjust based on layout
-  const height = durationInMinutes * pixelsPerMinute;
+  const pixelsPerMinute = 2.4;
+  const height = durationInMinutes * pixelsPerMinute; // add 1 block
 
   // 🧾 Log providerId for debugging
   const providerId = apt.providerId || apt.ProvNum;
@@ -556,13 +556,26 @@ for (const apt of apiAppointments) {
   transformed.push({
     id: apt.id || apt.AptNum,
     patientName,
-    date: localDate, // ✅ Use fixed local date here
-    startTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
-    fullStartTime: startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-    endTime: endTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+    date: localDate, // ✅ Local fixed date string for UI (e.g., 2025-04-12)
+    startTime: startTime, // Can remove this if unused, or keep for reference
+    fullStartTime: startTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    }),
+    endTime: endTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    }),
     duration: durationInMinutes,
     height: height,
-    type: apt.ProcDescript || apt.procedureDescription || apt.procedure || apt.description || "",
+    type:
+      apt.ProcDescript ||
+      apt.procedureDescription ||
+      apt.procedure ||
+      apt.description ||
+      "",
     notes: apt.notes || apt.Note || "",
     status: readableStatus,
     statusColor,
@@ -570,7 +583,10 @@ for (const apt of apiAppointments) {
     providerId,
     color: resolvedColor,
     procedureLogs: apt.procedureLogs || [],
-    operatoryId: apt.Op || apt.operatoryId || null
+    operatoryId: apt.Op || apt.operatoryId || null,
+
+    // 🆕 Add this for exact positioning in grid logic
+    startTimeDate: startTime, // <-- ✅ Raw Date object
   });
 }
 
@@ -984,25 +1000,24 @@ const patientOptions = patients.map((patient) => ({
     let span = 1;
     let providerIndex = -1;
 
-    try {
-      const [hourStr, minuteStrPart] = app.fullStartTime.split(":");
-      const [minuteStr, ampm] = minuteStrPart.split(" ");
-      let hour = parseInt(hourStr, 10);
-      const minute = parseInt(minuteStr, 10);
+try {
+  const start = new Date(app.startTimeDate);
+  const hour = start.getHours(); // e.g., 10
+  const minute = start.getMinutes(); // e.g., 30
 
-      if (ampm === "PM" && hour !== 12) hour += 12;
-      if (ampm === "AM" && hour === 12) hour = 0;
+  const minutesSinceStartOfDay = (hour * 60 + minute) - (7 * 60); // Minutes since 7am
+  const rowOffset = 2; // gridRow: 2 is 7am
+  rowIndex = Math.floor(minutesSinceStartOfDay / 10) + rowOffset;
 
-      const totalMinutes = (hour - 7) * 60 + minute;
-      rowIndex = Math.floor(totalMinutes / 15) + 2;
-      span = Math.ceil(app.duration / 15);
-      providerIndex = operatories.findIndex(
-  (op) => Number(op.OperatoryNum) === Number(app.operatoryId)
-);
-    } catch (err) {
-      console.error("⛔ Error parsing appointment time:", app, err);
-      return null;
-    }
+  span = Math.ceil(app.duration / 10); // 10-minute blocks
+
+  providerIndex = operatories.findIndex(
+    (op) => Number(op.OperatoryNum) === Number(app.operatoryId)
+  );
+} catch (err) {
+  console.error("⛔ Error parsing appointment time:", app, err);
+  return null;
+}
 
     if (providerIndex === -1) return null;
 
@@ -1012,7 +1027,7 @@ const patientOptions = patients.map((patient) => ({
                           className="rounded cursor-pointer text-sm p-1 text-black overflow-hidden shadow"
                           style={{
                             gridColumn: providerIndex + 2,
-                            gridRow: `${rowIndex} / span ${span}`,
+                            gridRow: `${rowIndex + 1} / span ${span}`,
                             backgroundColor: app.color || "#F9E7A0",
 
                           }}
