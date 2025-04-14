@@ -1002,14 +1002,13 @@ const patientOptions = patients.map((patient) => ({
 
 try {
   const start = new Date(app.startTimeDate);
-  const hour = start.getHours(); // e.g., 10
-  const minute = start.getMinutes(); // e.g., 30
-
-  const minutesSinceStartOfDay = (hour * 60 + minute) - (7 * 60); // Minutes since 7am
-  const rowOffset = 2; // gridRow: 2 is 7am
+  const hour = start.getHours();
+  const minute = start.getMinutes();
+  const minutesSinceStartOfDay = (hour * 60 + minute) - (7 * 60);
+  const rowOffset = 2;
   rowIndex = Math.floor(minutesSinceStartOfDay / 10) + rowOffset;
 
-  span = Math.ceil(app.duration / 10); // 10-minute blocks
+  span = Math.ceil(app.duration / 10);
 
   providerIndex = operatories.findIndex(
     (op) => Number(op.OperatoryNum) === Number(app.operatoryId)
@@ -1027,7 +1026,7 @@ try {
                           className="rounded cursor-pointer text-sm p-1 text-black overflow-hidden shadow"
                           style={{
                             gridColumn: providerIndex + 2,
-                            gridRow: `${rowIndex + 1} / span ${span}`,
+                            gridRow: `${rowIndex} / span ${span}`,
                             backgroundColor: app.color || "#F9E7A0",
 
                           }}
