@@ -44,3 +44,21 @@ exports.getLocationIdByCode = async (locationCode) => {
     throw err;
   }
 };
+
+exports.getLocationCodeById = async (locationId) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT code FROM locations WHERE id = ? LIMIT 1",
+      [locationId]
+    );
+
+    if (!rows.length) {
+      throw new Error(`No location found with id "${locationId}"`);
+    }
+
+    return rows[0].code;
+  } catch (err) {
+    console.error("❌ Failed to get location code by ID:", err.message);
+    throw err;
+  }
+};

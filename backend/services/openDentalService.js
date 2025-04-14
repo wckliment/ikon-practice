@@ -403,22 +403,36 @@ async searchPatients(searchTerm) {
 
     const appointments = response.data;
 
+    console.log(`📦 Raw appointments for PatNum ${patNum}:`, appointments);
+
     if (!appointments.length) {
-      console.log(`❌ No upcoming appointments found for PatNum ${patNum}`);
+      console.log(`❌ No appointments found for PatNum ${patNum}`);
       return null;
     }
 
     // Sort and pick the earliest one after now
     const now = new Date();
-    const upcoming = appointments
-      .map(apt => ({
-        ...apt,
-        AptDateTimeObj: new Date(apt.AptDateTime),
-      }))
-      .filter(apt => apt.AptDateTimeObj >= now)
-      .sort((a, b) => a.AptDateTimeObj - b.AptDateTimeObj);
 
-    const match = upcoming[0];
+const upcoming = appointments
+  .map(apt => ({
+    ...apt,
+    AptDateTimeObj: new Date(apt.AptDateTime),
+  }))
+  .sort((a, b) => a.AptDateTimeObj - b.AptDateTimeObj); // Sort all by time
+
+// ✅ Pick the first one that’s still upcoming OR fallback to the most recent past one
+let match = upcoming.find(apt => apt.AptDateTimeObj >= now);
+
+if (!match) {
+  // If no upcoming appointment, fallback to the latest past one
+  match = upcoming[upcoming.length - 1];
+}
+
+    if (!match) {
+      console.log(`❌ No future appointments found for PatNum ${patNum} within the date range.`);
+      return null;
+    }
+
     console.log(`✅ Next appointment for PatNum ${patNum}: AptNum ${match.AptNum}`);
 
     const providersRes = await axios.get(`${this.baseUrl}/providers`, {

@@ -2,8 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const db = require("../config/db");
 const OpenDentalService = require("../services/openDentalService");
-const { getKeysFromLocation } = require("../utils/locationUtils");
-const { getLocationIdByCode } = require("../utils/locationUtils");
+const { getKeysFromLocation, getLocationCodeById } = require("../utils/locationUtils");
 const { sendSystemMessage } = require("../utils/systemMessaging");
 
 
@@ -88,6 +87,18 @@ exports.sendTabletCheckInMessage = async (req, res) => {
     const { patient, appointment } = req.body;
     const locationId = req.user.location_id;
 
+   const locationCode = await getLocationCodeById(locationId);
+   const { devKey, custKey } = await getKeysFromLocation(locationCode);
+    const openDentalService = new OpenDentalService(devKey, custKey);
+
+    // ✅ 1. Update confirmation status in Open Dental
+    const updatedAppointment = await openDentalService.updateAppointment(appointment.id, {
+      Confirmed: 23, // "Ready to Go Back"
+    });
+
+    console.log("✅ Confirmation status updated:", updatedAppointment.Confirmed);
+
+    // ✅ 2. Send real-time broadcast message (existing logic)
     const time = new Date(appointment.startTime).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -98,7 +109,7 @@ exports.sendTabletCheckInMessage = async (req, res) => {
 
     res.status(200).json({ success: true, message });
   } catch (error) {
-    console.error("❌ Failed to send tablet check-in message:", error);
-    res.status(500).json({ error: "Failed to send message" });
+    console.error("❌ Failed to check in patient:", error);
+    res.status(500).json({ error: "Failed to check in patient" });
   }
 };
