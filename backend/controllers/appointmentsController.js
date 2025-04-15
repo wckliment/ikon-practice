@@ -240,6 +240,26 @@ const getAppointmentProcedures = async (req, res) => {
   }
 };
 
+const updateAppointmentConfirmation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmVal } = req.body;
+
+    if (!confirmVal) {
+      return res.status(400).json({ success: false, message: 'Missing confirmation value' });
+    }
+
+    const updatedAppointment = await req.openDentalService.updateAppointment(id, {
+      Confirmed: confirmVal
+    });
+
+    res.json({ success: true, data: updatedAppointment });
+  } catch (error) {
+    console.error("❌ Failed to update confirmation status:", error);
+    res.status(500).json({ success: false, message: "Failed to update confirmation status" });
+  }
+};
+
 const updateProcedure = async (req, res) => {
   try {
     const { procNum } = req.params;
@@ -353,5 +373,6 @@ module.exports = {
   createAppointment,
   updateAppointment,
   getAppointmentProcedures,
-  updateProcedure
+  updateProcedure,
+  updateAppointmentConfirmation
 };

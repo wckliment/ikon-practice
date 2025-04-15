@@ -501,7 +501,7 @@ const handleUpdateAppointment = async (updatedData) => {
   useEffect(() => {
     fetchAppointments();
   }, [selectedDate, currentMonth]);
-  
+
 
 const transformAppointmentData = async (apiAppointments, users = []) => {
   const transformed = [];
@@ -732,6 +732,26 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       console.error("❌ Error saving notes:", error);
     }
   };
+
+  const handleStatusChange = async (e) => {
+  const newStatusCode = parseInt(e.target.value);
+  if (!selectedAppointment || !newStatusCode) return;
+
+  try {
+    await appointmentService.updateAppointmentConfirmation(selectedAppointment.id, newStatusCode);
+    toast.success("✅ Status updated!");
+
+    // Refresh UI
+    await fetchAppointments();
+
+    // Emit to sync other users
+    socket.emit("appointmentUpdated", { id: selectedAppointment.id });
+
+  } catch (error) {
+    console.error("❌ Failed to update status:", error);
+    toast.error("Failed to update status");
+  }
+};
 
   const generateCalendarDays = () => {
     const days = [];
@@ -1198,14 +1218,15 @@ try {
       <div>
         <div className="flex items-center gap-2">
   <strong>Status:</strong>
-  <span
-    className="px-2 py-0.5 rounded-full text-white text-xs"
-    style={{
-      backgroundColor: selectedAppointment.statusColor || "#9ca3af"
-    }}
+  <select
+    value={selectedAppointment.rawStatusCode}
+    onChange={handleStatusChange}
+    className="text-sm border rounded px-2 py-1"
   >
-    {selectedAppointment.status}
-  </span>
+    {Object.entries(confirmationStatusMap).map(([code, label]) => (
+      <option key={code} value={code}>{label}</option>
+    ))}
+  </select>
 </div>
                     </div>
 

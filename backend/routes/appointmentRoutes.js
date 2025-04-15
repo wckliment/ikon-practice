@@ -1,4 +1,3 @@
-// backend/routes/appointmentsRoutes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -8,7 +7,8 @@ const {
   createAppointment,
   updateAppointment,
   getAppointmentProcedures,
-  updateProcedure
+  updateProcedure,
+  updateAppointmentConfirmation
 } = require('../controllers/appointmentsController');
 const authenticateUser = require('../middleware/authMiddleware');
 const { initializeOpenDental } = require('../middleware/appointmentMiddleware');
@@ -33,6 +33,7 @@ router.get('/:id', getAppointment);
 router.patch('/:appointmentId/extension', updateAppointmentExtension);
 router.post('/', createAppointment);
 router.put('/:id', updateAppointment);
+router.put('/:id/Confirm', updateAppointmentConfirmation);
 router.get('/:id/procedures', getAppointmentProcedures);
 router.put('/procedurelogs/:procNum', updateProcedure);
 module.exports = router;
