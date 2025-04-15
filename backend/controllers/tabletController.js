@@ -98,10 +98,13 @@ exports.sendTabletCheckInMessage = async (req, res, io) => {
 
     // ✅ 1. Update confirmation status in Open Dental
     const updatedAppointment = await openDentalService.updateAppointment(appointment.id, {
-      Confirmed: 23, // "Ready to Go Back"
+      Confirmed: 22, // "Arrived"
     });
 
     console.log("✅ Confirmation status updated:", updatedAppointment.Confirmed);
+
+    // ✅ 2. Emit to refresh frontend calendar
+io.emit("appointmentUpdated", { id: updatedAppointment.id });
 
     // ✅ 2. Send real-time broadcast message
     const time = new Date(appointment.startTime).toLocaleTimeString([], {
