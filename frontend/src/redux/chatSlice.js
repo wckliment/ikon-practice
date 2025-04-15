@@ -494,8 +494,13 @@ const chatSlice = createSlice({
       if (user) {
         user.unread_count = unreadCount;
       }
-    }
+    },
+    clearAllPatientCheckIns: (state) => {
+  state.patientCheckIns = [];
+  localStorage.removeItem('patientCheckIns');
+}
   },
+
   extraReducers: (builder) => {
     builder
 
@@ -704,7 +709,7 @@ const chatSlice = createSlice({
       })
 
 
-// Add these reducer cases to your extraReducers builder
+
 .addCase(deleteConversation.pending, (state) => {
   state.loading = true;
   state.error = null;
@@ -766,5 +771,5 @@ const chatSlice = createSlice({
   }
 });
 
-export const { selectUser, clearSelectedUser, updateUnreadCount } = chatSlice.actions;
+export const { selectUser, clearSelectedUser, updateUnreadCount, clearAllPatientCheckIns } = chatSlice.actions;
 export default chatSlice.reducer;

@@ -15,7 +15,8 @@ import {
   createNewChat,
   deleteMessage,
   deleteConversation,
-  updateUnreadCount
+  updateUnreadCount,
+  clearAllPatientCheckIns
 } from "../redux/chatSlice";
 import { socket, connectSocket } from "../socket";
 import { addMessageViaSocket } from "../redux/chatSlice";
@@ -988,17 +989,33 @@ console.log("User filtering details:", {
               <div className="p-3 border-b flex items-center justify-between">
                 <div className="flex items-center">
                   {selectedPatientCheckIns ? (
-                    <>
-                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium text-xs">
-                        🏥
-                      </div>
-                      <div className="ml-2">
-                        <p className="font-medium">Patient Check-ins</p>
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                          Broadcast Messages
-                        </span>
-                      </div>
-                    </>
+  <>
+    <div className="flex items-center justify-between w-full">
+      <div className="flex items-center">
+        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium text-xs">
+          🏥
+        </div>
+        <div className="ml-2">
+          <p className="font-medium">Patient Check-ins</p>
+          <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+            Broadcast Messages
+          </span>
+        </div>
+      </div>
+
+      <button
+  onClick={() => {
+    if (window.confirm("Are you sure you want to clear all check-ins?")) {
+      dispatch(clearAllPatientCheckIns());
+      localStorage.removeItem("patientCheckIns"); // optional but fine to keep
+    }
+  }}
+  className="text-sm text-red-500 hover:text-red-700"
+>
+  Clear All
+</button>
+    </div>
+  </>
                   ) : selectedUser ? (
                     <>
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-xs">
