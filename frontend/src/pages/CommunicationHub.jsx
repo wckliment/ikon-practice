@@ -299,9 +299,9 @@ useEffect(() => {
   // Function to render the patient check-in section in the sidebar
 const patientCheckInSection = () => {
   // Filter broadcast messages AND system messages
-  const broadcastCheckIns = patientCheckIns.filter(msg =>
-     msg => msg.type === 'patient-check-in' || msg.is_system === true
-  );
+const broadcastCheckIns = patientCheckIns.filter(
+  msg => msg.type === 'patient-check-in' || msg.is_system === true
+);
 
   if (broadcastCheckIns.length === 0) {
     return <div className="p-2 text-xs text-gray-500">No patient check-ins</div>;
@@ -1003,18 +1003,20 @@ console.log("User filtering details:", {
         </div>
       </div>
 
-      <button
-  onClick={() => {
-    if (window.confirm("Are you sure you want to clear all check-ins?")) {
-      dispatch(clearAllPatientCheckIns());
-      localStorage.removeItem("patientCheckIns"); // optional but fine to keep
-    }
-  }}
-  className="text-sm text-red-500 hover:text-red-700"
->
-  Clear All
-</button>
-    </div>
+       <div className="ml-6">
+    <button
+      onClick={() => {
+        if (window.confirm("Are you sure you want to clear all check-ins?")) {
+          dispatch(clearAllPatientCheckIns());
+          localStorage.removeItem("patientCheckIns");
+        }
+      }}
+      className="text-xs bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded-md transition-colors duration-150"
+    >
+        Clear All
+      </button>
+                        </div>
+                        </div>
   </>
                   ) : selectedUser ? (
                     <>
