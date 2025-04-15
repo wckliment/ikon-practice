@@ -54,27 +54,9 @@ const server = http.createServer(app);
 const io = socketManager.init(server); // Exposes io and sets up listeners
 app.set("io", io); // Optional if you want access via req.app.get('io')
 
-// // 🔁 Global background polling: runs every 30 seconds for all locations
-// setInterval(async () => {
-//   try {
-//     const [locations] = await db.query('SELECT id FROM locations');
 
-//     if (!locations.length) {
-//       console.warn('⚠️ No locations found for polling.');
-//       return;
-//     }
 
-//     for (const loc of locations) {
-//       const locationId = loc.id;
-//       console.log(`🛰️ Background polling: location ${locationId}`);
-//       await pollForCheckInUpdates(locationId);
-//     }
-//   } catch (err) {
-//     console.error('❌ Global polling loop failed:', err.message);
-//   }
-// }, 30000);
-
-const tabletRoutes = require("./routes/tabletRoutes");
+const tabletRoutes = require("./routes/tabletRoutes")(io); // ✅ Call it with io!
 app.use("/api/tablet", tabletRoutes);
 
 const operatoriesRoutes = require("./routes/operatoriesRoutes");

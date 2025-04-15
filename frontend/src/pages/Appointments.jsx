@@ -14,6 +14,9 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 import confirmationStatusMap from "../../constants/confirmationStatusMap";
+import { socket, connectSocket } from "../socket";
+
+
 
 const appointmentService = {
   async getAppointments(startDate, endDate, providerId = null) {
@@ -466,6 +469,28 @@ const handleUpdateAppointment = async (updatedData) => {
   }
 };
 
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (token && !socket.connected) {
+    connectSocket(token); // ← calls socket.connect() and sets auth
+  }
+  }, []);
+
+  useEffect(() => {
+  // 🧠 Only attach the listener once
+  const handleAppointmentUpdate = () => {
+    console.log("📡 Received appointment update via socket");
+    fetchAppointments(); // 🔁 Re-fetch to get fresh data
+  };
+
+  socket.on("appointmentUpdated", handleAppointmentUpdate);
+
+  // 🧹 Clean up on unmount
+  return () => {
+    socket.off("appointmentUpdated", handleAppointmentUpdate);
+  };
+}, []);
+
 
 
   useEffect(() => {
@@ -476,6 +501,7 @@ const handleUpdateAppointment = async (updatedData) => {
   useEffect(() => {
     fetchAppointments();
   }, [selectedDate, currentMonth]);
+  
 
 const transformAppointmentData = async (apiAppointments, users = []) => {
   const transformed = [];
@@ -488,107 +514,116 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     }
   });
 
-    // 🎨 Status colors based on readable status
+  // 🎨 Status colors based on readable status
   const statusColors = {
-    "Unconfirmed": "#9ca3af",      // gray
-    "Confirmed": "#3b82f6",        // blue
-    "Arrived": "#10b981",          // green
-    "Ready to go Back": "#facc15", // yellow
-    "In Treatment Room": "#f97316",// orange
-    "Check Out": "#ef4444",        // red
-    "Unknown": "#9ca3af"           // default gray
+    "Unconfirmed": "#9ca3af",
+    "Confirmed": "#3b82f6",
+    "Arrived": "#10b981",
+    "Ready to go Back": "#facc15",
+    "In Treatment Room": "#f97316",
+    "Check Out": "#ef4444",
+    "Unknown": "#9ca3af"
   };
 
+  for (const apt of apiAppointments) {
+    console.log("🔍 Full appointment object:", apt);
+    console.log("🔍 Raw appointment from API:", {
+      id: apt.id || apt.AptNum,
+      procedureDescription: apt.procedureDescription
+    });
 
-for (const apt of apiAppointments) {
-  console.log("🔍 Full appointment object:", apt);
-  console.log("🔍 Raw appointment from API:", {
-    id: apt.id || apt.AptNum,
-    procedureDescription: apt.procedureDescription
-  });
+    const startTimeRaw = apt.startTime || apt.AptDateTime;
+    const startTime = parseLocalDateTime(startTimeRaw);
+    console.log("📅 Parsed local startTime:", startTime?.toString());
 
-  const startTimeRaw = apt.startTime || apt.AptDateTime;
-  const startTime = parseLocalDateTime(startTimeRaw);
-  console.log("📅 Parsed local startTime:", startTime.toString());
-
-  if (!startTime) {
-    console.warn("⚠️ Invalid or missing start time format for appointment:", apt);
-    continue;
-  }
-
-  // 🕒 Use correct local date string instead of ISO string to avoid UTC shift
-  const isoDate = startTime.toISOString();
-  console.log("📦 ISO string being used for detail panel:", isoDate);
-
-  const localDate =
-    startTime.getFullYear() + "-" +
-    String(startTime.getMonth() + 1).padStart(2, "0") + "-" +
-    String(startTime.getDate()).padStart(2, "0");
-
-  console.log("📆 Local date (fixed):", localDate);
-
-  const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
-  const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-  const pixelsPerMinute = 2.4;
-  const height = durationInMinutes * pixelsPerMinute; // add 1 block
-
-  // 🧾 Log providerId for debugging
-  const providerId = apt.providerId || apt.ProvNum;
-
-  let patientName = `Patient #${apt.patientId}`;
-  try {
-    if (apt.patientId) {
-      const patient = await appointmentService.getPatientById(apt.patientId);
-      if (patient && (patient.FName || patient.LName)) {
-        patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
-      } else {
-        console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
-      }
+    if (!startTime) {
+      console.warn("⚠️ Invalid or missing start time format for appointment:", apt);
+      continue;
     }
-  } catch (err) {
-    console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
+
+    const isoDate = startTime.toISOString();
+    console.log("📦 ISO string being used for detail panel:", isoDate);
+
+    const localDate =
+      startTime.getFullYear() + "-" +
+      String(startTime.getMonth() + 1).padStart(2, "0") + "-" +
+      String(startTime.getDate()).padStart(2, "0");
+
+    console.log("📆 Local date (fixed):", localDate);
+
+    // 🧾 Log providerId for debugging
+    const providerId = apt.providerId || apt.ProvNum;
+
+    // ✅ Make sure patientName is declared before using it
+    let patientName = `Patient #${apt.patientId}`;
+    try {
+      if (apt.patientId) {
+        const patient = await appointmentService.getPatientById(apt.patientId);
+        if (patient && (patient.FName || patient.LName)) {
+          patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
+        } else {
+          console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
+        }
+      }
+    } catch (err) {
+      console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
+    }
+
+    // ✅ Safe to log now
+    if (localDate === "2025-04-15") {
+      console.log("📌 April 15 Appointment:", {
+        patient: patientName,
+        providerId,
+        operatoryId: apt.Op || apt.operatoryId,
+        date: localDate,
+        startTime: startTime.toString(),
+        raw: apt
+      });
+    }
+
+    const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
+    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+    const pixelsPerMinute = 2.4;
+    const height = durationInMinutes * pixelsPerMinute;
+
+    const resolvedColor = providerColorMap[String(providerId)] || `rgb(${apt.provColor || "249,231,160"})`;
+    const readableStatus = apt.confirmationLabel || apt.status || "Unknown";
+    const statusColor = statusColors[readableStatus] || "#9ca3af";
+
+    transformed.push({
+      id: apt.id || apt.AptNum,
+      patientName,
+      date: localDate,
+      startTime: startTime,
+      fullStartTime: startTime.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      }),
+      endTime: endTime.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      }),
+      duration: durationInMinutes,
+      height,
+      type:
+        apt.ProcDescript ||
+        apt.procedureDescription ||
+        apt.procedure ||
+        apt.description ||
+        "",
+      notes: apt.notes || apt.Note || "",
+      status: readableStatus,
+      statusColor,
+      staff: apt.providerName || apt.provAbbr || `Provider #${providerId}`,
+      providerId,
+      color: resolvedColor,
+      procedureLogs: apt.procedureLogs || [],
+      operatoryId: apt.Op || apt.operatoryId || null,
+      startTimeDate: startTime
+    });
   }
-
-  const resolvedColor = providerColorMap[String(providerId)] || `rgb(${apt.provColor || "249,231,160"})`;
-  const readableStatus = apt.confirmationLabel || apt.status || "Unknown";
-  const statusColor = statusColors[readableStatus] || "#9ca3af";
-
-  transformed.push({
-    id: apt.id || apt.AptNum,
-    patientName,
-    date: localDate, // ✅ Local fixed date string for UI (e.g., 2025-04-12)
-    startTime: startTime, // Can remove this if unused, or keep for reference
-    fullStartTime: startTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true
-    }),
-    endTime: endTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true
-    }),
-    duration: durationInMinutes,
-    height: height,
-    type:
-      apt.ProcDescript ||
-      apt.procedureDescription ||
-      apt.procedure ||
-      apt.description ||
-      "",
-    notes: apt.notes || apt.Note || "",
-    status: readableStatus,
-    statusColor,
-    staff: apt.providerName || apt.provAbbr || `Provider #${providerId}`,
-    providerId,
-    color: resolvedColor,
-    procedureLogs: apt.procedureLogs || [],
-    operatoryId: apt.Op || apt.operatoryId || null,
-
-    // 🆕 Add this for exact positioning in grid logic
-    startTimeDate: startTime, // <-- ✅ Raw Date object
-  });
-}
 
   return transformed;
 };
@@ -990,10 +1025,20 @@ const patientOptions = patients.map((patient) => ({
         {/* Appointments */}
 {appointments
   .filter(app => {
-    // Filter appointments to only show those that match the selected date
     const appointmentDate = app.date;
     const selectedDateStr = selectedDate.toISOString().split('T')[0];
-    return appointmentDate === selectedDateStr;
+
+    const shouldDisplay = appointmentDate === selectedDateStr;
+
+    console.log("📋 Checking appointment for display:", {
+      id: app.id,
+      date: appointmentDate,
+      selectedDate: selectedDateStr,
+      patient: app.patientName,
+      willDisplay: shouldDisplay
+    });
+
+    return shouldDisplay;
   })
   .map((app) => {
     let rowIndex = 2;
@@ -1013,6 +1058,10 @@ try {
   providerIndex = operatories.findIndex(
     (op) => Number(op.OperatoryNum) === Number(app.operatoryId)
   );
+  console.log("🧪 Matching operatory:", {
+  appointmentOp: app.operatoryId,
+  matchedIndex: providerIndex
+});
 } catch (err) {
   console.error("⛔ Error parsing appointment time:", app, err);
   return null;

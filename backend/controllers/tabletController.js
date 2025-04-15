@@ -10,25 +10,30 @@ exports.tabletLogin = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    console.log("📥 Login attempt from tablet:", email);
+
     const [[user]] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    console.log("🔍 DB user lookup result:", user);
 
     if (!user) {
+      console.log("❌ No user found with that email");
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("🔐 Password match:", isMatch);
+
     if (!isMatch) {
+      console.log("❌ Incorrect password");
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Create a token valid for 12 hours (or shorter if preferred)
     const token = jwt.sign(
       { userId: user.id, location_id: user.location_id },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
 
-    // Only return what’s needed by the frontend
     res.json({
       token,
       user: {
@@ -82,13 +87,13 @@ if (!appointment) {
   }
 };
 
-exports.sendTabletCheckInMessage = async (req, res) => {
+exports.sendTabletCheckInMessage = async (req, res, io) => {
   try {
     const { patient, appointment } = req.body;
     const locationId = req.user.location_id;
 
-   const locationCode = await getLocationCodeById(locationId);
-   const { devKey, custKey } = await getKeysFromLocation(locationCode);
+    const locationCode = await getLocationCodeById(locationId);
+    const { devKey, custKey } = await getKeysFromLocation(locationCode);
     const openDentalService = new OpenDentalService(devKey, custKey);
 
     // ✅ 1. Update confirmation status in Open Dental
@@ -98,14 +103,16 @@ exports.sendTabletCheckInMessage = async (req, res) => {
 
     console.log("✅ Confirmation status updated:", updatedAppointment.Confirmed);
 
-    // ✅ 2. Send real-time broadcast message (existing logic)
+    // ✅ 2. Send real-time broadcast message
     const time = new Date(appointment.startTime).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
 
     const messageText = `Patient ${patient.FName} ${patient.LName} has checked in for their ${time} appointment with Dr. ${appointment.providerName}`;
-    const message = await sendSystemMessage(messageText, locationId);
+
+    // 👇 pass io here
+    const message = await sendSystemMessage(io, messageText, locationId);
 
     res.status(200).json({ success: true, message });
   } catch (error) {
