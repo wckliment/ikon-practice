@@ -464,11 +464,14 @@ export const deleteMessage = createAsyncThunk(
 export const addMessageViaSocket = createAction('chat/addMessageViaSocket');
 
 // Initial state - updated to include patientCheckIns
+
+const savedCheckIns = localStorage.getItem('patientCheckIns');
+
 const initialState = {
   users: [],
   messages: [],
   allMessages: [],
-  patientCheckIns: [],
+  patientCheckIns: savedCheckIns ? JSON.parse(savedCheckIns) : [],
   selectedUser: null,
   loading: false,
   error: null
@@ -495,28 +498,30 @@ const chatSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-// Add handler for socket messages
-      .addCase(addMessageViaSocket, (state, action) => {
-        console.log('💾 Adding message via socket to Redux:', action.payload);
 
-        // Add to allMessages at the beginning of the array
-        state.allMessages = [action.payload, ...state.allMessages];
+     .addCase(addMessageViaSocket, (state, action) => {
+  console.log('💾 Adding message via socket to Redux:', action.payload);
 
-        // If it's a patient check-in or system message about patient ready to go back
-        if (action.payload.type === 'patient-check-in' ||
-            (action.payload.is_system === true &&
-             action.payload.message.includes('ready to go back'))) {
-          console.log('📱 Adding to patientCheckIns collection:', action.payload);
-          state.patientCheckIns = [action.payload, ...state.patientCheckIns];
-        }
+  state.allMessages = [action.payload, ...state.allMessages];
 
-        // If we're currently viewing a conversation with this user, add it there too
-        if (state.selectedUser &&
-            (action.payload.sender_id === state.selectedUser.id ||
-             action.payload.receiver_id === state.selectedUser.id)) {
-          state.messages = [action.payload, ...state.messages];
-        }
-      })
+  const isCheckIn = action.payload.type === 'patient-check-in' ||
+                    (action.payload.is_system === true &&
+                     action.payload.message.includes('ready to go back'));
+
+  if (isCheckIn) {
+    console.log('📱 Adding to patientCheckIns collection:', action.payload);
+    state.patientCheckIns = [action.payload, ...state.patientCheckIns];
+
+    // ✨ Persist to localStorage
+    localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
+  }
+
+  if (state.selectedUser &&
+      (action.payload.sender_id === state.selectedUser.id ||
+       action.payload.receiver_id === state.selectedUser.id)) {
+    state.messages = [action.payload, ...state.messages];
+  }
+})
 
       // fetchAllMessages reducers
       .addCase(fetchAllMessages.pending, (state) => {
@@ -618,6 +623,7 @@ const chatSlice = createSlice({
         // If it's a patient check-in message, add it to that collection
         if (action.payload.type === 'patient-check-in') {
           state.patientCheckIns = [action.payload, ...state.patientCheckIns];
+          localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
         }
       })
       .addCase(sendMessage.rejected, (state, action) => {
@@ -636,6 +642,7 @@ const chatSlice = createSlice({
         state.allMessages = [action.payload, ...state.allMessages];
         state.patientCheckIns = [action.payload, ...state.patientCheckIns];
         state.loading = false;
+        localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
       })
       .addCase(sendPatientCheckIn.rejected, (state, action) => {
         state.error = action.payload || { error: 'Failed to send patient check-in' };
@@ -747,7 +754,7 @@ const chatSlice = createSlice({
 
   // Remove from patientCheckIns if it's a check-in message
   state.patientCheckIns = state.patientCheckIns.filter(msg => msg.id !== deletedMessageId);
-
+  localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
   state.loading = false;
 })
 .addCase(deleteMessage.rejected, (state, action) => {

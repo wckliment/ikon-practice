@@ -120,7 +120,7 @@ useEffect(() => {
     await Promise.all([
       dispatch(fetchUsers()),
       dispatch(fetchAllMessages()),
-      dispatch(fetchPatientCheckIns())
+      // dispatch(fetchPatientCheckIns())
     ]);
     console.log("✅ Finished fetching initial data.");
   };
@@ -205,17 +205,17 @@ useEffect(() => {
   }
 }, [allMessages]);
 
-  useEffect(() => {
-  const broadcastMessages = allMessages.filter(msg =>
-    msg.type === 'patient-check-in' &&
-    (msg.receiver_id === -1 || msg.receiver_id === null)
-  );
+//   useEffect(() => {
+//   const broadcastMessages = allMessages.filter(msg =>
+//     msg.type === 'patient-check-in' &&
+//     (msg.receiver_id === -1 || msg.receiver_id === null)
+//   );
 
-  dispatch({
-    type: 'chat/fetchPatientCheckIns/fulfilled',
-    payload: broadcastMessages
-  });
-}, [allMessages, dispatch]);
+//   dispatch({
+//     type: 'chat/fetchPatientCheckIns/fulfilled',
+//     payload: broadcastMessages
+//   });
+// }, [allMessages, dispatch]);
 
   // Reset selected patient check-ins when a user is selected
   useEffect(() => {
