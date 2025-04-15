@@ -4,7 +4,7 @@ import PatientLookupForm from "../components/Tablet/PatientLookupForm";
 import ConfirmAppointment from "../components/Tablet/ConfirmAppointment";
 import CheckInChecklist from "../components/Tablet/CheckInChecklist";
 import CompletionScreen from "../components/Tablet/CompletionScreen";
-import TabletLogin from "../components/Tablet/TabletLogin"; // ✅ NEW
+import TabletLogin from "../components/Tablet/TabletLogin"; 
 
 const TabletCheckIn = () => {
   const { locationCode } = useParams();

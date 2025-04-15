@@ -9,13 +9,10 @@ const CompletionScreen = () => {
           Please have a seat — someone will be with you shortly.
         </p>
 
-        {/* Optional: Go back to start */}
-        <Link
-          to="/"
-          className="inline-block mt-4 text-blue-600 underline hover:text-blue-800"
-        >
-          Return to Home
-        </Link>
+        
+        <Link to="/tablet/login" className="inline-block mt-4 text-blue-600 underline hover:text-blue-800">
+  Return to Home
+</Link>
       </div>
     </div>
   );

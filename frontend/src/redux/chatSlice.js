@@ -579,9 +579,22 @@ const chatSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchPatientCheckIns.fulfilled, (state, action) => {
-        state.patientCheckIns = action.payload;
-        state.loading = false;
-      })
+  // Merge new messages with existing ones (avoid duplicates)
+  const newMessages = action.payload;
+  const existingIds = new Set(state.patientCheckIns.map(msg => msg.id));
+
+  const merged = [...newMessages.filter(msg => !existingIds.has(msg.id)), ...state.patientCheckIns];
+
+  // Sort by created_at descending
+  merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  state.patientCheckIns = merged;
+
+  // Persist to localStorage
+  localStorage.setItem('patientCheckIns', JSON.stringify(merged));
+  state.loading = false;
+})
+
       .addCase(fetchPatientCheckIns.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;

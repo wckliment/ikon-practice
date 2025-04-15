@@ -121,7 +121,7 @@ useEffect(() => {
     await Promise.all([
       dispatch(fetchUsers()),
       dispatch(fetchAllMessages()),
-      // dispatch(fetchPatientCheckIns())
+      dispatch(fetchPatientCheckIns())
     ]);
     console.log("✅ Finished fetching initial data.");
   };
