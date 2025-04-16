@@ -57,6 +57,27 @@ const appointmentService = {
     }
   },
 
+
+// ✅ Batch fetch patients by array of PatNums
+async getPatientsByIds(patNums) {
+  try {
+    const response = await axios.post(
+      "/api/patients/batch",
+      { patNums },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (localStorage.getItem("token") || "no-token"),
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("❌ Failed to batch fetch patients:", error);
+    return [];
+  }
+},
+
   async createAppointment(appointmentData) {
   try {
     console.log("📅 [STEP 1] Creating new appointment with data:", appointmentData);
@@ -503,7 +524,9 @@ const handleUpdateAppointment = async (updatedData) => {
   }, [selectedDate, currentMonth]);
 
 
-const transformAppointmentData = async (apiAppointments, users = []) => {
+
+
+  const transformAppointmentData = async (apiAppointments, users = [], patientMap = {}) => {
   const transformed = [];
 
   // 🔧 Build color map with string keys
@@ -514,7 +537,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
     }
   });
 
-  // 🎨 Status colors based on readable status
+  // 🎨 Status colors
   const statusColors = {
     "Unconfirmed": "#9ca3af",
     "Confirmed": "#3b82f6",
@@ -526,60 +549,20 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
   };
 
   for (const apt of apiAppointments) {
-    console.log("🔍 Full appointment object:", apt);
-    console.log("🔍 Raw appointment from API:", {
-      id: apt.id || apt.AptNum,
-      procedureDescription: apt.procedureDescription
-    });
-
     const startTimeRaw = apt.startTime || apt.AptDateTime;
     const startTime = parseLocalDateTime(startTimeRaw);
-    console.log("📅 Parsed local startTime:", startTime?.toString());
 
-    if (!startTime) {
-      console.warn("⚠️ Invalid or missing start time format for appointment:", apt);
-      continue;
-    }
+    if (!startTime) continue;
 
     const isoDate = startTime.toISOString();
-    console.log("📦 ISO string being used for detail panel:", isoDate);
-
-    const localDate =
-      startTime.getFullYear() + "-" +
-      String(startTime.getMonth() + 1).padStart(2, "0") + "-" +
-      String(startTime.getDate()).padStart(2, "0");
-
-    console.log("📆 Local date (fixed):", localDate);
-
-    // 🧾 Log providerId for debugging
+    const localDate = isoDate.split("T")[0];
     const providerId = apt.providerId || apt.ProvNum;
 
-    // ✅ Make sure patientName is declared before using it
-    let patientName = `Patient #${apt.patientId}`;
-    try {
-      if (apt.patientId) {
-        const patient = await appointmentService.getPatientById(apt.patientId);
-        if (patient && (patient.FName || patient.LName)) {
-          patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
-        } else {
-          console.warn("⚠️ No patient data returned for PatNum:", apt.patientId);
-        }
-      }
-    } catch (err) {
-      console.warn(`⚠️ Failed to fetch patient ${apt.patientId}:`, err);
-    }
+     console.log(`🔍 Lookup for patientId ${apt.patientId}:`, patientMap[String(apt.patientId)]);
 
-    // ✅ Safe to log now
-    if (localDate === "2025-04-15") {
-      console.log("📌 April 15 Appointment:", {
-        patient: patientName,
-        providerId,
-        operatoryId: apt.Op || apt.operatoryId,
-        date: localDate,
-        startTime: startTime.toString(),
-        raw: apt
-      });
-    }
+    // 🔍 Get patient name from map
+    const patient = patientMap[apt.patientId];
+    const patientName = patient ? `${patient.FName || ""} ${patient.LName || ""}`.trim() : `Patient #${apt.patientId}`;
 
     const durationInMinutes = apt.pattern?.length ? apt.pattern.length * 5 : 60;
     const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
@@ -594,7 +577,7 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
       id: apt.id || apt.AptNum,
       patientName,
       date: localDate,
-      startTime: startTime,
+      startTime,
       fullStartTime: startTime.toLocaleTimeString("en-US", {
         hour: "numeric",
         minute: "2-digit",
@@ -629,39 +612,49 @@ const transformAppointmentData = async (apiAppointments, users = []) => {
 };
 
 
-  const fetchAppointments = async () => {
-    try {
-      setIsLoading(true);
 
-      const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+const fetchAppointments = async () => {
+  try {
+    setIsLoading(true);
 
-      //  Log raw API response
-      const appointmentsData = await appointmentService.getAppointments(startOfMonth, endOfMonth);
+    const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
+    const appointmentsData = await appointmentService.getAppointments(startOfMonth, endOfMonth);
 
-      //  Await transformed appointments (because it now fetches patient data)
-      const transformedAppointments = await transformAppointmentData(appointmentsData, users);
+    // 🔁 Extract unique patient IDs
+    const patNums = [...new Set(appointmentsData.map((apt) => apt.patientId).filter(Boolean))];
+    const patientsArray = await appointmentService.getPatientsByIds(patNums);
 
+    // 🔍 Build lookup map
+    const patientMap = {};
+    patientsArray.forEach((pat) => {
+      patientMap[pat.PatNum] = pat;
+    });
 
-      setAppointments(transformedAppointments);
+    console.log("🧭 Mapped patient lookup object:", patientMap);
 
-      if (transformedAppointments.length > 0 && !selectedAppointment) {
-        const first = transformedAppointments.find(
-          (apt) => apt.date === selectedDate.toISOString().split("T")[0]
-        );
-        if (first) {
-          setSelectedAppointment(first);
-          setNotes(first.notes || "");
-        }
+    // 💡 Transform and pass in the patientMap
+    const transformedAppointments = await transformAppointmentData(appointmentsData, users, patientMap);
+
+    setAppointments(transformedAppointments);
+
+    if (transformedAppointments.length > 0 && !selectedAppointment) {
+      const first = transformedAppointments.find(
+        (apt) => apt.date === selectedDate.toISOString().split("T")[0]
+      );
+      if (first) {
+        setSelectedAppointment(first);
+        setNotes(first.notes || "");
       }
-
-      setIsLoading(false);
-    } catch (error) {
-      console.error("❌ Error fetching appointments:", error);
-      setIsLoading(false);
     }
-  };
+
+    setIsLoading(false);
+  } catch (error) {
+    console.error("❌ Error fetching appointments:", error);
+    setIsLoading(false);
+  }
+};
 
 
   const getAppointmentsForTimeAndStaff = (time, staff) => {

@@ -245,6 +245,30 @@ async searchPatients(searchTerm) {
   }
 }
 
+async getMultiplePatients(patNums) {
+  try {
+    console.log("📥 Batch fetching patients with PatNums:", patNums);
+
+    const requests = patNums.map((patNum) =>
+      axios.get(`${this.baseUrl}/patients/${patNum}`, {
+        headers: this.headers
+      }).then(res => res.data).catch(err => {
+        console.warn(`⚠️ Failed to fetch patient ${patNum}:`, err.message);
+        return null;
+      })
+    );
+
+    const results = await Promise.all(requests);
+
+    // Filter out any nulls from failed lookups
+    return results.filter(Boolean);
+  } catch (error) {
+    this._handleError('getMultiplePatients', error);
+    throw new Error(`Failed to batch fetch patients: ${error.message}`);
+  }
+}
+
+
   async updateAppointment(appointmentId, updateData) {
   try {
     console.log(`Updating appointment ${appointmentId} with exact data sent to API:`, JSON.stringify(updateData));

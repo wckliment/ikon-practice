@@ -36,3 +36,20 @@ exports.searchPatients = async (req, res) => {
     res.status(500).json({ message: "Failed to search patients", error: error.message });
   }
 };
+
+// 🔄 Batch fetch patients by an array of PatNums
+exports.getPatientsByIds = async (req, res) => {
+  const { patNums } = req.body;
+
+  if (!Array.isArray(patNums) || patNums.length === 0) {
+    return res.status(400).json({ message: "Invalid or missing patNums" });
+  }
+
+  try {
+    const patients = await req.openDentalService.getMultiplePatients(patNums); // We'll add this next
+    res.json(patients);
+  } catch (error) {
+    console.error("❌ Failed to batch fetch patients:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
