@@ -111,3 +111,20 @@ exports.getLocationUsers = async (req, res) => {
     res.status(500).json({ error: "Database error", details: err.message });
   }
 };
+
+// Get location by code
+exports.getLocationByCode = async (req, res) => {
+  const locationCode = req.params.code;
+
+  try {
+    const [results] = await Location.getByCode(locationCode); // <-- destructure array
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Location not found" });
+    }
+
+    res.json(results[0]); // ✅ send just the object
+  } catch (err) {
+    console.error("Error fetching location by code:", err);
+    res.status(500).json({ error: "Database error", details: err.message });
+  }
+};

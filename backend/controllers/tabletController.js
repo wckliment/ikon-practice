@@ -13,20 +13,20 @@ exports.tabletLogin = async (req, res) => {
     console.log("📥 Login attempt from tablet:", email);
 
     const [[user]] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-    console.log("🔍 DB user lookup result:", user);
-
     if (!user) {
-      console.log("❌ No user found with that email");
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log("🔐 Password match:", isMatch);
-
     if (!isMatch) {
-      console.log("❌ Incorrect password");
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // 🔍 Get location code from the locations table
+    const [[location]] = await db.query(
+      "SELECT code FROM locations WHERE id = ?",
+      [user.location_id]
+    );
 
     const token = jwt.sign(
       { userId: user.id, location_id: user.location_id },
@@ -41,6 +41,7 @@ exports.tabletLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         location_id: user.location_id,
+        location_code: location?.code || null, // ✅ Include code here
       },
     });
   } catch (err) {

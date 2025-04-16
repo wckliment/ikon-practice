@@ -5,11 +5,15 @@ const authenticateUser = require("../middleware/authMiddleware");
 const { isAdminOrOwner } = require("../middleware/roleMiddleware");
 const { body, validationResult } = require("express-validator");
 
+// GET location by unique code (public route — no auth required)
+router.get("/by-code/:code", locationsController.getLocationByCode);
+
 // ✅ Protect all location routes with JWT authentication
 router.use(authenticateUser);
 
 // GET all locations
 router.get("/", locationsController.getAllLocations);
+
 
 // GET single location by ID
 router.get("/:id", locationsController.getLocationById);
@@ -61,5 +65,7 @@ router.delete("/:id", isAdminOrOwner, locationsController.deleteLocation);
 
 // GET users in a location
 router.get("/:id/users", locationsController.getLocationUsers);
+
+
 
 module.exports = router;

@@ -64,4 +64,11 @@ Location.getUsers = (locationId) => {
   return ikonDB.query(query, [locationId]);
 };
 
+
+//Get location by code
+Location.getByCode = (code) => {
+  const query = "SELECT * FROM locations WHERE code = ?";
+  return ikonDB.query(query, [code]);
+};
+
 module.exports = Location;

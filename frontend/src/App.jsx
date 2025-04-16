@@ -9,6 +9,8 @@ import CommunicationHub from "./pages/CommunicationHub";
 import Appointments from "./pages/Appointments";
 import Settings from "./pages/Settings";
 import TabletCheckIn from './pages/TabletCheckIn';
+import TabletLoginScreen from './routes/TabletLoginScreen.jsx';
+
 
 
 export default function App() {
@@ -23,6 +25,7 @@ export default function App() {
         <Route path="/appointments" element={<Appointments />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/tablet-checkin/:locationCode" element={<TabletCheckIn />} />
+        <Route path="/tablet/login" element={<TabletLoginScreen />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
     </Router>
