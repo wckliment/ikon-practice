@@ -846,6 +846,42 @@ console.log("User filtering details:", {
                   )}
                 </div>
 
+                {/* ✅ Ready to Go Back Section */}
+<div className="px-3 py-2 mt-2">
+  <p className="text-xs font-semibold text-gray-500 flex items-center">
+    <span className="mr-1">🚪</span> Ready to Go Back
+  </p>
+</div>
+
+<div className="px-2">
+  {loading ? (
+    <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
+  ) : (
+    patientCheckIns.filter(
+      msg => msg.is_system && msg.message.toLowerCase().includes("ready to go back")
+    ).map((msg) => (
+      <div
+        key={msg.id}
+        className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative"
+      >
+        <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">
+          🚪
+        </div>
+        <div className="ml-2 flex-1 min-w-0">
+          <div className="flex justify-between items-center">
+            <p className="font-medium text-sm truncate text-amber-700">
+              {msg.patientName || "Patient"} is ready
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 truncate">
+            {formatTime(msg.created_at)}
+          </p>
+        </div>
+      </div>
+    ))
+  )}
+</div>
+
                 {/* Patient Check-ins Section */}
                 <div className="px-3 py-2 mt-2">
                   <p className="text-xs font-semibold text-gray-500 flex items-center">
