@@ -152,12 +152,13 @@ exports.sendTabletCheckInMessage = async (req, res, io) => {
       return res.status(500).json({ error: "Failed to construct system message." });
     }
 
-    console.log("📢 Sending system message:", messageText);
-    const message = await sendSystemMessage(io, {
+    console.log("📨 Emitting patient-check-in system message...");
+const message = await sendSystemMessage(io, {
   message: messageText,
   type: 'patient-check-in',
   locationId
 });
+console.log("✅ Emitted system message:", message);
 
     res.status(200).json({ success: true, message });
   } catch (error) {

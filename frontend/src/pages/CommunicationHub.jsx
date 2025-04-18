@@ -23,15 +23,15 @@ import { addMessageViaSocket } from "../redux/chatSlice";
 
 const CommunicationHub = () => {
   const dispatch = useDispatch();
-  const { users = [], messages = [], allMessages = [], patientCheckIns = [], selectedUser, loading } = useSelector((state) => state.chat);
-  useEffect(() => {
-  console.log("🔄 Redux messages state updated:", messages);
-  }, [messages]);
-  console.log("🧠 allMessages from Redux:", allMessages); // <--- add this here
-  console.log("👨‍⚕️ patientCheckIns from Redux:", patientCheckIns); // ✅ add this
 
+  const { users = [], messages = [], allMessages = [], patientCheckIns = [], selectedUser, loading, readyToGoBackMessages= [] } = useSelector((state) => state.chat);
   const { user: currentUser, isAuthenticated } = useSelector((state) => state.auth);
-
+    useEffect(() => {
+    console.log("🔄 Redux messages state updated:", messages);
+    }, [messages]);
+  console.log("🧠 allMessages from Redux:", allMessages);
+  console.log("👨‍⚕️ patientCheckIns from Redux:", patientCheckIns);
+  console.log("🚪 readyToGoBackMessages from Redux:", readyToGoBackMessages);
   const [newMessageText, setNewMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -42,7 +42,7 @@ const CommunicationHub = () => {
   const [systemAlert, setSystemAlert] = useState(null);
   const [localMessages, setLocalMessages] = useState([]);
   const bottomRef = useRef(null);
-  const { readyToGoBackMessages = [] } = useSelector((state) => state.chat);
+
 
  useEffect(() => {
   const token = localStorage.getItem("token");
@@ -65,6 +65,7 @@ const CommunicationHub = () => {
     socket.on("newMessage", (message) => {
       console.log("🔎 SOCKET DEBUGGING - Raw message received:", message);
       console.log("🔎 SOCKET DEBUGGING - Is system message?", message.is_system === true, "Type:", message.type);
+      console.log("✅ Dispatching addMessageViaSocket for message:", message);
 
       dispatch(addMessageViaSocket(message));
 
@@ -861,6 +862,7 @@ console.log("User filtering details:", {
     <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
   ) : (
     readyToGoBackMessages.map((msg) => (
+      console.log("🟡 Rendering ready-to-go-back message:", msg),
       <div key={msg.id} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative">
         <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">🚪</div>
         <div className="ml-2 flex-1 min-w-0">

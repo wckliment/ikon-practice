@@ -539,6 +539,11 @@ const chatSlice = createSlice({
 
   console.log("📦 All fetched messages:", action.payload);
 
+  // ✅ Add this line to populate readyToGoBackMessages
+  state.readyToGoBackMessages = action.payload.filter(
+    msg => msg.type === 'ready-to-go-back'
+  );
+
   const currentUserId = parseInt(localStorage.getItem("userId"), 10);
   console.log("🧑 Current User ID:", currentUserId);
 
@@ -546,17 +551,13 @@ const chatSlice = createSlice({
     const counts = {};
 
     action.payload.forEach(msg => {
-      // ✅ LOG EACH MSG BEING COUNTED
       if (msg.receiver_id === currentUserId && !msg.is_read) {
         console.log("🔵 Unread message from:", msg.sender_id, "→", msg);
         counts[msg.sender_id] = (counts[msg.sender_id] || 0) + 1;
       }
     });
 
-    // ✅ LOG FINAL COUNTS OBJECT
     console.log("📊 Final unread counts:", counts);
-
-    // ✅ LOG USERS BEFORE ATTACHING
     console.log("👥 Users before attaching unread counts:", state.users);
 
     state.users = state.users.map(user => ({
@@ -564,7 +565,6 @@ const chatSlice = createSlice({
       unread_count: counts[user.id] || 0
     }));
 
-    // ✅ LOG USERS AFTER ATTACHING
     console.log("👥 Users after attaching unread counts:", state.users);
   }
 })

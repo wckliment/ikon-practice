@@ -31,6 +31,8 @@ async function pollAppointments(io, openDentalService) {
         continue;
       }
 
+console.log(`🔁 Checking Apt ${aptId}: Prev ${previousStatus} → Curr ${currentStatus}`);
+
       // ✅ Only emit when changing to READY
       if (
         previousStatus !== READY_TO_GO_BACK_CODE &&
@@ -38,11 +40,12 @@ async function pollAppointments(io, openDentalService) {
       ) {
         console.log(`🎯 Appointment ${aptId} is now READY TO GO BACK!`);
 
-        // ✅ Use shared system message util
-        await sendSystemMessage(io, {
-          message: `${apt.PatientName || 'A patient'} is ready to go back.`,
-          type: 'ready-to-go-back'
-        });
+       console.log("📨 Emitting 'ready-to-go-back' system message...");
+await sendSystemMessage(io, {
+  message: `${apt.PatientName || 'A patient'} is ready to go back.`,
+  type: 'ready-to-go-back'
+});
+console.log("✅ Emitted 'ready-to-go-back' system message");
       }
 
       // 🧹 Always update memory
