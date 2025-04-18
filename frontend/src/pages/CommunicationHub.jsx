@@ -42,6 +42,7 @@ const CommunicationHub = () => {
   const [systemAlert, setSystemAlert] = useState(null);
   const [localMessages, setLocalMessages] = useState([]);
   const bottomRef = useRef(null);
+  const { readyToGoBackMessages = [] } = useSelector((state) => state.chat);
 
  useEffect(() => {
   const token = localStorage.getItem("token");
@@ -83,7 +84,7 @@ const CommunicationHub = () => {
           // Could refresh view or highlight
         }
 
-        if (message.message.includes("ready to go back")) {
+        if (message.type === "ready-to-go-back") {
           setSystemAlert(message);
 
           setTimeout(() => {
@@ -300,7 +301,9 @@ useEffect(() => {
 const patientCheckInSection = () => {
   // Filter broadcast messages AND system messages
 const broadcastCheckIns = patientCheckIns.filter(
-  msg => msg.type === 'patient-check-in' || msg.is_system === true
+  msg =>
+    msg.type === 'patient-check-in' &&
+    (msg.receiver_id === null || msg.receiver_id === -1)
 );
 
   if (broadcastCheckIns.length === 0) {
@@ -857,30 +860,20 @@ console.log("User filtering details:", {
   {loading ? (
     <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
   ) : (
-    patientCheckIns.filter(
-      msg => msg.is_system && msg.message.toLowerCase().includes("ready to go back")
-    ).map((msg) => (
-      <div
-        key={msg.id}
-        className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative"
-      >
-        <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">
-          🚪
-        </div>
+    readyToGoBackMessages.map((msg) => (
+      <div key={msg.id} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative">
+        <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">🚪</div>
         <div className="ml-2 flex-1 min-w-0">
-          <div className="flex justify-between items-center">
-            <p className="font-medium text-sm truncate text-amber-700">
-              {msg.patientName || "Patient"} is ready
-            </p>
-          </div>
-          <p className="text-xs text-gray-500 truncate">
-            {formatTime(msg.created_at)}
+          <p className="font-medium text-sm truncate text-amber-700">
+            {msg.patientName || "Patient"} is ready
           </p>
+          <p className="text-xs text-gray-500 truncate">{formatTime(msg.created_at)}</p>
         </div>
       </div>
     ))
   )}
 </div>
+
 
                 {/* Patient Check-ins Section */}
                 <div className="px-3 py-2 mt-2">

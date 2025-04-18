@@ -3,14 +3,12 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 require("dotenv").config();
-
 const http = require("http");
-const socketManager = require("./socket");
 
+const socketManager = require("./socket");
+const { ensureWatcherRunningForLocation } = require("./utils/watcherManager");
 
 const app = express();
-const pollForCheckInUpdates = require('./polling/checkInWatcher');
-const db = require('./config/db');
 
 // Middleware
 app.use(express.json());
@@ -18,51 +16,32 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 
-// Import Routes
-const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);
+// Routes
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/users", require("./routes/usersRoutes"));
+app.use("/api/messages", require("./routes/messageRoutes"));
+app.use("/api/locations", require("./routes/locationRoutes"));
+app.use("/api/practice", require("./routes/practiceRoutes"));
+app.use("/api/appointments", require("./routes/appointmentRoutes"));
+app.use("/api/providers", require("./routes/providerRoutes"));
+app.use("/api/patients", require("./routes/patientRoutes"));
+app.use("/api/poll", require("./routes/pollRoutes"));
 
-const usersRoutes = require("./routes/usersRoutes");
-app.use("/api/users", usersRoutes);
-
-const messageRoutes = require("./routes/messageRoutes");
-app.use("/api/messages", messageRoutes);
-
-const locationRoutes = require("./routes/locationRoutes");
-app.use("/api/locations", locationRoutes);
-
-const practiceRoutes = require("./routes/practiceRoutes");
-app.use("/api/practice", practiceRoutes);
-
-const appointmentRoutes = require("./routes/appointmentRoutes");
-app.use("/api/appointments", appointmentRoutes);
-
-const providerRoutes = require("./routes/providerRoutes");
-app.use("/api/providers", providerRoutes);
-
-const patientRoutes = require("./routes/patientRoutes");
-app.use("/api/patients", patientRoutes);
-
-const pollRoutes = require("./routes/pollRoutes");
-app.use("/api/poll", pollRoutes);
-
-
-// ✅ Create HTTP server and wrap Express app
+// Initialize HTTP server
 const server = http.createServer(app);
 
-// ✅ Initialize and configure Socket.IO from your socket.js module
-const io = socketManager.init(server); // Exposes io and sets up listeners
-app.set("io", io); // Optional if you want access via req.app.get('io')
+// Initialize Socket.IO
+const io = socketManager.init(server);
+app.set("io", io);
 
+// Tablet routes with socket
+app.use("/api/tablet", require("./routes/tabletRoutes")(io));
+app.use("/api/operatories", require("./routes/operatoriesRoutes"));
 
+// 🚀 Start confirmation watcher dynamically for your "relaxation" test location
+ensureWatcherRunningForLocation("relaxation", io);
 
-const tabletRoutes = require("./routes/tabletRoutes")(io); // ✅ Call it with io!
-app.use("/api/tablet", tabletRoutes);
-
-const operatoriesRoutes = require("./routes/operatoriesRoutes");
-app.use("/api/operatories", operatoriesRoutes);
-
-// ✅ Start server with HTTP + WebSocket support
+// Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server + WebSockets running on port ${PORT}`);

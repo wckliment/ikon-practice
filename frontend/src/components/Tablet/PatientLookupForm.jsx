@@ -36,7 +36,6 @@ const PatientLookupForm = ({ locationCode, onSuccess }) => {
       console.log("✅ Lookup Result:");
       console.log("Patient:", patient);
       console.log("Appointment:", appointment);
-      console.log("👉 appointment.AptDateTime:", appointment.AptDateTime);
       console.log("👉 appointment.startTime:", appointment.startTime);
 
       if (patient && appointment) {

@@ -11,34 +11,43 @@ const CheckInChecklist = ({ patient, appointment, locationCode, onComplete }) =>
   const isReady = formsCompleted && paymentCollected && contactVerified;
 
   const handleCompleteCheckIn = async () => {
-    setLoading(true);
-    setError("");
+  setLoading(true);
+  setError("");
 
-    try {
-      const token = localStorage.getItem("tabletToken");
+  try {
+    const token = localStorage.getItem("tabletToken");
 
-      await axios.post(
-        "/api/tablet/tablet-checkin",
-        {
-          patient,
-          appointment,
-          locationCode,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
 
-      onComplete(); // Proceed to the final screen
-    } catch (err) {
-      console.error("❌ Tablet check-in failed:", err);
-      setError("Check-in failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // 🧾 Helpful log to verify what's being sent
+    console.log("📦 Submitting check-in for:", {
+      patient,
+      appointment,
+      locationCode,
+    });
+
+   await axios.post(
+  "/api/tablet/tablet-checkin",
+  {
+    patient,
+    appointment, // ✅ send full original object from patientLookup
+    locationCode,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+    onComplete(); // Proceed to the final screen
+  } catch (err) {
+    console.error("❌ Tablet check-in failed:", err);
+    setError("Check-in failed. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="max-w-xl mx-auto mt-10 px-4">

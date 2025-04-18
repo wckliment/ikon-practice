@@ -472,6 +472,7 @@ const initialState = {
   messages: [],
   allMessages: [],
   patientCheckIns: savedCheckIns ? JSON.parse(savedCheckIns) : [],
+  readyToGoBackMessages: [],
   selectedUser: null,
   loading: false,
   error: null
@@ -504,27 +505,26 @@ const chatSlice = createSlice({
   extraReducers: (builder) => {
     builder
 
-     .addCase(addMessageViaSocket, (state, action) => {
-  console.log('💾 Adding message via socket to Redux:', action.payload);
+.addCase(addMessageViaSocket, (state, action) => {
+  const msg = action.payload;
+  state.allMessages = [msg, ...state.allMessages];
 
-  state.allMessages = [action.payload, ...state.allMessages];
-
-  const isCheckIn = action.payload.type === 'patient-check-in' ||
-                    (action.payload.is_system === true &&
-                     action.payload.message.includes('ready to go back'));
+  const isCheckIn = msg.type === 'patient-check-in';
+  const isReadyToGoBack = msg.type === 'ready-to-go-back';
 
   if (isCheckIn) {
-    console.log('📱 Adding to patientCheckIns collection:', action.payload);
-    state.patientCheckIns = [action.payload, ...state.patientCheckIns];
-
-    // ✨ Persist to localStorage
+    state.patientCheckIns = [msg, ...state.patientCheckIns];
     localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
   }
 
+  if (isReadyToGoBack) {
+    state.readyToGoBackMessages = [msg, ...state.readyToGoBackMessages];
+  }
+
   if (state.selectedUser &&
-      (action.payload.sender_id === state.selectedUser.id ||
-       action.payload.receiver_id === state.selectedUser.id)) {
-    state.messages = [action.payload, ...state.messages];
+      (msg.sender_id === state.selectedUser.id ||
+       msg.receiver_id === state.selectedUser.id)) {
+    state.messages = [msg, ...state.messages];
   }
 })
 

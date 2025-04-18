@@ -93,30 +93,71 @@ exports.sendTabletCheckInMessage = async (req, res, io) => {
     const { patient, appointment } = req.body;
     const locationId = req.user.location_id;
 
+    console.log("📥 Received check-in payload:");
+    console.log("🧍 Patient:", patient);
+    console.log("📆 Appointment:", appointment);
+
+    // 🔐 Validate input
+    if (!appointment?.id || !appointment?.startTime || !appointment?.providerName) {
+      console.warn("❌ Invalid appointment object received:", appointment);
+      return res.status(400).json({ error: "Invalid appointment data." });
+    }
+
     const locationCode = await getLocationCodeById(locationId);
     const { devKey, custKey } = await getKeysFromLocation(locationCode);
     const openDentalService = new OpenDentalService(devKey, custKey);
 
-    // ✅ 1. Update confirmation status in Open Dental
-    const updatedAppointment = await openDentalService.updateAppointment(appointment.id, {
+    // 🧠 Refetch full appointment to get AptDateTime
+    const fullAppointment = await openDentalService.getAppointment(appointment.id);
+
+    if (!fullAppointment || !fullAppointment.startTime) {
+      console.error("❌ Could not retrieve full appointment data for ID:", appointment.id);
+      return res.status(400).json({ error: "Invalid appointment data." });
+    }
+
+    const formattedStart = fullAppointment.startTime.replace("T", " ");
+    const payload = {
+      AptDateTime: formattedStart,
       Confirmed: 22, // "Arrived"
-    });
+    };
+
+    console.log("📦 Update payload:", payload);
+    console.log("📤 Updating appointment in Open Dental...");
+
+    const updatedAppointment = await openDentalService.updateAppointment(fullAppointment.id, payload);
 
     console.log("✅ Confirmation status updated:", updatedAppointment.Confirmed);
 
-    // ✅ 2. Emit to refresh frontend calendar
-io.emit("appointmentUpdated", { id: updatedAppointment.id });
+    // 🔄 Emit calendar update
+    io.emit("appointmentUpdated", { id: updatedAppointment.id });
 
-    // ✅ 2. Send real-time broadcast message
-    const time = new Date(appointment.startTime).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    // 🧠 Construct system message
+    let time = "an unknown time";
+    try {
+      time = new Date(appointment.startTime).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (e) {
+      console.warn("⚠️ Failed to parse appointment time:", appointment.startTime);
+    }
 
-    const messageText = `Patient ${patient.FName} ${patient.LName} has checked in for their ${time} appointment with Dr. ${appointment.providerName}`;
+    let messageText = null;
+    if (patient?.FName && patient?.LName && appointment?.providerName) {
+      messageText = `Patient ${patient.FName} ${patient.LName} has checked in for their ${time} appointment with Dr. ${appointment.providerName}`;
+    }
 
-    // 👇 pass io here
-    const message = await sendSystemMessage(io, messageText, locationId);
+    if (!messageText) {
+      console.error("❌ Failed to construct messageText. Skipping system message.");
+      return res.status(500).json({ error: "Failed to construct system message." });
+    }
+
+    console.log("📢 Sending system message:", messageText);
+    const message = await sendSystemMessage(io, {
+  message: messageText,
+  type: 'patient-check-in',
+  locationId
+});
 
     res.status(200).json({ success: true, message });
   } catch (error) {

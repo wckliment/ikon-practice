@@ -38,6 +38,37 @@ class OpenDentalService {
     }
   }
 
+async getTodayAppointments() {
+  const today = new Date();
+  const formattedDate = this._formatDate(today);
+
+  try {
+    const response = await axios.get(`${this.baseUrl}/appointments`, {
+      headers: this.headers,
+      params: {
+        startDate: formattedDate,
+        endDate: formattedDate,
+      }
+    });
+
+    const allAppointments = this._transformAppointments(response.data);
+
+    // ✅ Strictly filter to today's date
+    const filtered = allAppointments.filter((apt) => {
+      const aptDate = new Date(apt.startTime).toISOString().split('T')[0];
+      return aptDate === formattedDate;
+    });
+
+    console.log(`🧹 Filtered to ${filtered.length} true appointments for today`);
+    return filtered;
+
+  } catch (error) {
+    this._handleError('getTodayAppointments', error);
+    throw new Error(`Failed to fetch today's appointments: ${error.message}`);
+  }
+}
+
+
 async createAppointment(appointmentData) {
   try {
     console.log('Creating appointment in Open Dental:', appointmentData);
@@ -555,19 +586,19 @@ if (!match) {
     }
   }
 
-  _handleError(resource, error) {
-    if (error.response) {
-      console.error(`🔴 Open Dental API Response Error for ${resource}:`, {
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers,
-      });
-    } else if (error.request) {
-      console.error(`🔴 Open Dental API No Response for ${resource}:`, error.request);
-    } else {
-      console.error(`🔴 Open Dental API Other Error for ${resource}:`, error.message);
-    }
+_handleError(resource, error) {
+  if (error.response) {
+    console.error(`🔴 Open Dental API Response Error for ${resource}:`);
+    console.error(`➡️ Status: ${error.response.status}`);
+    console.error(`➡️ Data:`, error.response.data);
+    console.error(`➡️ Headers:`, error.response.headers);
+  } else if (error.request) {
+    console.error(`🔴 Open Dental API No Response for ${resource}:`, error.request);
+  } else {
+    console.error(`🔴 Open Dental API Other Error for ${resource}:`, error.message);
   }
+}
+
 }
 
 module.exports = OpenDentalService;
