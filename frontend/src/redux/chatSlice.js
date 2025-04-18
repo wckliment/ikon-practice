@@ -544,6 +544,12 @@ const chatSlice = createSlice({
     msg => msg.type === 'ready-to-go-back'
   );
 
+ // ✅ Populate patientCheckIns
+  state.patientCheckIns = action.payload.filter(
+    msg => msg.type === 'patient-check-in'
+  );
+  localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
+
   const currentUserId = parseInt(localStorage.getItem("userId"), 10);
   console.log("🧑 Current User ID:", currentUserId);
 

@@ -1,5 +1,6 @@
 const { sendSystemMessage } = require('../utils/systemMessaging');
 
+// In-memory store to track previous statuses
 let previousConfirmationStatuses = {};
 
 const POLL_INTERVAL_MS = 10000;
@@ -12,11 +13,10 @@ async function pollAppointments(io, openDentalService) {
 
     for (const apt of appointments) {
       const aptId = apt.AptNum || apt.id;
-       const rawDate = apt.AptDateTime || apt.startTime;
+      const rawDate = apt.AptDateTime || apt.startTime;
 
-  console.log(`🧪 Apt ID: ${aptId}, Confirmed: ${apt.Confirmed}, Raw Date: ${rawDate}`);
+      console.log(`🧪 Apt ID: ${aptId}, Confirmed: ${apt.Confirmed}, Raw Date: ${rawDate}`);
 
-      // 🛑 Skip if missing ID
       if (!aptId) {
         console.warn("⚠️ Skipping appointment with missing AptNum:", apt);
         continue;
@@ -25,30 +25,52 @@ async function pollAppointments(io, openDentalService) {
       const currentStatus = apt.Confirmed;
       const previousStatus = previousConfirmationStatuses[aptId];
 
-      // 🧠 First-time seen — store but don’t broadcast
+      // First time seeing this appointment, just store it
       if (previousStatus === undefined) {
         previousConfirmationStatuses[aptId] = currentStatus;
         continue;
       }
 
-console.log(`🔁 Checking Apt ${aptId}: Prev ${previousStatus} → Curr ${currentStatus}`);
+      console.log(`🔁 Checking Apt ${aptId}: Prev ${previousStatus} → Curr ${currentStatus}`);
 
-      // ✅ Only emit when changing to READY
       if (
         previousStatus !== READY_TO_GO_BACK_CODE &&
         currentStatus === READY_TO_GO_BACK_CODE
       ) {
         console.log(`🎯 Appointment ${aptId} is now READY TO GO BACK!`);
 
-       console.log("📨 Emitting 'ready-to-go-back' system message...");
-await sendSystemMessage(io, {
-  message: `${apt.PatientName || 'A patient'} is ready to go back.`,
-  type: 'ready-to-go-back'
-});
-console.log("✅ Emitted 'ready-to-go-back' system message");
+
+const [patient, provider] = await Promise.all([
+  openDentalService.getPatient(apt.PatNum || apt.patientId),
+  openDentalService.getProviders().then((provList) =>
+    provList.find((p) => p.ProvNum === (apt.ProvNum || apt.providerId))
+  )
+]);
+
+const patientName = patient ? `${patient.FName || ''} ${patient.LName || ''}`.trim() : `Patient #${apt.PatNum || apt.patientId}`;
+const doctorName = provider ? `${provider.FName || ''} ${provider.LName || ''}`.trim() : `Provider #${apt.ProvNum || apt.providerId}`;
+
+        const appointmentTime = rawDate
+          ? new Date(rawDate).toLocaleTimeString([], {
+              hour: 'numeric',
+              minute: '2-digit',
+            })
+          : 'an upcoming';
+
+        const message = `Patient ${patientName} is ready to go back for their ${appointmentTime} appointment with Dr. ${doctorName}`;
+
+        console.log("📨 Emitting 'ready-to-go-back' system message...");
+        console.log("🧑‍⚕️ Message Preview:", message);
+
+        await sendSystemMessage(io, {
+          message,
+          type: 'ready-to-go-back',
+          locationId: apt.LocationNum || apt.locationId || null,
+        });
+
+        console.log("✅ Emitted 'ready-to-go-back' system message");
       }
 
-      // 🧹 Always update memory
       previousConfirmationStatuses[aptId] = currentStatus;
     }
   } catch (error) {

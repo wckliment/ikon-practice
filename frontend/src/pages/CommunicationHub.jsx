@@ -29,7 +29,7 @@ const CommunicationHub = () => {
     useEffect(() => {
     console.log("🔄 Redux messages state updated:", messages);
     }, [messages]);
-  console.log("🧠 allMessages from Redux:", allMessages);
+   console.log("🧠 allMessages from Redux:", allMessages);
   console.log("👨‍⚕️ patientCheckIns from Redux:", patientCheckIns);
   console.log("🚪 readyToGoBackMessages from Redux:", readyToGoBackMessages);
   const [newMessageText, setNewMessageText] = useState("");
@@ -850,7 +850,7 @@ console.log("User filtering details:", {
                   )}
                 </div>
 
-                {/* ✅ Ready to Go Back Section */}
+              {/* ✅ Ready to Go Back Section */}
 <div className="px-3 py-2 mt-2">
   <p className="text-xs font-semibold text-gray-500 flex items-center">
     <span className="mr-1">🚪</span> Ready to Go Back
@@ -860,19 +860,25 @@ console.log("User filtering details:", {
 <div className="px-2">
   {loading ? (
     <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
-  ) : (
-    readyToGoBackMessages.map((msg) => (
-      console.log("🟡 Rendering ready-to-go-back message:", msg),
-      <div key={msg.id} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative">
-        <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">🚪</div>
-        <div className="ml-2 flex-1 min-w-0">
-          <p className="font-medium text-sm truncate text-amber-700">
-            {msg.patientName || "Patient"} is ready
-          </p>
-          <p className="text-xs text-gray-500 truncate">{formatTime(msg.created_at)}</p>
+  ) : readyToGoBackMessages && readyToGoBackMessages.length > 0 ? (
+    readyToGoBackMessages.map((msg) => {
+      console.log("🟡 Rendering ready-to-go-back message:", msg);
+      return (
+        <div key={msg.id} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative">
+          <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">
+            🚪
+          </div>
+          <div className="ml-2 flex-1 min-w-0">
+            <p className="font-medium text-sm truncate text-amber-700">
+              {msg.message}
+            </p>
+            <p className="text-xs text-gray-500 truncate">{formatTime(msg.created_at)}</p>
+          </div>
         </div>
-      </div>
-    ))
+      );
+    })
+  ) : (
+    <div className="p-3 text-center text-sm text-gray-400">No ready-to-go-back messages</div>
   )}
 </div>
 
