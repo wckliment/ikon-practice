@@ -53,11 +53,25 @@ async getTodayAppointments() {
 
     const allAppointments = this._transformAppointments(response.data);
 
-    // ✅ Strictly filter to today's date
-    const filtered = allAppointments.filter((apt) => {
-      const aptDate = new Date(apt.startTime).toISOString().split('T')[0];
-      return aptDate === formattedDate;
-    });
+    console.log(`📅 Raw appointment start times:`);
+allAppointments.forEach((apt) => {
+  console.log(` - ID: ${apt.id}, startTime: ${apt.startTime}`);
+});
+
+const filtered = allAppointments.filter((apt) => {
+  const raw = apt.startTime;
+  const aptDate = new Date(raw).toLocaleDateString('en-CA'); // ⬅️ This outputs 'YYYY-MM-DD'
+  const isMatch = aptDate === formattedDate;
+
+  console.log(`🧪 Apt ID ${apt.id}:`, {
+    raw,
+    aptDate,
+    formattedDate,
+    isMatch
+  });
+
+  return isMatch;
+});
 
     console.log(`🧹 Filtered to ${filtered.length} true appointments for today`);
     return filtered;
@@ -508,25 +522,28 @@ if (!match) {
 
 
   _formatDate(date) {
-    try {
-      if (date instanceof Date) {
-        return date.toISOString().split('T')[0];
-      }
-
-      if (typeof date === 'string') {
-        const parsedDate = new Date(date);
-        if (isNaN(parsedDate.getTime())) {
-          throw new Error('Invalid date format');
-        }
-        return parsedDate.toISOString().split('T')[0];
-      }
-
-      throw new Error('Invalid date type');
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      throw error;
+  try {
+    if (date instanceof Date) {
+      // 🔥 FIX: Use local timezone string instead of UTC
+      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return localDate.toISOString().split('T')[0];
     }
+
+    if (typeof date === 'string') {
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        throw new Error('Invalid date format');
+      }
+      const localDate = new Date(parsedDate.getTime() - parsedDate.getTimezoneOffset() * 60000);
+      return localDate.toISOString().split('T')[0];
+    }
+
+    throw new Error('Invalid date type');
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    throw error;
   }
+}
 
   _transformAppointments(apiAppointments) {
     if (!Array.isArray(apiAppointments)) {

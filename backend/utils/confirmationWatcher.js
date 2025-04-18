@@ -8,9 +8,13 @@ const READY_TO_GO_BACK_CODE = 23;
 async function pollAppointments(io, openDentalService) {
   try {
     const appointments = await openDentalService.getTodayAppointments();
+    console.log(`📅 Fetched ${appointments.length} appointments from Open Dental`);
 
     for (const apt of appointments) {
       const aptId = apt.AptNum || apt.id;
+       const rawDate = apt.AptDateTime || apt.startTime;
+
+  console.log(`🧪 Apt ID: ${aptId}, Confirmed: ${apt.Confirmed}, Raw Date: ${rawDate}`);
 
       // 🛑 Skip if missing ID
       if (!aptId) {
