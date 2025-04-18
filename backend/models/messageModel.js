@@ -129,14 +129,24 @@ Message.getAllUserMessagesByLocation = async (userId, locationId) => {
     FROM messages m
     JOIN users sender ON m.sender_id = sender.id
     LEFT JOIN users receiver ON m.receiver_id = receiver.id
-    WHERE (m.sender_id = ? OR m.receiver_id = ?)
-      AND (
-        (sender.location_id = ? AND (receiver.location_id = ? OR m.receiver_id IS NULL))
-        OR
-        (receiver.location_id = ? AND sender.location_id = ?)
+    WHERE
+      (
+        (m.sender_id = ? OR m.receiver_id = ?)
+        AND (
+          (sender.location_id = ? AND (receiver.location_id = ? OR m.receiver_id IS NULL))
+          OR
+          (receiver.location_id = ? AND sender.location_id = ?)
+        )
       )
+      OR
+      (
+      m.is_system = TRUE
+      AND m.receiver_id IS NULL
+      AND m.type IN ('ready-to-go-back', 'patient-check-in')
+    )
     ORDER BY m.created_at DESC
   `;
+
   const [rows] = await ikonDB.query(query, [userId, userId, locationId, locationId, locationId, locationId]);
   return rows;
 };
