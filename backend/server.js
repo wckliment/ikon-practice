@@ -4,7 +4,6 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 require("dotenv").config();
 const http = require("http");
-
 const socketManager = require("./socket");
 const { ensureWatcherRunningForLocation } = require("./utils/watcherManager");
 
@@ -26,6 +25,7 @@ app.use("/api/appointments", require("./routes/appointmentRoutes"));
 app.use("/api/providers", require("./routes/providerRoutes"));
 app.use("/api/patients", require("./routes/patientRoutes"));
 app.use("/api/poll", require("./routes/pollRoutes"));
+app.use("/api/messages/hidden", require("./routes/hiddenMessagesRoutes"));
 
 // Initialize HTTP server
 const server = http.createServer(app);

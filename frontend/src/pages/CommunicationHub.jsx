@@ -16,7 +16,9 @@ import {
   deleteMessage,
   deleteConversation,
   updateUnreadCount,
-  clearAllPatientCheckIns
+  clearAllPatientCheckIns,
+  hideMessagesForUser,
+  fetchHiddenMessages
 } from "../redux/chatSlice";
 import { socket, connectSocket } from "../socket";
 import { addMessageViaSocket } from "../redux/chatSlice";
@@ -24,7 +26,7 @@ import { addMessageViaSocket } from "../redux/chatSlice";
 const CommunicationHub = () => {
   const dispatch = useDispatch();
 
-  const { users = [], messages = [], allMessages = [], patientCheckIns = [], selectedUser, loading, readyToGoBackMessages= [] } = useSelector((state) => state.chat);
+  const { users = [], messages = [], allMessages = [], patientCheckIns = [], selectedUser, loading, readyToGoBackMessages= [], hiddenMessageIds= [] } = useSelector((state) => state.chat);
   const { user: currentUser, isAuthenticated } = useSelector((state) => state.auth);
     useEffect(() => {
     console.log("🔄 Redux messages state updated:", messages);
@@ -119,12 +121,20 @@ const CommunicationHub = () => {
 // Fetch initial data when component mounts
 useEffect(() => {
   const fetchData = async () => {
-    console.log("🔄 Fetching initial data...");
+    console.log("🔄 Fetching initial data in order...");
+
+    // ✅ Step 1: Load hidden message IDs first
+    await dispatch(fetchHiddenMessages());
+
+    // ✅ Step 2: Then load all messages, now that hiddenMessageIds is populated
+    await dispatch(fetchAllMessages());
+
+    // ✅ Step 3: Users and check-ins can come after or in parallel
     await Promise.all([
       dispatch(fetchUsers()),
-      dispatch(fetchAllMessages()),
       dispatch(fetchPatientCheckIns())
     ]);
+
     console.log("✅ Finished fetching initial data.");
   };
 
@@ -208,17 +218,6 @@ useEffect(() => {
   }
 }, [allMessages]);
 
-//   useEffect(() => {
-//   const broadcastMessages = allMessages.filter(msg =>
-//     msg.type === 'patient-check-in' &&
-//     (msg.receiver_id === -1 || msg.receiver_id === null)
-//   );
-
-//   dispatch({
-//     type: 'chat/fetchPatientCheckIns/fulfilled',
-//     payload: broadcastMessages
-//   });
-// }, [allMessages, dispatch]);
 
   // Reset selected patient check-ins when a user is selected
   useEffect(() => {
@@ -304,7 +303,8 @@ const patientCheckInSection = () => {
 const broadcastCheckIns = patientCheckIns.filter(
   msg =>
     msg.type === 'patient-check-in' &&
-    (msg.receiver_id === null || msg.receiver_id === -1)
+    (msg.receiver_id === null || msg.receiver_id === -1) &&
+    !hiddenMessageIds.includes(msg.id)
 );
 
   if (broadcastCheckIns.length === 0) {
@@ -860,26 +860,33 @@ console.log("User filtering details:", {
 <div className="px-2">
   {loading ? (
     <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
-  ) : readyToGoBackMessages && readyToGoBackMessages.length > 0 ? (
-    readyToGoBackMessages.map((msg) => {
-      console.log("🟡 Rendering ready-to-go-back message:", msg);
-      return (
-        <div key={msg.id} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative">
-          <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">
-            🚪
-          </div>
-          <div className="ml-2 flex-1 min-w-0">
-            <p className="font-medium text-sm truncate text-amber-700">
-              {msg.message}
-            </p>
-            <p className="text-xs text-gray-500 truncate">{formatTime(msg.created_at)}</p>
-          </div>
-        </div>
+  ) : (() => {
+      const visibleReadyMessages = readyToGoBackMessages.filter(
+        msg => !hiddenMessageIds.includes(msg.id)
       );
-    })
-  ) : (
-    <div className="p-3 text-center text-sm text-gray-400">No ready-to-go-back messages</div>
-  )}
+
+      return visibleReadyMessages.length > 0 ? (
+        visibleReadyMessages.map((msg) => {
+          console.log("🟡 Rendering visible ready-to-go-back message:", msg);
+          return (
+            <div key={msg.id} className="flex items-center p-2 hover:bg-gray-50 rounded-md cursor-default relative">
+              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-medium text-xs">
+                🚪
+              </div>
+              <div className="ml-2 flex-1 min-w-0">
+                <p className="font-medium text-sm truncate text-amber-700">
+                  {msg.message}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{formatTime(msg.created_at)}</p>
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="p-3 text-center text-sm text-gray-400">No ready-to-go-back messages</div>
+      );
+    })()
+  }
 </div>
 
 
@@ -1040,19 +1047,22 @@ console.log("User filtering details:", {
         </div>
       </div>
 
-       <div className="ml-6">
-    <button
-      onClick={() => {
-        if (window.confirm("Are you sure you want to clear all check-ins?")) {
-          dispatch(clearAllPatientCheckIns());
-          localStorage.removeItem("patientCheckIns");
-        }
-      }}
-      className="text-xs bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded-md transition-colors duration-150"
-    >
-        Clear All
-      </button>
-                        </div>
+      <div className="ml-6">
+  <button
+  onClick={async () => {
+    if (!currentUser) return;
+    if (window.confirm("Are you sure you want to clear all check-ins?")) {
+      const hiddenIds = patientCheckIns.map(msg => msg.id);
+       dispatch(hideMessagesForUser({
+        messageIds: hiddenIds 
+      }));
+    }
+  }}
+  className="text-xs bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded-md transition-colors duration-150"
+>
+  Clear All
+</button>
+</div>
                         </div>
   </>
                   ) : selectedUser ? (
@@ -1128,7 +1138,9 @@ console.log("User filtering details:", {
     <div className="p-3 text-center text-sm text-gray-500">Loading...</div>
   ) : selectedPatientCheckIns ? (
     // Display broadcast patient check-ins
-    patientCheckIns.filter(msg => msg.receiver_id === null).map(checkIn => (
+    patientCheckIns
+  .filter(msg => msg.receiver_id === null && !hiddenMessageIds.includes(msg.id))
+  .map(checkIn => (
       <div key={checkIn.id} className="mb-4">
         <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded-md">
 {/* Add delete button if user sent this check-in */}

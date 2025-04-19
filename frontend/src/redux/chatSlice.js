@@ -117,6 +117,58 @@ export const fetchAllMessages = createAsyncThunk(
   }
 );
 
+// Thunk: Get hidden message IDs
+export const fetchHiddenMessages = createAsyncThunk(
+  "chat/fetchHiddenMessages",
+  async (_, thunkAPI) => {
+    const token = localStorage.getItem("token");
+    const response = await axios.get("http://localhost:5000/api/messages/hidden/hidden", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data.hiddenMessageIds; // assuming response is { hiddenMessageIds: [1, 2, 3] }
+  }
+);
+
+// Thunk: Hide a specific message
+export const hideMessage = createAsyncThunk(
+  "chat/hideMessage",
+  async (messageId, thunkAPI) => {
+    const token = localStorage.getItem("token");
+    await axios.post("http://localhost:5000/api/messages/hidden/hide",
+      { messageId },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+    return messageId; // return ID to update the state
+  }
+);
+
+export const hideMessagesForUser = createAsyncThunk(
+  "chat/hideMessagesForUser",
+  async ({ messageIds }, thunkAPI) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `http://localhost:5000/api/messages/hidden`,
+        { messageIds }, // ✅ Only messageIds now
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data.hiddenIds;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 
 export const fetchPatientCheckIns = createAsyncThunk(
   'chat/fetchPatientCheckIns',
@@ -465,14 +517,15 @@ export const addMessageViaSocket = createAction('chat/addMessageViaSocket');
 
 // Initial state - updated to include patientCheckIns
 
-const savedCheckIns = localStorage.getItem('patientCheckIns');
+
 
 const initialState = {
   users: [],
   messages: [],
   allMessages: [],
-  patientCheckIns: savedCheckIns ? JSON.parse(savedCheckIns) : [],
+  patientCheckIns: [],
   readyToGoBackMessages: [],
+  hiddenMessageIds: [],
   selectedUser: null,
   loading: false,
   error: null
@@ -498,7 +551,6 @@ const chatSlice = createSlice({
     },
     clearAllPatientCheckIns: (state) => {
   state.patientCheckIns = [];
-  localStorage.removeItem('patientCheckIns');
 }
   },
 
@@ -512,21 +564,23 @@ const chatSlice = createSlice({
   const isCheckIn = msg.type === 'patient-check-in';
   const isReadyToGoBack = msg.type === 'ready-to-go-back';
 
-  if (isCheckIn) {
+  if (isCheckIn && !state.hiddenMessageIds.includes(msg.id)) {
     state.patientCheckIns = [msg, ...state.patientCheckIns];
-    localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
   }
 
-  if (isReadyToGoBack) {
+  if (isReadyToGoBack && !state.hiddenMessageIds.includes(msg.id)) {
     state.readyToGoBackMessages = [msg, ...state.readyToGoBackMessages];
   }
 
-  if (state.selectedUser &&
-      (msg.sender_id === state.selectedUser.id ||
-       msg.receiver_id === state.selectedUser.id)) {
+  if (
+    state.selectedUser &&
+    (msg.sender_id === state.selectedUser.id ||
+     msg.receiver_id === state.selectedUser.id)
+  ) {
     state.messages = [msg, ...state.messages];
   }
 })
+
 
       // fetchAllMessages reducers
       .addCase(fetchAllMessages.pending, (state) => {
@@ -537,19 +591,25 @@ const chatSlice = createSlice({
   state.allMessages = action.payload;
   state.loading = false;
 
-  console.log("📦 All fetched messages:", action.payload);
+        console.log("📦 All fetched messages:", action.payload);
 
-  // ✅ Add this line to populate readyToGoBackMessages
+         // ✅ Filter out hidden messages for 'ready-to-go-back'
   state.readyToGoBackMessages = action.payload.filter(
-    msg => msg.type === 'ready-to-go-back'
+    msg =>
+      msg.type === 'ready-to-go-back' &&
+      !state.hiddenMessageIds.includes(msg.id)
   );
 
- // ✅ Populate patientCheckIns
+          // ✅ Filter out hidden messages for 'patient-check-in'
   state.patientCheckIns = action.payload.filter(
-    msg => msg.type === 'patient-check-in'
+    msg =>
+      msg.type === 'patient-check-in' &&
+      !state.hiddenMessageIds.includes(msg.id)
   );
-  localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
 
+
+
+ // 🧠 Unread count calculation
   const currentUserId = parseInt(localStorage.getItem("userId"), 10);
   console.log("🧑 Current User ID:", currentUserId);
 
@@ -579,6 +639,22 @@ const chatSlice = createSlice({
         state.error = action.payload;
       })
 
+.addCase(hideMessagesForUser.fulfilled, (state, action) => {
+  const newHiddenIds = action.payload || [];
+  state.hiddenMessageIds = [...state.hiddenMessageIds, ...newHiddenIds];
+
+  // Filter out from patient check-ins and ready-to-go-back in Redux
+  state.patientCheckIns = state.patientCheckIns.filter(
+    msg => !newHiddenIds.includes(msg.id)
+  );
+
+  state.readyToGoBackMessages = state.readyToGoBackMessages.filter(
+    msg => !newHiddenIds.includes(msg.id)
+  );
+
+})
+
+
       // fetchPatientCheckIns reducers
       .addCase(fetchPatientCheckIns.pending, (state) => {
         state.loading = true;
@@ -596,9 +672,6 @@ const chatSlice = createSlice({
 
   state.patientCheckIns = merged;
 
-  // Persist to localStorage
-  localStorage.setItem('patientCheckIns', JSON.stringify(merged));
-  state.loading = false;
 })
 
       .addCase(fetchPatientCheckIns.rejected, (state, action) => {
@@ -647,7 +720,6 @@ const chatSlice = createSlice({
         // If it's a patient check-in message, add it to that collection
         if (action.payload.type === 'patient-check-in') {
           state.patientCheckIns = [action.payload, ...state.patientCheckIns];
-          localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
         }
       })
       .addCase(sendMessage.rejected, (state, action) => {
@@ -666,7 +738,6 @@ const chatSlice = createSlice({
         state.allMessages = [action.payload, ...state.allMessages];
         state.patientCheckIns = [action.payload, ...state.patientCheckIns];
         state.loading = false;
-        localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
       })
       .addCase(sendPatientCheckIn.rejected, (state, action) => {
         state.error = action.payload || { error: 'Failed to send patient check-in' };
@@ -690,6 +761,15 @@ const chatSlice = createSlice({
         state.loading = false;
         state.error = action.payload || { error: 'Failed to create patient check-in' };
       })
+
+      // fetchHiddenMessages reducers
+      .addCase(fetchHiddenMessages.fulfilled, (state, action) => {
+  state.hiddenMessageIds = action.payload;
+      })
+
+      .addCase(hideMessage.fulfilled, (state, action) => {
+  state.hiddenMessageIds.push(action.payload);
+})
 
       // togglePinUser reducers
       .addCase(togglePinUser.pending, (state) => {
@@ -778,7 +858,6 @@ const chatSlice = createSlice({
 
   // Remove from patientCheckIns if it's a check-in message
   state.patientCheckIns = state.patientCheckIns.filter(msg => msg.id !== deletedMessageId);
-  localStorage.setItem('patientCheckIns', JSON.stringify(state.patientCheckIns));
   state.loading = false;
 })
 .addCase(deleteMessage.rejected, (state, action) => {

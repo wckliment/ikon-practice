@@ -148,6 +148,7 @@ Message.getAllUserMessagesByLocation = async (userId, locationId) => {
   `;
 
   const [rows] = await ikonDB.query(query, [userId, userId, locationId, locationId, locationId, locationId]);
+  console.log("getAllUserMessagesByLocation → returned rows:", rows.length);
   return rows;
 };
 
