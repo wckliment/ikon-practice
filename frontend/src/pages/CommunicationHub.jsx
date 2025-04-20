@@ -851,10 +851,24 @@ console.log("User filtering details:", {
                 </div>
 
               {/* ✅ Ready to Go Back Section */}
-<div className="px-3 py-2 mt-2">
+<div className="flex items-center justify-between px-3 py-2 mt-2">
   <p className="text-xs font-semibold text-gray-500 flex items-center">
     <span className="mr-1">🚪</span> Ready to Go Back
   </p>
+  <button
+    onClick={async () => {
+      if (!currentUser) return;
+      if (window.confirm("Are you sure you want to clear all 'Ready to Go Back' messages?")) {
+        const hiddenIds = readyToGoBackMessages.map(msg => msg.id);
+        dispatch(hideMessagesForUser({
+          messageIds: hiddenIds
+        }));
+      }
+    }}
+    className="text-xs bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-2 py-1 rounded-md"
+  >
+    Clear All
+  </button>
 </div>
 
 <div className="px-2">
@@ -1054,7 +1068,7 @@ console.log("User filtering details:", {
     if (window.confirm("Are you sure you want to clear all check-ins?")) {
       const hiddenIds = patientCheckIns.map(msg => msg.id);
        dispatch(hideMessagesForUser({
-        messageIds: hiddenIds 
+        messageIds: hiddenIds
       }));
     }
   }}

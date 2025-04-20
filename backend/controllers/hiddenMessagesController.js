@@ -22,7 +22,7 @@ exports.hideMessage = async (req, res) => {
 };
 
 exports.hideMessagesForUser = async (req, res) => {
-  const userId = req.user.id; // 🔁 CHANGE THIS LINE to get the ID from token
+  const userId = req.user.userId; // 🔁 CHANGE THIS LINE to get the ID from token
   const { messageIds } = req.body;
 
   if (!Array.isArray(messageIds) || messageIds.length === 0) {
