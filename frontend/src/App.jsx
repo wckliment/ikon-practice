@@ -10,6 +10,7 @@ import Appointments from "./pages/Appointments";
 import Settings from "./pages/Settings";
 import TabletCheckIn from './pages/TabletCheckIn';
 import TabletLoginScreen from './routes/TabletLoginScreen.jsx';
+import IkonConnect from "./pages/IkonConnect";
 
 
 
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/tablet-checkin/:locationCode" element={<TabletCheckIn />} />
         <Route path="/tablet/login" element={<TabletLoginScreen />} />
+        <Route path="/ikonconnect" element={<IkonConnect />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
     </Router>

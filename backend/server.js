@@ -6,12 +6,17 @@ require("dotenv").config();
 const http = require("http");
 const socketManager = require("./socket");
 const { ensureWatcherRunningForLocation } = require("./utils/watcherManager");
+const appointmentRequestRoutes = require("./routes/appointmentRequestRoutes");
 
 const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'http://localhost:5173'],
+  methods: ['GET', 'POST', 'PUT'],
+  credentials: true // 🔑 allow cookies/auth headers if needed
+}));
 app.use(helmet());
 app.use(morgan("dev"));
 
@@ -26,7 +31,7 @@ app.use("/api/providers", require("./routes/providerRoutes"));
 app.use("/api/patients", require("./routes/patientRoutes"));
 app.use("/api/poll", require("./routes/pollRoutes"));
 app.use("/api/messages/hidden", require("./routes/hiddenMessagesRoutes"));
-
+app.use("/api/appointment-requests", appointmentRequestRoutes);
 // Initialize HTTP server
 const server = http.createServer(app);
 

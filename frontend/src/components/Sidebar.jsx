@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/authSlice";
-import { Grid, MessageCircle, BarChart2, Edit, Clipboard, MoreHorizontal, LogOut } from "react-feather";
+import { Grid, MessageCircle, BarChart2, Edit, Clipboard, MoreHorizontal, LogOut, Calendar } from "react-feather";
 
 const Sidebar = () => {
   const dispatch = useDispatch();
@@ -69,21 +69,9 @@ const Sidebar = () => {
           <NavIcon to="/analytics" icon={BarChart2} tooltipText="Practice Analytics" />
           <NavIcon to="/forms" icon={Edit} tooltipText="Forms" />
           <NavIcon to="/appointments" icon={Clipboard} tooltipText="Appointments" />
+          <NavIcon to="/ikonconnect" icon={Calendar} tooltipText="ikonConnect" />
         </div>
-
-        {/* Settings Icon at the bottom with moderate spacing */}
-        <div className="mb-6 relative">
-          <NavLink
-            to="/settings"
-            className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-[#252525] transition duration-300"
-            onMouseEnter={() => setHoveredIcon("Settings")}
-            onMouseLeave={() => setHoveredIcon(null)}
-          >
-            <MoreHorizontal size={26} style={iconStyle} className="text-gray-700 hover:text-white transition duration-300" />
-          </NavLink>
-          <Tooltip text="Settings" visible={hoveredIcon === "Settings"} />
-        </div>
-      </div>
+</div>
 
       {/* ✅ Avatar & Logout - Fixed in Position, Correctly Sized */}
       <div className="fixed bottom-8 left-10 flex flex-col items-center space-y-6 z-40">
@@ -95,7 +83,20 @@ const Sidebar = () => {
         >
           <img src={user?.profilePicture || "/default-avatar.png"} alt="User Avatar" className="w-full h-full object-cover" />
           <Tooltip text="Your Profile" visible={hoveredIcon === "Profile"} />
-        </div>
+          </div>
+
+            {/* Settings Icon (moved here) */}
+  <div className="relative">
+    <NavLink
+      to="/settings"
+      className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-[#252525] transition duration-300"
+      onMouseEnter={() => setHoveredIcon("Settings")}
+      onMouseLeave={() => setHoveredIcon(null)}
+    >
+      <MoreHorizontal size={26} style={iconStyle} className="text-gray-700 hover:text-white transition duration-300" />
+    </NavLink>
+    <Tooltip text="Settings" visible={hoveredIcon === "Settings"} />
+  </div>
 
         {/* ✅ Fixed Logout Button Padding & Size */}
         <div className="relative">
