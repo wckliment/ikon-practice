@@ -943,7 +943,7 @@ const patientOptions = patients.map((patient) => ({
 
           {/* Header */}
           <div className="px-4 pt-0 pb-2 ml-16">
-  <h1 className="text-4xl font-bold text-gray-800">Appointments</h1>
+  <h1 className="text-5xl font-bold text-gray-800">Appointments</h1>
 </div>
 
 

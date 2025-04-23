@@ -744,7 +744,7 @@ console.log("User filtering details:", {
 
 {/* Custom Header for Communication Hub */}
 <div className="px-4 pt-0 pb-2 ml-10">
-  <h1 className="text-4xl font-bold text-gray-800">
+  <h1 className="text-5xl font-bold text-gray-800">
     Communication Hub
   </h1>
 </div>

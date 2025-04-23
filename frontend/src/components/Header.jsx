@@ -7,7 +7,7 @@ const Header = () => {
 
   return (
      <div className="w-full px-[0.5rem] -mt-6 flex items-center"> {/* Adjusted margin */}
-      <h1 className="text-4xl font-bold text-gray-800">
+      <h1 className="text-5xl font-bold text-gray-800">
         Hi {firstName}, Welcome Back!
       </h1>
     </div>
