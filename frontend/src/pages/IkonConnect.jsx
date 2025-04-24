@@ -15,7 +15,7 @@ const IkonConnect = () => {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [scheduleNotes, setScheduleNotes] = useState("");
-  const isSaveDisabled = !scheduledDate || !scheduledTime || !selectedProvider;
+  const isSaveDisabled = !scheduledDate || !scheduledTime || !selectedProvider || !selectedOperatory;
   const [appointmentType, setAppointmentType] = useState("");
   const [operatories, setOperatories] = useState([]);
   const [selectedOperatory, setSelectedOperatory] = useState("");
