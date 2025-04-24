@@ -34,10 +34,10 @@ exports.getAllRequests = async (req, res) => {
 
 exports.updateRequestStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, handled_by } = req.body;
+  const { status, handled_by, staff_notes } = req.body;
 
   try {
-    await AppointmentRequest.updateStatus(id, status, handled_by);
+    await AppointmentRequest.updateStatus(id, status, handled_by, staff_notes);
     res.sendStatus(204);
   } catch (err) {
     console.error('Error updating appointment request:', err);
