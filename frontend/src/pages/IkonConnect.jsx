@@ -3,6 +3,7 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 import { useSelector } from "react-redux";
+import procedureOptions from "../constants/procedureOptions";
 
 const IkonConnect = () => {
   const [requests, setRequests] = useState([]);
@@ -330,16 +331,35 @@ const handleSaveAppointment = async () => {
     />
   </div>
 
-  {/* Appointment Type */}
+ {/* Patient's Free Text Request (Read-only View) */}
+{openScheduleModal.appointment_type && (
   <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Type</label>
-   <input
-  type="text"
-  value={appointmentType}
-  onChange={(e) => setAppointmentType(e.target.value)}
-  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-/>
-              </div>
+    <label className="block text-sm font-semibold text-gray-700 mb-1">Patient Request</label>
+    <div className="p-2 bg-gray-100 border border-gray-300 rounded text-sm text-gray-800">
+      {openScheduleModal.appointment_type}
+    </div>
+  </div>
+)}
+
+{/* Staff-selectable Procedure Dropdown */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Procedure <span className="text-red-500">*</span>
+  </label>
+  <select
+    value={appointmentType}
+    onChange={(e) => setAppointmentType(e.target.value)}
+    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+    required
+  >
+    <option value="">Select Procedure…</option>
+    {procedureOptions.map((procedure) => (
+      <option key={procedure.value} value={procedure.value}>
+        {procedure.label}
+      </option>
+    ))}
+  </select>
+</div>
 
               {/* Provider Dropdown */}
 <div>
