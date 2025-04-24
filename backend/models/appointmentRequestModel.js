@@ -4,9 +4,9 @@ const AppointmentRequest = {
   create: async (data) => {
     const [result] = await db.execute(
       `INSERT INTO appointment_requests
-        (name, dob, phone, email, appointment_type, preferred_time, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [data.name, data.dob, data.phone, data.email, data.appointment_type, data.preferred_time, data.notes]
+        (name, dob, phone, email, appointment_type, preferred_time, notes, patient_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [data.name, data.dob, data.phone, data.email, data.appointment_type, data.preferred_time, data.notes, data.patient_type]
     );
     return result.insertId;
   },
