@@ -46,7 +46,6 @@ const Appointments = () => {
   const { list: providers, loading: providersLoading } = useSelector((state) => state.providers);
   const users = useSelector((state) => state.settings.users.data);
   const fullState = useSelector((state) => state);
-console.log("🧠 Full Redux state (debug):", fullState);
   const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
@@ -59,6 +58,20 @@ console.log("🧠 Full Redux state (debug):", fullState);
     dispatch(fetchLocations());
     dispatch(fetchOperatories());
   }, [dispatch]);
+
+  useEffect(() => {
+  const cached = localStorage.getItem("newlyCreatedAppointment");
+  if (cached) {
+    try {
+      const newApt = JSON.parse(cached);
+      setAppointments((prev) => [...prev, newApt]);
+    } catch (e) {
+      console.warn("⚠️ Failed to parse cached appointment:", e);
+    } finally {
+      localStorage.removeItem("newlyCreatedAppointment");
+    }
+  }
+}, []);
 
   const staffMembers = providers.map((prov) => ({
     id: prov.ProvNum,

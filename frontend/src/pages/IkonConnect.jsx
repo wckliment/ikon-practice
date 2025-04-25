@@ -4,6 +4,9 @@ import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 import { useSelector } from "react-redux";
 import procedureOptions from "../constants/procedureOptions";
+import appointmentService from "../services/appointmentService";
+import { useNavigate } from "react-router-dom";
+import ReactSelect from "react-select";
 
 const IkonConnect = () => {
   const [requests, setRequests] = useState([]);
@@ -16,10 +19,18 @@ const IkonConnect = () => {
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [scheduleNotes, setScheduleNotes] = useState("");
-  const isSaveDisabled = !scheduledDate || !scheduledTime || !selectedProvider || !selectedOperatory;
   const [appointmentType, setAppointmentType] = useState("");
   const [operatories, setOperatories] = useState([]);
   const [selectedOperatory, setSelectedOperatory] = useState("");
+  const [appointmentDuration, setAppointmentDuration] = useState(30);
+  const isSaveDisabled = !scheduledDate || !scheduledTime || !selectedProvider || !selectedOperatory;
+  const navigate = useNavigate();
+  const [searchPatientTerm, setSearchPatientTerm] = useState("");
+  const [patientOptions, setPatientOptions] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+
+
 
 useEffect(() => {
   const fetchRequests = async () => {
@@ -107,42 +118,103 @@ const fetchOperatories = async () => {
     }
   };
 
+useEffect(() => {
+  const delayDebounce = setTimeout(async () => {
+    if (searchPatientTerm) {
+      try {
+        setLoadingPatients(true);
+        const res = await axios.get(`/api/patients?search=${encodeURIComponent(searchPatientTerm)}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        });
+
+        const options = res.data.map((pat) => ({
+          label: `${pat.FName} ${pat.LName}`,
+          value: pat.PatNum,
+        }));
+
+        setPatientOptions(options);
+      } catch (err) {
+        console.error("❌ Failed to search patients:", err);
+      } finally {
+        setLoadingPatients(false);
+      }
+    } else {
+      setPatientOptions([]);
+    }
+  }, 400); // debounce delay (ms)
+
+  return () => clearTimeout(delayDebounce);
+}, [searchPatientTerm]);
+
 const handleSaveAppointment = async () => {
   try {
-    // 1️⃣ Create the appointment in the backend
-    await axios.post("/api/appointments", {
-      name: openScheduleModal.name,
-      date: scheduledDate,
-      time: scheduledTime,
-      provider_num: selectedProvider,
-      notes: scheduleNotes,
-      request_id: openScheduleModal.id,
-      appointment_type: appointmentType,
-      operatory_id: selectedOperatory,
-    });
+    const formattedDateTime = `${scheduledDate}T${scheduledTime}:00`;
 
-    // 2️⃣ Update request status in the backend
+    if (!selectedPatient) {
+      alert("❌ Please select a patient before saving!");
+      return;
+    }
+
+    const appointmentData = {
+      patientId: selectedPatient.value, // 👈 Real patient ID
+      providerId: selectedProvider,
+      aptDateTime: formattedDateTime,
+      duration: appointmentDuration,
+      operatoryId: selectedOperatory,
+      notes: scheduleNotes,
+      description: appointmentType,
+    };
+
+    console.log("🧠 Appointment data:", appointmentData);
+
+    const response = await appointmentService.createAppointment(appointmentData);
+
+    // ✅ Build a frontend-friendly appointment
+    const newAppointment = {
+      id: response.data?.id || Math.random(),
+      patientName: selectedPatient.label, // 👈 Use selected patient's name
+      date: scheduledDate,
+      startTime: new Date(formattedDateTime),
+      fullStartTime: new Date(formattedDateTime).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      }),
+      endTime: new Date(new Date(formattedDateTime).getTime() + appointmentDuration * 60000).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      }),
+      startTimeDate: new Date(formattedDateTime),
+      height: appointmentDuration * 2.4,
+      duration: appointmentDuration,
+      providerId: selectedProvider,
+      operatoryId: selectedOperatory,
+      staff: providers.find((p) => p.ProvNum === selectedProvider)?.Abbr || "",
+      notes: scheduleNotes,
+      type: appointmentType,
+      status: "Unconfirmed",
+      statusColor: "#9ca3af",
+      color: "rgb(249, 231, 160)",
+    };
+
+    localStorage.setItem("newlyCreatedAppointment", JSON.stringify(newAppointment));
+
+    // ✅ Update request status
     await axios.put(`/api/appointment-requests/${openScheduleModal.id}/status`, {
       status: "scheduled",
       handled_by: user?.id || null,
       staff_notes: scheduleNotes,
     });
 
-    // 3️⃣ ✅ Update frontend state so UI reflects the change immediately
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === openScheduleModal.id
-          ? { ...r, status: "scheduled", staff_notes: scheduleNotes }
-          : r
-      )
-    );
+    alert("✅ Appointment created and synced with Open Dental!");
+    navigate("/appointments");
 
-    // 4️⃣ Close the modal
-    alert("Appointment scheduled and request updated!");
-    setOpenScheduleModal(null);
   } catch (err) {
-    console.error("❌ Failed to save appointment or update request:", err);
-    alert("Something went wrong.");
+    console.error("❌ Failed to create appointment:", err);
+    alert("Something went wrong while saving the appointment.");
   }
 };
 
@@ -308,7 +380,27 @@ const handleSaveAppointment = async () => {
             <h2 className="text-xl font-bold mb-4">Schedule Appointment</h2>
 <p className="text-sm text-gray-600 mb-2">{openScheduleModal.name}</p>
 
-<div className="space-y-4">
+            <div className="space-y-4">
+
+
+{/* Patient Search */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Select Patient <span className="text-red-500">*</span>
+  </label>
+  <p className="text-xs text-gray-500 mb-2">🔎 Tip: Search by last name first</p>
+  <ReactSelect
+    placeholder="Search patients..."
+    isLoading={loadingPatients}
+    options={patientOptions}
+    onInputChange={(input) => setSearchPatientTerm(input)}
+    onChange={(selected) => setSelectedPatient(selected)}
+    value={selectedPatient}
+    className="mb-4"
+  />
+</div>
+
+
   {/* Date */}
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Date</label>
@@ -329,7 +421,22 @@ const handleSaveAppointment = async () => {
         onChange={(e) => setScheduledTime(e.target.value)}
         className="w-full border border-gray-300 rounded-lg px-4 py-2"
     />
-  </div>
+              </div>
+
+              <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Duration</label>
+  <select
+    value={appointmentDuration}
+    onChange={(e) => setAppointmentDuration(Number(e.target.value))}
+    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+  >
+    <option value={15}>15 minutes</option>
+    <option value={30}>30 minutes</option>
+    <option value={45}>45 minutes</option>
+    <option value={60}>60 minutes</option>
+    <option value={90}>90 minutes</option>
+  </select>
+</div>
 
  {/* Patient's Free Text Request (Read-only View) */}
 {openScheduleModal.appointment_type && (
