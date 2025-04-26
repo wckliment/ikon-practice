@@ -12,7 +12,7 @@ import TabletCheckIn from './pages/TabletCheckIn';
 import TabletLoginScreen from './routes/TabletLoginScreen.jsx';
 import IkonConnect from "./pages/IkonConnect";
 import Forms from "./pages/Forms";
-
+import PracticeAnalytics from "./pages/PracticeAnalytics";
 
 export default function App() {
   return (
@@ -29,6 +29,7 @@ export default function App() {
         <Route path="/tablet/login" element={<TabletLoginScreen />} />
         <Route path="/ikonconnect" element={<IkonConnect />} />
         <Route path="/forms" element={<Forms />} />
+        <Route path="/analytics" element={<PracticeAnalytics />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
     </Router>
