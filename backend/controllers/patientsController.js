@@ -53,3 +53,36 @@ exports.getPatientsByIds = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// In backend/controllers/patientsController.js
+
+exports.createPatient = async (req, res) => {
+  try {
+    const { FName, LName, Phone, Email, Birthdate, Gender } = req.body;
+
+    if (!FName || !LName || !Phone || !Email) {
+      return res.status(400).json({ error: "Missing required patient fields" });
+    }
+
+    // Insert the new patient via your Open Dental integration
+    const result = await req.openDentalService.createPatient({
+      FName,
+      LName,
+      Phone,
+      Email,
+      Birthdate,
+      Gender,
+    });
+
+    res.status(201).json(result);
+  } catch (error) {
+  console.error("❌ Failed to create patient:", error.message);
+
+  // If Open Dental responded with an error body, print it
+  if (error.response) {
+    console.error('🔴 Open Dental Error Response:', error.response.data);
+  }
+
+  res.status(500).json({ error: "Failed to create patient", details: error.response?.data || error.message });
+}
+};

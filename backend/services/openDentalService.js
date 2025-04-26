@@ -518,6 +518,22 @@ if (!match) {
     this._handleError('getNextAppointmentForPatient', error);
     throw new Error(`Failed to fetch next appointment: ${error.message}`);
   }
+  }
+
+  async createPatient(patientData) {
+  try {
+    console.log("✨ Creating new patient in Open Dental:", patientData);
+
+    const response = await axios.post(`${this.baseUrl}/patients`, patientData, {
+      headers: this.headers
+    });
+
+    console.log("✅ New patient created:", response.data);
+    return response.data;
+  } catch (error) {
+    this._handleError('createPatient', error);
+    throw new Error(`Failed to create new patient: ${error.message}`);
+  }
 }
 
 

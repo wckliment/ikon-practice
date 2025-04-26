@@ -7,6 +7,7 @@ import procedureOptions from "../constants/procedureOptions";
 import appointmentService from "../services/appointmentService";
 import { useNavigate } from "react-router-dom";
 import ReactSelect from "react-select";
+import patientService from "../services/patientService";
 
 const IkonConnect = () => {
   const [requests, setRequests] = useState([]);
@@ -29,6 +30,16 @@ const IkonConnect = () => {
   const [patientOptions, setPatientOptions] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [loadingPatients, setLoadingPatients] = useState(false);
+  const [newPatientFirstName, setNewPatientFirstName] = useState("");
+  const [newPatientLastName, setNewPatientLastName] = useState("");
+  const [newPatientPhone, setNewPatientPhone] = useState("");
+  const [newPatientEmail, setNewPatientEmail] = useState("");
+  const [newPatientBirthdate, setNewPatientBirthdate] = useState("");
+  const [newPatientGender, setNewPatientGender] = useState("");
+  const [showNewPatientModal, setShowNewPatientModal] = useState(false);
+
+
+
 
 
 
@@ -152,13 +163,19 @@ const handleSaveAppointment = async () => {
   try {
     const formattedDateTime = `${scheduledDate}T${scheduledTime}:00`;
 
+    let patientId;
+    let patientName;
+
     if (!selectedPatient) {
       alert("❌ Please select a patient before saving!");
       return;
     }
 
+    patientId = selectedPatient.value;
+    patientName = selectedPatient.label;
+
     const appointmentData = {
-      patientId: selectedPatient.value, // 👈 Real patient ID
+      patientId,
       providerId: selectedProvider,
       aptDateTime: formattedDateTime,
       duration: appointmentDuration,
@@ -171,10 +188,9 @@ const handleSaveAppointment = async () => {
 
     const response = await appointmentService.createAppointment(appointmentData);
 
-    // ✅ Build a frontend-friendly appointment
     const newAppointment = {
       id: response.data?.id || Math.random(),
-      patientName: selectedPatient.label, // 👈 Use selected patient's name
+      patientName,
       date: scheduledDate,
       startTime: new Date(formattedDateTime),
       fullStartTime: new Date(formattedDateTime).toLocaleTimeString("en-US", {
@@ -202,7 +218,6 @@ const handleSaveAppointment = async () => {
 
     localStorage.setItem("newlyCreatedAppointment", JSON.stringify(newAppointment));
 
-    // ✅ Update request status
     await axios.put(`/api/appointment-requests/${openScheduleModal.id}/status`, {
       status: "scheduled",
       handled_by: user?.id || null,
@@ -217,6 +232,73 @@ const handleSaveAppointment = async () => {
     alert("Something went wrong while saving the appointment.");
   }
 };
+
+
+const handleSaveNewPatient = async () => {
+  try {
+    if (
+      !newPatientFirstName ||
+      !newPatientLastName ||
+      !newPatientPhone ||
+      !newPatientEmail ||
+      !newPatientBirthdate ||
+      !newPatientGender
+    ) {
+      alert("❌ Please fill out all fields");
+      return;
+    }
+
+    // 🧠 Map gender to Open Dental expected number (1 = Male, 2 = Female)
+    const genderValue = newPatientGender === "Male"
+  ? "Male"
+  : newPatientGender === "Female"
+    ? "Female"
+    : "Unknown";
+
+    const newPatient = {
+      FName: newPatientFirstName.trim(),
+      LName: newPatientLastName.trim(),
+      Phone: newPatientPhone.trim(),
+      Email: newPatientEmail.trim(),
+      Birthdate: newPatientBirthdate.trim(), // Assume it's already in YYYY-MM-DD
+      Gender: genderValue,
+    };
+
+    console.log("🛫 Sending new patient payload:", newPatient);
+
+    // Now make the API call
+    const res = await patientService.createPatient(newPatient);
+
+    const newPatNum = res?.PatNum; // <- result from Open Dental
+
+    if (!newPatNum) {
+      alert("❌ Failed to create new patient");
+      return;
+    }
+
+    // Success — populate the selector
+    setSelectedPatient({
+      label: `${newPatientFirstName} ${newPatientLastName}`,
+      value: newPatNum,
+    });
+
+    // Close modal + clear form
+    setShowNewPatientModal(false);
+    setNewPatientFirstName("");
+    setNewPatientLastName("");
+    setNewPatientPhone("");
+    setNewPatientEmail("");
+    setNewPatientBirthdate("");
+    setNewPatientGender("");
+
+    alert("✅ New patient created and selected!");
+  } catch (err) {
+    console.error("❌ Error creating new patient", err);
+    alert("Something went wrong");
+  }
+};
+
+
 
   return (
     <div className="flex h-screen bg-[#EBEAE6]">
@@ -383,11 +465,20 @@ const handleSaveAppointment = async () => {
             <div className="space-y-4">
 
 
-{/* Patient Search */}
+{/* Patient Selector */}
 <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    Select Patient <span className="text-red-500">*</span>
-  </label>
+  <div className="flex items-center justify-between mb-2">
+    <label className="text-sm font-medium text-gray-700">
+      Select Patient <span className="text-red-500">*</span>
+    </label>
+    <button
+      onClick={() => setShowNewPatientModal(true)}
+      className="text-blue-600 text-sm hover:underline"
+    >
+      + Create New Patient
+    </button>
+  </div>
+
   <p className="text-xs text-gray-500 mb-2">🔎 Tip: Search by last name first</p>
   <ReactSelect
     placeholder="Search patients..."
@@ -399,6 +490,8 @@ const handleSaveAppointment = async () => {
     className="mb-4"
   />
 </div>
+
+
 
 
   {/* Date */}
@@ -512,7 +605,101 @@ const handleSaveAppointment = async () => {
      placeholder="please provide any additional information for the provider"
     />
   </div>
+            </div>
+
+
+     {/* New Patient Modal */}
+{showNewPatientModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg relative">
+      <button
+        onClick={() => setShowNewPatientModal(false)}
+        className="absolute top-4 right-4 text-gray-500 hover:text-black"
+      >
+        ✕
+      </button>
+
+      <h2 className="text-xl font-bold mb-4">Create New Patient</h2>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+          <input
+            type="text"
+            value={newPatientFirstName}
+            onChange={(e) => setNewPatientFirstName(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+          <input
+            type="text"
+            value={newPatientLastName}
+            onChange={(e) => setNewPatientLastName(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <input
+            type="tel"
+            value={newPatientPhone}
+            onChange={(e) => setNewPatientPhone(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input
+            type="email"
+            value={newPatientEmail}
+            onChange={(e) => setNewPatientEmail(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+          />
+                    </div>
+
+{/* Birthdate */}
+<div className="mb-3">
+  <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate</label>
+  <input
+    type="date"
+    value={newPatientBirthdate}
+    onChange={(e) => setNewPatientBirthdate(e.target.value)}
+    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+  />
+                    </div>
+
+               {/* Gender */}
+<div className="mb-3">
+  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+  <select
+    value={newPatientGender}
+    onChange={(e) => setNewPatientGender(e.target.value)}
+    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+  >
+    <option value="">Select Gender</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+    <option value="Other">Other</option>
+  </select>
 </div>
+
+      </div>
+
+     <button
+  onClick={handleSaveNewPatient}
+  className="mt-6 w-full py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
+>
+  Save Patient
+</button>
+    </div>
+  </div>
+)}
+
 
 <button
   onClick={handleSaveAppointment}
