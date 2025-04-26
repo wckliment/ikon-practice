@@ -48,7 +48,7 @@ const IkonConnect = () => {
 
 
   useEffect(() => {
-    
+
      connectSocket(localStorage.getItem("token") || "");
 
   const fetchRequests = async () => {
@@ -370,13 +370,13 @@ const handleSaveNewPatient = async () => {
                         </span>
                       </div>
 
-                      <p className="text-sm text-gray-500 mt-1">
-                        {new Date(req.preferred_time).toLocaleString(undefined, {
-                          dateStyle: "long",
-                          timeStyle: "short",
-                        })}{" "}
-                        • {req.appointment_type}
-                      </p>
+                     <p className="text-sm text-gray-500 mt-1">
+  {req.preferred_time
+    ? new Date(req.preferred_time).toLocaleDateString(undefined, { dateStyle: "long" })
+    : "No preferred date"}
+  {" "}
+  • {req.appointment_type}
+</p>
 
                       <p className="text-sm text-gray-600 mt-1">
                         📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}
