@@ -39,6 +39,32 @@ const procedureCodeMap = {
     ProcCode: "N4133",
     Descript: "Office Visit",
   },
+
+  "wtcon": {
+  ProcCode: "D9310",
+  Descript: "Consultation (Wisdom Teeth)"
+},
+"orthoconsult": {
+  ProcCode: "D8660",
+  Descript: "Pre-Orthodontic Visit"
+},
+"botoxconsult": {
+  ProcCode: "D9310",
+  Descript: "Consultation (Botox)"
+},
+"D1110": {
+  ProcCode: "D1110",
+  Descript: "Prophylaxis – Adult"
+},
+"D5973": {
+  ProcCode: "D5973",
+  Descript: "Implant Consultation"
+},
+"D0140": {
+  ProcCode: "D0140",
+  Descript: "Limited Oral Evaluation – Problem Focused"
+}
+
 };
 
 /**
