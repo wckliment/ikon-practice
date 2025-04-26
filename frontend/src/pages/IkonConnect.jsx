@@ -8,6 +8,10 @@ import appointmentService from "../services/appointmentService";
 import { useNavigate } from "react-router-dom";
 import ReactSelect from "react-select";
 import patientService from "../services/patientService";
+import { socket, connectSocket } from "../socket";
+
+
+
 
 const IkonConnect = () => {
   const [requests, setRequests] = useState([]);
@@ -43,7 +47,10 @@ const IkonConnect = () => {
 
 
 
-useEffect(() => {
+  useEffect(() => {
+    
+     connectSocket(localStorage.getItem("token") || "");
+
   const fetchRequests = async () => {
     try {
       const response = await axios.get("/api/appointment-requests", {
@@ -104,6 +111,18 @@ const fetchOperatories = async () => {
   fetchRequests();
   fetchProviders();
   fetchOperatories();
+
+  // 🔥 Listen for new appointment requests
+  socket.on("newAppointmentRequest", (newRequest) => {
+    console.log("📥 New appointment request received:", newRequest);
+    setRequests(prev => [newRequest, ...prev]); // 👉 Add it to the top of the list
+  });
+
+// 🧹 Clean up listener when component unmounts
+  return () => {
+    socket.off("newAppointmentRequest");
+  };
+
 }, []);
 
 

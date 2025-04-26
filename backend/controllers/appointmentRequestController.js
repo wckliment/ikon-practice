@@ -1,26 +1,30 @@
 const AppointmentRequest = require('../models/appointmentRequestModel');
+const socket = require('../socket');
 
 exports.createAppointmentRequest = async (req, res) => {
   try {
     const data = req.body;
 
-    // ✅ Convert preferred_time into MySQL DATETIME format
     const preferredTime = new Date(data.preferred_time);
     if (isNaN(preferredTime)) {
       return res.status(400).json({ error: 'Invalid preferred_time format' });
     }
-    data.preferred_time = preferredTime.toISOString().slice(0, 19).replace('T', ' '); // MySQL format
+    data.preferred_time = preferredTime.toISOString().slice(0, 19).replace('T', ' ');
 
     console.log('📩 Incoming appointment request:', data);
 
     const id = await AppointmentRequest.create(data);
+
+    // ✅ NOW safely get socket after initialization
+    const io = socket.getIO();
+    io.emit("newAppointmentRequest", { id, ...data });
+
     res.status(201).json({ id });
   } catch (err) {
     console.error('❌ Error creating appointment request:', err);
     res.status(500).json({ error: 'Failed to create appointment request' });
   }
 };
-
 
 exports.getAllRequests = async (req, res) => {
   try {
