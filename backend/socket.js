@@ -13,7 +13,7 @@ module.exports = {
 
       // Add test emission for debugging
       setTimeout(() => {
-        console.log(`🧪 Testing emit to socket ${socket.id}`);
+        // console.log(`🧪 Testing emit to socket ${socket.id}`);
         socket.emit("test", { message: "Test message" });
       }, 2000);
 

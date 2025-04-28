@@ -9,14 +9,19 @@ const READY_TO_GO_BACK_CODE = 23;
 async function pollAppointments(io, openDentalService) {
   try {
     const appointments = await openDentalService.getTodayAppointments();
-    console.log(`📅 Fetched ${appointments.length} appointments from Open Dental`);
+
+    if (!Array.isArray(appointments)) {
+      console.error('❌ Error: Expected an array of appointments but got:', appointments);
+      return;
+    }
+
+    // console.log(`📅 Fetched ${appointments.length} appointments from Open Dental`);
 
     for (const apt of appointments) {
       const aptId = apt.AptNum || apt.id;
       const rawDate = apt.AptDateTime || apt.startTime;
 
-      console.log(`🧪 Apt ID: ${aptId}, Confirmed: ${apt.Confirmed}, Raw Date: ${rawDate}`);
-
+      // if no appointment ID, skip
       if (!aptId) {
         console.warn("⚠️ Skipping appointment with missing AptNum:", apt);
         continue;
@@ -25,13 +30,12 @@ async function pollAppointments(io, openDentalService) {
       const currentStatus = apt.Confirmed;
       const previousStatus = previousConfirmationStatuses[aptId];
 
-      // First time seeing this appointment, just store it
       if (previousStatus === undefined) {
         previousConfirmationStatuses[aptId] = currentStatus;
         continue;
       }
 
-      console.log(`🔁 Checking Apt ${aptId}: Prev ${previousStatus} → Curr ${currentStatus}`);
+      // console.log(`🔁 Checking Apt ${aptId}: Prev ${previousStatus} → Curr ${currentStatus}`);
 
       if (
         previousStatus !== READY_TO_GO_BACK_CODE &&
@@ -39,16 +43,15 @@ async function pollAppointments(io, openDentalService) {
       ) {
         console.log(`🎯 Appointment ${aptId} is now READY TO GO BACK!`);
 
+        const [patient, provider] = await Promise.all([
+          openDentalService.getPatient(apt.PatNum || apt.patientId),
+          openDentalService.getProviders().then((provList) =>
+            provList.find((p) => p.ProvNum === (apt.ProvNum || apt.providerId))
+          )
+        ]);
 
-const [patient, provider] = await Promise.all([
-  openDentalService.getPatient(apt.PatNum || apt.patientId),
-  openDentalService.getProviders().then((provList) =>
-    provList.find((p) => p.ProvNum === (apt.ProvNum || apt.providerId))
-  )
-]);
-
-const patientName = patient ? `${patient.FName || ''} ${patient.LName || ''}`.trim() : `Patient #${apt.PatNum || apt.patientId}`;
-const doctorName = provider ? `${provider.FName || ''} ${provider.LName || ''}`.trim() : `Provider #${apt.ProvNum || apt.providerId}`;
+        const patientName = patient ? `${patient.FName || ''} ${patient.LName || ''}`.trim() : `Patient #${apt.PatNum || apt.patientId}`;
+        const doctorName = provider ? `${provider.FName || ''} ${provider.LName || ''}`.trim() : `Provider #${apt.ProvNum || apt.providerId}`;
 
         const appointmentTime = rawDate
           ? new Date(rawDate).toLocaleTimeString([], {
@@ -74,7 +77,7 @@ const doctorName = provider ? `${provider.FName || ''} ${provider.LName || ''}`.
       previousConfirmationStatuses[aptId] = currentStatus;
     }
   } catch (error) {
-    console.error("❌ Error polling appointments:", error.message);
+    console.error("❌ Error polling appointments:", error.message || error);
   }
 }
 

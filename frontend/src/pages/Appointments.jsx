@@ -796,10 +796,10 @@ try {
   providerIndex = operatories.findIndex(
     (op) => Number(op.OperatoryNum) === Number(app.operatoryId)
   );
-  console.log("🧪 Matching operatory:", {
-  appointmentOp: app.operatoryId,
-  matchedIndex: providerIndex
-});
+//   console.log("🧪 Matching operatory:", {
+//   appointmentOp: app.operatoryId,
+//   matchedIndex: providerIndex
+// });
 } catch (err) {
   console.error("⛔ Error parsing appointment time:", app, err);
   return null;

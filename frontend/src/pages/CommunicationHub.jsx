@@ -60,9 +60,9 @@ const CommunicationHub = () => {
       console.log("🔌 Disconnected from socket server");
     });
 
-    socket.on("test", (data) => {
-      console.log("🧪 Received test message:", data);
-    });
+    // socket.on("test", (data) => {
+    //   // console.log("🧪 Received test message:", data);
+    // });
 
     socket.on("newMessage", (message) => {
       console.log("🔎 SOCKET DEBUGGING - Raw message received:", message);
@@ -1394,8 +1394,8 @@ console.log("User filtering details:", {
         ...messages.filter(m => !localMessages.some(lm => lm.id === m.id))
       ];
 
-      // Log for debugging
-      console.log("🧪 Raw combined messages:", combined);
+      // // Log for debugging
+      // console.log("🧪 Raw combined messages:", combined);
 
       const validMessages = combined
         .filter(msg => {
@@ -1410,7 +1410,7 @@ console.log("User filtering details:", {
 
       const lastMsg = validMessages[validMessages.length - 1];
 
-      console.log("🧪 Sorted + filtered lastMsg:", lastMsg);
+      // console.log("🧪 Sorted + filtered lastMsg:", lastMsg);
 
       return lastMsg
         ? `${formatDate(lastMsg.created_at)}, "${lastMsg.message?.substring(0, 20)}${lastMsg.message?.length > 20 ? '...' : ''}"`

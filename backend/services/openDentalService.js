@@ -53,27 +53,27 @@ async getTodayAppointments() {
 
     const allAppointments = this._transformAppointments(response.data);
 
-    console.log(`📅 Raw appointment start times:`);
-allAppointments.forEach((apt) => {
-  console.log(` - ID: ${apt.id}, startTime: ${apt.startTime}`);
-});
+//     // console.log(`📅 Raw appointment start times:`);
+// allAppointments.forEach((apt) => {
+//   console.log(` - ID: ${apt.id}, startTime: ${apt.startTime}`);
+// });
 
 const filtered = allAppointments.filter((apt) => {
   const raw = apt.startTime;
   const aptDate = new Date(raw).toLocaleDateString('en-CA'); // ⬅️ This outputs 'YYYY-MM-DD'
   const isMatch = aptDate === formattedDate;
 
-  console.log(`🧪 Apt ID ${apt.id}:`, {
-    raw,
-    aptDate,
-    formattedDate,
-    isMatch
-  });
+  // console.log(`🧪 Apt ID ${apt.id}:`, {
+  //   raw,
+  //   aptDate,
+  //   formattedDate,
+  //   isMatch
+  // });
 
   return isMatch;
 });
 
-    console.log(`🧹 Filtered to ${filtered.length} true appointments for today`);
+    // console.log(`🧹 Filtered to ${filtered.length} true appointments for today`);
     return filtered;
 
   } catch (error) {
@@ -567,7 +567,7 @@ if (!match) {
       return [];
     }
 
-    console.log(`Transforming ${apiAppointments.length} appointments`);
+    // console.log(`Transforming ${apiAppointments.length} appointments`);
     return apiAppointments.map(apt => this._transformAppointment(apt));
   }
 
