@@ -355,84 +355,101 @@ const handleSaveNewPatient = async () => {
             <div className="mt-6 ml-40 max-w-4xl">
               <h2 className="text-2xl font-bold text-gray-800 mb-12 mt-4">New Requests</h2>
               <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-                {requests.map((req) => (
-                  <div
-                    key={req.id}
-                    className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center">
-                        <p className="text-xl font-bold text-gray-800 mr-3">{req.name}</p>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            req.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : req.status === "scheduled"
-                              ? "bg-green-100 text-green-800"
-                              : req.status === "contacted"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-200 text-gray-700"
-                          }`}
-                        >
-                          {req.status || "Unknown"}
-                        </span>
-                      </div>
+{requests.map((req) => (
+  <div
+    key={req.id}
+    className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg"
+  >
+    {/* LEFT SIDE (Patient Info) */}
+    <div className="flex-1">
+      <div className="flex items-center">
+        <p className="text-xl font-bold text-gray-800 mr-2">{req.name}</p>
 
-                      <div className="flex items-center mt-1">
-                        <span className="text-sm font-medium text-indigo-600">
-                          {req.patient_type === "new" ? "🆕 New Patient" : "🔁 Returning Patient"}
-                        </span>
-                      </div>
+        {/* 📝 If staff notes exist, show a note icon */}
+       {req.has_staff_notes && (
+  <span title="Staff Notes Present" className="text-gray-400 text-lg ml-1">📝</span>
+)}
 
-                     <p className="text-sm text-gray-500 mt-1">
-  {req.preferred_time
-    ? new Date(req.preferred_time).toLocaleDateString(undefined, { dateStyle: "long" })
-    : "No preferred date"}
-  {" "}
-  • {req.appointment_type}
-</p>
+        {/* Status badge */}
+        <span
+          className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${
+            req.status === "pending"
+              ? "bg-yellow-100 text-yellow-800"
+              : req.status === "scheduled"
+              ? "bg-green-100 text-green-800"
+              : req.status === "contacted"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          {req.status || "Unknown"}
+        </span>
+      </div>
 
-                      <p className="text-sm text-gray-600 mt-1">
-                        📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}
-                      </p>
+      {/* 🦷 Patient Type */}
+      <div className="flex items-center mt-1">
+        <span className="text-sm font-medium text-indigo-600">
+          {req.patient_type === "new" ? "🆕 New Patient" : "🔁 Returning Patient"}
+        </span>
+      </div>
 
-                      {req.notes && (
-                        <p className="text-sm text-gray-400 mt-1 italic">{req.notes}</p>
-                      )}
-                    </div>
+      {/* 📅 Preferred Date */}
+      <p className="text-sm text-gray-500 mt-1">
+        {req.preferred_time
+          ? new Date(req.preferred_time).toLocaleDateString(undefined, { dateStyle: "long" })
+          : "No preferred date"}
+        {" "}
+        • {req.appointment_type}
+      </p>
 
-                    <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
-                      <button
-                        onClick={() => {
-  setOpenScheduleModal(req);
-  setAppointmentType(req.appointment_type || "");
-}}
-                        className="text-sm px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
-                      >
-                        Schedule
-                      </button>
-                      <button
-  onClick={async () => {
-    setSelectedRequest(req);
-    try {
-      const res = await axios.get(`/api/notes/${req.id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      });
-      setStaffNotes(res.data);
-    } catch (err) {
-      console.error("❌ Failed to fetch staff notes:", err);
-      setStaffNotes([]);
-    }
-  }}
-                        className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))}
+      {/* 📞 Phone and ✉️ Email */}
+      <p className="text-sm text-gray-600 mt-1">
+        📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}
+      </p>
+
+      {/* Patient Request Notes */}
+      {req.notes && (
+        <p className="text-sm text-gray-400 mt-1 italic">{req.notes}</p>
+      )}
+    </div>
+
+    {/* RIGHT SIDE (Buttons) */}
+    <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
+      <button
+        onClick={() => {
+          setOpenScheduleModal(req);
+          setAppointmentType(req.appointment_type || "");
+        }}
+        className="text-sm px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+      >
+        Schedule
+      </button>
+
+      <button
+        onClick={async () => {
+          setSelectedRequest(req);
+          try {
+            const res = await axios.get(`/api/notes/${req.id}`, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+              },
+            });
+            setStaffNotes(res.data);
+          } catch (err) {
+            console.error("❌ Failed to fetch staff notes:", err);
+            setStaffNotes([]);
+          }
+        }}
+        className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+      >
+        View Details
+      </button>
+    </div>
+  </div>
+))}
+
+
+
               </div>
             </div>
           )}
