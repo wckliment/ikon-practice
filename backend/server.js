@@ -7,6 +7,7 @@ const http = require("http");
 const socketManager = require("./socket");
 const { ensureWatcherRunningForLocation } = require("./utils/watcherManager");
 const appointmentRequestRoutes = require("./routes/appointmentRequestRoutes");
+const notesRoutes = require("./routes/notesRoutes");
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/api/patients", require("./routes/patientRoutes"));
 app.use("/api/poll", require("./routes/pollRoutes"));
 app.use("/api/messages/hidden", require("./routes/hiddenMessagesRoutes"));
 app.use("/api/appointment-requests", appointmentRequestRoutes);
+app.use("/api/notes", notesRoutes);
 // Initialize HTTP server
 const server = http.createServer(app);
 

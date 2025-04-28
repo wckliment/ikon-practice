@@ -41,6 +41,8 @@ const IkonConnect = () => {
   const [newPatientBirthdate, setNewPatientBirthdate] = useState("");
   const [newPatientGender, setNewPatientGender] = useState("");
   const [showNewPatientModal, setShowNewPatientModal] = useState(false);
+  const [staffNotes, setStaffNotes] = useState([]); // saved notes array
+  const [newStaffNote, setNewStaffNote] = useState(""); // input for new note
 
 
 
@@ -129,24 +131,36 @@ const fetchOperatories = async () => {
 
 
 
-  const handleUpdateRequest = async () => {
-    try {
-      await axios.put(`/api/appointment-requests/${selectedRequest.id}/status`, {
-        status: selectedRequest.status,
-        handled_by: user?.id || null,
-        staff_notes: selectedRequest.staff_notes,
-      });
+const handleUpdateRequest = async () => {
+  try {
+    // Update the request status
+    await axios.put(`/api/appointment-requests/${selectedRequest.id}/status`, {
+      status: selectedRequest.status,
+      handled_by: user?.id || null,
+      staff_notes: selectedRequest.staff_notes,
+    });
 
-      const updated = requests.map((r) =>
-        r.id === selectedRequest.id ? selectedRequest : r
-      );
-      setRequests(updated);
-      setSelectedRequest(null);
-    } catch (err) {
-      console.error("❌ Failed to update request:", err);
-      alert("Something went wrong.");
+    // Save the new staff note if there is one
+    if (newStaffNote.trim() !== "") {
+      await axios.post("/api/notes", {
+        appointmentRequestId: selectedRequest.id,
+        userId: user?.id,
+        noteText: newStaffNote.trim(),
+      });
     }
-  };
+
+    const updated = requests.map((r) =>
+      r.id === selectedRequest.id ? selectedRequest : r
+    );
+    setRequests(updated);
+    setSelectedRequest(null);
+    setNewStaffNote(""); // Clear input
+    setStaffNotes([]);   // Reset saved notes
+  } catch (err) {
+    console.error("❌ Failed to update request or save note:", err);
+    alert("Something went wrong.");
+  }
+};
 
 useEffect(() => {
   const delayDebounce = setTimeout(async () => {
@@ -398,7 +412,20 @@ const handleSaveNewPatient = async () => {
                         Schedule
                       </button>
                       <button
-                        onClick={() => setSelectedRequest(req)}
+  onClick={async () => {
+    setSelectedRequest(req);
+    try {
+      const res = await axios.get(`/api/notes/${req.id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
+      setStaffNotes(res.data);
+    } catch (err) {
+      console.error("❌ Failed to fetch staff notes:", err);
+      setStaffNotes([]);
+    }
+  }}
                         className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
                       >
                         View Details
@@ -417,7 +444,12 @@ const handleSaveNewPatient = async () => {
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-xl shadow-lg relative">
             <button
-              onClick={() => setSelectedRequest(null)}
+              onClick={() => {
+  setSelectedRequest(null);
+  setStaffNotes([]);
+  setNewStaffNote("");
+}}
+
               className="absolute top-4 right-4 text-gray-500 hover:text-black"
             >
               ✕
@@ -434,15 +466,36 @@ const handleSaveNewPatient = async () => {
               📞 {selectedRequest.phone} | ✉️ {selectedRequest.email}
             </p>
 
-            <label className="block mt-4 text-sm font-semibold">Staff Notes</label>
-            <textarea
-              rows="3"
-              value={selectedRequest.staff_notes || ""}
-              onChange={(e) =>
-                setSelectedRequest({ ...selectedRequest, staff_notes: e.target.value })
-              }
-              className="w-full mt-1 border border-gray-300 rounded-lg p-2"
-            ></textarea>
+           {/* Past Saved Staff Notes */}
+{staffNotes.length > 0 && (
+  <div className="mt-4">
+    <label className="block text-sm font-semibold mb-2">Past Staff Notes</label>
+    <div className="space-y-3 max-h-40 overflow-y-auto">
+      {staffNotes.map((note) => (
+        <div
+          key={note.id}
+          className="p-2 bg-gray-100 rounded-md"
+        >
+          <div className="text-xs text-gray-500 mb-1">
+            {note.user_name} • {new Date(note.created_at).toLocaleString()}
+          </div>
+          <div className="text-sm text-gray-700">{note.note_text}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* New Staff Note Input */}
+<label className="block mt-4 text-sm font-semibold">Add New Staff Note</label>
+<textarea
+  rows="3"
+  value={newStaffNote}
+  onChange={(e) => setNewStaffNote(e.target.value)}
+  placeholder="Type a new staff note here..."
+  className="w-full mt-1 border border-gray-300 rounded-lg p-2"
+/>
+
 
             <label className="block mt-4 text-sm font-semibold">Status</label>
             <select
