@@ -63,17 +63,9 @@ const filtered = allAppointments.filter((apt) => {
   const aptDate = new Date(raw).toLocaleDateString('en-CA'); // ⬅️ This outputs 'YYYY-MM-DD'
   const isMatch = aptDate === formattedDate;
 
-  // console.log(`🧪 Apt ID ${apt.id}:`, {
-  //   raw,
-  //   aptDate,
-  //   formattedDate,
-  //   isMatch
-  // });
-
   return isMatch;
 });
 
-    // console.log(`🧹 Filtered to ${filtered.length} true appointments for today`);
     return filtered;
 
   } catch (error) {
@@ -533,6 +525,36 @@ if (!match) {
   } catch (error) {
     this._handleError('createPatient', error);
     throw new Error(`Failed to create new patient: ${error.message}`);
+  }
+  }
+
+async getFormsByPatient(patNum) {
+  try {
+    console.log(`📝 Fetching completed forms for PatNum: ${patNum}`);
+    const response = await axios.get(`${this.baseUrl}/sheets`, {
+      headers: this.headers,
+      params: { PatNum: patNum }
+    });
+    console.log(`✅ Received ${response.data.length} forms for patient ${patNum}`);
+    return response.data;
+  } catch (error) {
+    this._handleError('getFormsByPatient', error);
+    throw new Error(`Failed to fetch forms for patient: ${error.message}`);
+  }
+}
+
+async getFormFields(sheetNum) {
+  try {
+    console.log(`📋 Fetching fields for SheetNum: ${sheetNum}`);
+    const response = await axios.get(`${this.baseUrl}/sheetfields`, {
+      headers: this.headers,
+      params: { SheetNum: sheetNum }
+    });
+    console.log(`✅ Received ${response.data.length} fields for SheetNum ${sheetNum}`);
+    return response.data;
+  } catch (error) {
+    this._handleError('getFormFields', error);
+    throw new Error(`Failed to fetch fields for form: ${error.message}`);
   }
 }
 
