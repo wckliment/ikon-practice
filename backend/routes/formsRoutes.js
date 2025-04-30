@@ -15,4 +15,10 @@ router.get('/sheet/:sheetNum/fields', formsController.getFieldsForForm);
 // Send a form
 router.post('/send', formsController.sendForm);
 
+// Cancel a form
+router.patch('/:formId/cancel', formsController.cancelForm);
+
+// Get sheet definitions
+router.get('/sheetdefs', formsController.getSheetDefs);
+
 module.exports = router;

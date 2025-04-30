@@ -13,8 +13,8 @@ const Forms = () => {
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [availableForms, setAvailableForms] = useState([]);
-const [selectedFormId, setSelectedFormId] = useState("");
-const [method, setMethod] = useState("website");
+  const [selectedFormId, setSelectedFormId] = useState("");
+  const [method, setMethod] = useState("website");
 
 
   // 🔍 Debounced patient search
@@ -48,34 +48,35 @@ const [method, setMethod] = useState("website");
   }, [searchPatientTerm]);
 
 
-  // 📋 Fetch forms after selecting a patient
-  useEffect(() => {
-    const fetchForms = async () => {
-      if (selectedPatient) {
-        try {
-          setIsLoadingForms(true);
-          const res = await axios.get(`/api/forms/patient/${selectedPatient.value}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-          });
+// 📋 Fetch forms for the selected patient
+const fetchForms = async () => {
+  if (selectedPatient) {
+    try {
+      setIsLoadingForms(true);
+      const res = await axios.get(`/api/forms/patient/${selectedPatient.value}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+      });
 
-          setForms(res.data || []);
-        } catch (err) {
-          console.error("❌ Failed to fetch forms:", err);
-          setForms([]);
-        } finally {
-          setIsLoadingForms(false);
-        }
-      }
-    };
+      setForms(res.data || []);
+    } catch (err) {
+      console.error("❌ Failed to fetch forms:", err);
+      setForms([]);
+    } finally {
+      setIsLoadingForms(false);
+    }
+  }
+};
 
-    fetchForms();
-  }, [selectedPatient]);
+// 📋 Automatically fetch forms when patient is selected
+useEffect(() => {
+  fetchForms();
+}, [selectedPatient]);
 
   useEffect(() => {
   const fetchAvailableForms = async () => {
     if (showSendModal) {
       try {
-        const res = await axios.get("/api/open-dental/sheetdefs", {
+        const res = await axios.get("/api/forms/sheetdefs", {
           headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         });
         setAvailableForms(res.data || []);
@@ -236,22 +237,84 @@ return (
         <td className="px-4 py-2 text-sm text-gray-600 capitalize">
           {form.method}
         </td>
-        <td className="px-4 py-2 space-x-2">
-          <a
-            href={`/forms/fill/${form.token}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline text-sm"
-          >
-            Open
-          </a>
-          <button
-            className="text-red-600 hover:underline text-sm"
-            onClick={() => alert("TODO: Cancel logic")}
-          >
-            Cancel
-          </button>
-        </td>
+<td className="px-4 py-2 space-x-2 text-sm text-gray-700">
+  {form.method === 'website' && (
+    <>
+      <a
+        href={`/forms/fill/${form.token}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline"
+      >
+        Open
+      </a>
+     <button
+  onClick={() => {
+    if (!form?.token) {
+      alert("❌ No token found for this form.");
+      return;
+    }
+
+    const origin = window.location.origin || "http://localhost:5173";
+    const fullUrl = `${origin}/forms/fill/${form.token}`;
+    navigator.clipboard.writeText(fullUrl);
+    alert(`🔗 Link copied to clipboard:\n${fullUrl}`);
+  }}
+  className="text-blue-600 hover:underline ml-2"
+>
+  Copy Link
+</button>
+    </>
+  )}
+
+  {form.method === 'sms' && (
+    <button
+      disabled
+      className="text-gray-400 cursor-not-allowed"
+    >
+      Send SMS (coming soon)
+    </button>
+  )}
+
+  {form.method === 'tablet' && (
+    <span className="text-yellow-600 italic">
+      Waiting for check-in
+    </span>
+  )}
+
+  {/* Cancel is always shown */}
+<button
+  className="text-red-600 hover:underline ml-4"
+  onClick={async () => {
+    if (!window.confirm("Are you sure you want to cancel this form?")) return;
+
+    try {
+      await axios.patch(
+        `/api/forms/${form.id}/cancel`,
+        {}, // ⬅️ empty request body
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
+      );
+
+      alert("❌ Form cancelled.");
+      fetchForms(); // refresh the list
+    } catch (err) {
+      console.error("Error cancelling form:", err);
+      alert("Something went wrong. Check console.");
+    }
+  }}
+>
+  Cancel
+</button>
+
+
+
+</td>
+
+
       </tr>
     ))
   )}

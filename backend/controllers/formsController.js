@@ -73,19 +73,60 @@ const sendForm = async (req, res) => {
       [patNum, sheetDefId, method, sentAt, token, userId, locationId]
     );
 
-    const link = `${process.env.APP_BASE_URL}/forms/fill/${token}`;
+   const origin = req.headers.origin || process.env.APP_BASE_URL || "http://localhost:5173";
+const fullLink = `${origin}/forms/fill/${token}`;
+res.json({ success: true, link: fullLink });
 
-    res.json({ success: true, link });
   } catch (err) {
     console.error("❌ Error sending form:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
+const getSheetDefs = async (req, res) => {
+  try {
+    const locationId = req.user.location_id;
+    const locationCode = await getLocationCodeById(locationId);
+    const { devKey, custKey } = await getKeysFromLocation(locationCode);
+    const openDental = new OpenDentalService(devKey, custKey);
+
+    const sheetDefs = await openDental.getSheetDefs();
+    res.json(sheetDefs);
+  } catch (error) {
+    console.error("❌ Failed to fetch SheetDefs:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const cancelForm = async (req, res) => {
+  try {
+    const { formId } = req.params;
+
+    const [result] = await db.query(
+      `UPDATE forms_log SET status = 'cancelled' WHERE id = ? AND status = 'pending'`,
+      [formId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Form not found or already cancelled" });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("❌ Error cancelling form:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+
 
 // ✅ Now this will work correctly:
 module.exports = {
   getFormsForPatient,
   getFieldsForForm,
-  sendForm
+  sendForm,
+  getSheetDefs,
+  cancelForm
 };

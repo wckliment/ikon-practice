@@ -581,7 +581,23 @@ async getFormFields(sheetNum) {
     console.error('Error formatting date:', error);
     throw error;
   }
+  }
+
+async getSheetDefs() {
+  try {
+    console.log("📄 Fetching SheetDefs from Open Dental");
+    const response = await axios.get(`${this.baseUrl}/sheetdefs`, {
+      headers: this.headers
+    });
+    return response.data;
+  } catch (error) {
+    this._handleError('sheetdefs', error);
+    throw new Error(`Failed to fetch SheetDefs: ${error.message}`);
+  }
 }
+
+
+
 
   _transformAppointments(apiAppointments) {
     if (!Array.isArray(apiAppointments)) {
