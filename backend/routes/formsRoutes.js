@@ -12,4 +12,7 @@ router.get('/patient/:patNum', formsController.getFormsForPatient);
 // Fetch fields/answers for a completed form
 router.get('/sheet/:sheetNum/fields', formsController.getFieldsForForm);
 
+// Send a form
+router.post('/send', formsController.sendForm);
+
 module.exports = router;
