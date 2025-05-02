@@ -119,14 +119,78 @@ const cancelForm = async (req, res) => {
 };
 
 
+const getFormByToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // 1. Find pending form from ikon DB
+    const [rows] = await db.query(
+      `SELECT * FROM forms_log WHERE token = ? AND status = 'pending'`,
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Invalid or expired form token.' });
+    }
+
+    const logEntry = rows[0];
+    const { sheet_def_id, pat_num, location_id } = logEntry;
+
+    // 2. Get API keys from location
+    const locationCode = await getLocationCodeById(location_id);
+    const { devKey, custKey } = await getKeysFromLocation(locationCode);
+    const openDental = new OpenDentalService(devKey, custKey);
+
+    // 3. Get SheetDef (used for display info)
+    const raw = await openDental.getSheetDef(Number(sheet_def_id));
+    const sheetDef = Array.isArray(raw)
+      ? raw.find(def => def.SheetDefNum === Number(sheet_def_id))
+      : raw;
+
+    // 4. Create new Sheet (actual form instance)
+    const createdSheet = await openDental.createSheet({
+      SheetType: sheetDef.SheetType,
+      SheetDefNum: Number(sheet_def_id),
+      PatNum: pat_num
+    });
+
+    // 5. Fetch its SheetFields
+    const sheetFields = await openDental.getSheetFieldsBySheetNum(createdSheet.SheetNum);
+
+    // 6. Get patient info
+    const patient = await openDental.getPatient(pat_num);
+
+    // 7. Respond with everything needed for frontend
+    res.json({
+      token,
+      form: {
+        sheetDef,
+        sheetFields,
+        sheetNum: createdSheet.SheetNum // 👈 for future PATCH submission
+      },
+      patient: {
+        patNum: patient.PatNum,
+        firstName: patient.FName,
+        lastName: patient.LName,
+        birthdate: patient.Birthdate
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error in getFormByToken:', error);
+    res.status(500).json({ error: 'Server error while loading form.' });
+  }
+};
 
 
 
-// ✅ Now this will work correctly:
+
+
 module.exports = {
   getFormsForPatient,
   getFieldsForForm,
   sendForm,
   getSheetDefs,
-  cancelForm
+  cancelForm,
+  getFormByToken
 };

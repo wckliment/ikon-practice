@@ -597,6 +597,61 @@ async getSheetDefs() {
 }
 
 
+async getSheetFieldsByDefId(sheetDefNum) {
+  try {
+    console.log(`📋 Fetching SheetFields for SheetDefNum: ${sheetDefNum}`);
+    const response = await axios.get(`${this.baseUrl}/sheetfields`, {
+      headers: this.headers,
+      params: { SheetDefNum: sheetDefNum }
+    });
+    return response.data;
+  } catch (error) {
+    this._handleError('getSheetFieldsByDefId', error);
+    throw new Error(`Failed to fetch SheetFields: ${error.message}`);
+  }
+}
+
+async getSheetDef(sheetDefNum) {
+  try {
+    console.log(`📄 Fetching SheetDef for SheetDefNum: ${sheetDefNum}`);
+    const response = await axios.get(`${this.baseUrl}/sheetdefs/${sheetDefNum}`, {
+      headers: this.headers
+    });
+    return response.data;
+  } catch (error) {
+    this._handleError('getSheetDef', error);
+    throw new Error(`Failed to fetch SheetDef: ${error.message}`);
+  }
+}
+
+  async createSheet(sheetData) {
+  try {
+    console.log("🆕 Creating Sheet with data:", sheetData);
+    const response = await axios.post(`${this.baseUrl}/sheets`, sheetData, {
+      headers: this.headers
+    });
+    return response.data;
+  } catch (error) {
+    this._handleError('createSheet', error);
+    throw new Error(`Failed to create sheet: ${error.message}`);
+  }
+}
+
+async getSheetFieldsBySheetNum(sheetNum) {
+  try {
+    console.log(`📋 Fetching SheetFields for SheetNum: ${sheetNum}`);
+    const response = await axios.get(`${this.baseUrl}/sheetfields`, {
+      headers: this.headers,
+      params: { SheetNum: sheetNum }
+    });
+    return response.data;
+  } catch (error) {
+    this._handleError('getSheetFieldsBySheetNum', error);
+    throw new Error(`Failed to fetch SheetFields: ${error.message}`);
+  }
+}
+
+
 
 
   _transformAppointments(apiAppointments) {

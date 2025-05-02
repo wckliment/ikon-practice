@@ -9,6 +9,7 @@ const { ensureWatcherRunningForLocation } = require("./utils/watcherManager");
 const appointmentRequestRoutes = require("./routes/appointmentRequestRoutes");
 const notesRoutes = require("./routes/notesRoutes");
 const formsRoutes = require("./routes/formsRoutes");
+const publicFormsRoutes = require("./routes/publicFormsRoutes");
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use("/api/messages/hidden", require("./routes/hiddenMessagesRoutes"));
 app.use("/api/appointment-requests", appointmentRequestRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/forms", formsRoutes);
+app.use("/api/public-forms", publicFormsRoutes);
 // Initialize HTTP server
 const server = http.createServer(app);
 
