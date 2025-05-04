@@ -206,56 +206,69 @@ const submitForm = async (req, res) => {
     const { devKey, custKey } = await getKeysFromLocation(locationCode);
     const openDental = new OpenDentalService(devKey, custKey);
 
-    // 3. Get SheetDef to access SheetType
+    // 3. Fetch SheetDef to determine SheetType
     const sheetDefResult = await openDental.getSheetDef(Number(sheet_def_id));
-const sheetDef = Array.isArray(sheetDefResult)
-  ? sheetDefResult.find(def => def.SheetDefNum === Number(sheet_def_id))
-  : sheetDefResult;
+    const sheetDef = Array.isArray(sheetDefResult)
+      ? sheetDefResult.find(def => def.SheetDefNum === Number(sheet_def_id))
+      : sheetDefResult;
 
-    // 4. Create a new Sheet in Open Dental
-    const newSheet = await openDental.createSheet({
-      SheetType: sheetDef.SheetType || 'Consent',
-      SheetDefNum: sheetDef.SheetDefNum,
-      PatNum: pat_num,
-    });
+    const SheetType = sheetDef?.SheetType || 'Consent';
+    const Description = sheetDef?.Description || 'Online Form';
 
-    // 5. Filter out reserved system fields (they can't be POSTed)
+    console.log("🧪 fieldResponses from frontend:");
+    console.log(JSON.stringify(fieldResponses, null, 2));
+
+    // 4. Filter out any reserved field names (optional)
     const reservedFieldNames = [
+      'sheet.Description',
       'dateTime.Today',
       'patientName.FName',
       'patientName.LName',
-      'birthdate',
-      'sheet.Description',
+      'birthdate'
     ];
 
-  const filteredFields = fieldResponses.filter(
-  (field) => !reservedFieldNames.includes(field.FieldName)
-);
+    const fieldTypeMap = {
+      InputField: 1,
+      StaticText: 2,
+      Image: 3,
+      Line: 4,
+      Rectangle: 5,
+      CheckBox: 6,
+      RadioButton: 7,
+      ComboBox: 8,
+      SigBox: 9,
+    };
 
-// 🔧 Inject sheet.Description so the form is visible in Open Dental
-filteredFields.push({
-  FieldType: 'InputField',
-  FieldName: 'sheet.Description',
-  FieldValue: sheetDef.Description || 'Online Form',
-  IsRequired: false
-});
+    const sheetFields = fieldResponses.map(field => ({
+      FieldType: fieldTypeMap[field.FieldType] || 1,
+      FieldName: field.FieldName,
+      FieldValue: field.FieldValue || '',
+      IsRequired: field.IsRequired || false
+    }));
 
-// 6. Send the Sheet again with all field values during creation
-const fullSheetPayload = {
-  SheetType: sheetDef.SheetType || 'Consent',
-  SheetDefNum: sheetDef.SheetDefNum,
+    // ✅ Inject the Description field to ensure it’s visible in UI
+    sheetFields.push({
+      FieldType: 1,
+      FieldName: 'sheet.Description',
+      FieldValue: Description,
+      IsRequired: false
+    });
+
+    const fullSheetPayload = {
   PatNum: pat_num,
-  SheetFields: filteredFields.map(field => ({
-    FieldType: field.FieldType,
-    FieldName: field.FieldName,
-    FieldValue: field.FieldValue || '',
-    IsRequired: field.IsRequired || false
-  }))
+  SheetDefNum: sheetDef?.SheetDefNum,  // ✅ Add this line
+  SheetType,
+  Description,
+  DateTimeSheet: new Date().toISOString(),
+  SheetFields: sheetFields
 };
 
-const createdSheet = await openDental.createSheet(fullSheetPayload);
+    console.log("📤 Sending Sheet to Open Dental:");
+    console.log(JSON.stringify(fullSheetPayload, null, 2));
 
-    // 8. Mark form as completed in DB
+    const createdSheet = await openDental.createSheet(fullSheetPayload);
+
+    // 5. Mark as completed
     await db.query(
       `UPDATE forms_log SET status = 'completed', completed_at = NOW() WHERE id = ?`,
       [logEntry.id]
@@ -267,6 +280,7 @@ const createdSheet = await openDental.createSheet(fullSheetPayload);
     res.status(500).json({ error: error.message || 'Failed to submit form.' });
   }
 };
+
 
 
 

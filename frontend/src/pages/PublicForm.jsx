@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import SignaturePad from 'react-signature-canvas';
+
 import staticContentMap from '../data/formStaticContent';
 import { formTemplates } from '../data/formTemplates';
 import fieldDisplayMap from '../data/fieldDisplayMap';
+
 export default function PublicForm() {
   const { token } = useParams();
   const [form, setForm] = useState(null);
@@ -12,6 +15,7 @@ export default function PublicForm() {
   const [fieldValues, setFieldValues] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const sigPadRef = useRef(null); // <-- Signature pad ref
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -28,7 +32,6 @@ export default function PublicForm() {
         });
         setPatient(res.data.patient);
 
-        // Set default field values
         const initial = {};
         template.forEach((field, idx) => {
           initial[idx] = field.FieldValue || '';
@@ -55,26 +58,40 @@ export default function PublicForm() {
     setSubmitting(true);
 
     try {
-     const reservedFieldNames = [
-  'dateTime.Today',
-  'patientName.FName',
-  'patientName.LName',
-  'birthdate',
-  'sheet.Description'
-];
+      const reservedFieldNames = [
+        'dateTime.Today',
+        'patientName.FName',
+        'patientName.LName',
+        'birthdate',
+        'sheet.Description'
+      ];
 
-const updatedFields = form.sheetFieldsTemplate
+     const updatedFields = form.sheetFieldsTemplate
   .map((field, idx) => ({
-    FieldName: field.FieldName,
+    FieldName: field.FieldName || '', // ← this line needs validation
     FieldType: field.FieldType,
     FieldValue: fieldValues[idx] || '',
     IsRequired: field.IsRequired
   }))
-  .filter(field => !reservedFieldNames.includes(field.FieldName));
+        .filter(field => !reservedFieldNames.includes(field.FieldName));
 
-     await axios.post(`/api/public-forms/submit/${token}`, {
-  fieldResponses: updatedFields
+      // ✅ Capture signature as base64 if provided
+      if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
+        const sigImage = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
+      updatedFields.push({
+  FieldType: 'SigBox',
+  FieldName: 'signature', // ✅ Add a valid field name
+  FieldValue: sigImage,
+  IsRequired: true
 });
+      }
+
+          // 🔧 ADD THIS LINE HERE
+    console.log("📤 Submitting fields:", updatedFields);
+
+      await axios.post(`/api/public-forms/submit/${token}`, {
+        fieldResponses: updatedFields
+      });
 
       setSubmitted(true);
     } catch (err) {
@@ -98,9 +115,8 @@ const updatedFields = form.sheetFieldsTemplate
 
   const staticText = staticContentMap[form.sheetDef.Description];
   const getDisplayLabel = (rawFieldName) => {
-  return fieldDisplayMap[rawFieldName] || rawFieldName;
-};
-
+    return fieldDisplayMap[rawFieldName] || rawFieldName;
+  };
 
   return (
     <div className="p-4 max-w-2xl mx-auto bg-white shadow rounded">
@@ -114,9 +130,9 @@ const updatedFields = form.sheetFieldsTemplate
           if (field.FieldType === 'InputField') {
             return (
               <div key={idx} className="mb-4">
-               <label className="block text-sm font-medium mb-1">
-  {getDisplayLabel(field.FieldName)}
-</label>
+                <label className="block text-sm font-medium mb-1">
+                  {getDisplayLabel(field.FieldName)}
+                </label>
                 <input
                   type="text"
                   className="w-full border border-gray-300 rounded px-3 py-2"
@@ -131,9 +147,19 @@ const updatedFields = form.sheetFieldsTemplate
             return (
               <div key={idx} className="mb-4">
                 <label className="block text-sm font-medium mb-1">Signature</label>
-                <div className="border p-4 rounded bg-gray-100 text-gray-500">
-                  [Signature Box Placeholder]
-                </div>
+                <SignaturePad
+                  ref={sigPadRef}
+                  canvasProps={{
+                    className: "border border-gray-300 rounded w-full h-32"
+                  }}
+                />
+                <button
+                  type="button"
+                  className="text-sm text-blue-600 mt-1"
+                  onClick={() => sigPadRef.current.clear()}
+                >
+                  Clear Signature
+                </button>
               </div>
             );
           }

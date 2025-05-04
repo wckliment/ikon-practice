@@ -1,10 +1,9 @@
 const fieldDisplayMap = {
   "dateTime.Today": "Date",
   "patient.nameFL": "Patient Name",
-  "Tooth number(s):": "Tooth Number(s)",
+  "toothNum": "Tooth Number(s)",       // ✅ correct FieldName from DB
   "Signature": "Signature Label",
-  "Signature Box": "Signature",
-  // Add more mappings as needed per form...
+  "": "Signature"                      // ✅ maps the blank FieldName used for SigBox
 };
 
 export default fieldDisplayMap;
