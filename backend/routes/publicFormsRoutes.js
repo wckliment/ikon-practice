@@ -5,4 +5,7 @@ const formsController = require('../controllers/formsController');
 // Public-facing route for patients filling a form
 router.get('/fill/:token', formsController.getFormByToken);
 
+// Submit a form
+router.post('/submit/:token', formsController.submitForm);
+
 module.exports = router;
