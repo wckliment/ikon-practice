@@ -90,5 +90,16 @@ export const formTemplates = {
         IsRequired: false
       }
     ]
+  },
+
+  "HIPAA": {
+    openDentalOnly: false,
+    fields: [
+      {
+        FieldName: "signature",
+        FieldType: "SigBox",
+        IsRequired: true
+      }
+    ]
   }
 };

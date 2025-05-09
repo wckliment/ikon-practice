@@ -27,4 +27,4 @@ I also understand that I have the right to revoke permission.
   `
 };
 
-export default formStaticContent;
+module.exports = formStaticContent;

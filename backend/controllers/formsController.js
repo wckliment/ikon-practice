@@ -232,12 +232,6 @@ const submitForm = async (req, res) => {
       IsRequired: field.IsRequired || false,
     }));
 
-    sheetFields.push({
-      FieldType: 1,
-      FieldName: 'sheet.Description',
-      FieldValue: Description,
-      IsRequired: false,
-    });
 
     // 5. Submit to Open Dental
     const fullSheetPayload = {

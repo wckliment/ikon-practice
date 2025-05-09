@@ -74,7 +74,17 @@ fields.forEach((field, idx) => {
 
  const handleSubmit = async (e) => {
   e.preventDefault();
-  setSubmitting(true);
+   setSubmitting(true);
+
+     // ✅ Signature required check
+  if (form.sheetFieldsTemplate.some(f => f.FieldType === 'SigBox' && f.IsRequired)) {
+    if (sigPadRef.current?.isEmpty()) {
+      alert("Signature is required.");
+      setSubmitting(false); // reset submitting state
+      return;
+    }
+  }
+
 
   try {
     const reservedFieldNames = [
@@ -107,16 +117,11 @@ fields.forEach((field, idx) => {
       const sigImage = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
       updatedFields.push({
         FieldType: 'SigBox',
-        FieldName: '', // FieldName must be empty for Open Dental SigBox
+        FieldName: 'signature',
         FieldValue: sigImage,
         IsRequired: true
       });
     }
-
-    // Debug: Log what's actually being submitted
-    console.log("📤 Submitting fields:", updatedFields);
-    console.log("🦷 ToothNum field:", updatedFields.find(f => f.FieldName === 'toothNum'));
-    console.log("🖊️ Signature field:", updatedFields.find(f => f.FieldType === 'SigBox'));
 
 
     // Step 3: Submit to backend
@@ -169,64 +174,64 @@ fields.forEach((field, idx) => {
         For {patient.firstName} {patient.lastName} (DOB: {patient.birthdate})
       </p>
 
-      <form className="mb-6" onSubmit={handleSubmit}>
-        {form.sheetFieldsTemplate?.map((field, idx) => {
-          if (field.FieldType === 'InputField') {
-            return (
-              <div key={idx} className="mb-4">
-                <label className="block text-sm font-medium mb-1">
-                  {getDisplayLabel(field.FieldName)}
-                </label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  value={fieldValues[idx] || ''}
-                  onChange={(e) => handleChange(idx, e.target.value)}
-                />
-              </div>
-            );
-          }
+ <form className="mb-6" onSubmit={handleSubmit}>
+  {/* 1. Render InputFields first */}
+  {form.sheetFieldsTemplate
+    ?.filter(field => field.FieldType === 'InputField')
+    .map((field, idx) => (
+      <div key={idx} className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          {getDisplayLabel(field.FieldName)}
+        </label>
+        <input
+          type="text"
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          value={fieldValues[idx] || ''}
+          onChange={(e) => handleChange(idx, e.target.value)}
+        />
+      </div>
+    ))}
 
-          if (field.FieldType === 'SigBox') {
-            return (
-              <div key={idx} className="mb-4">
-                <label className="block text-sm font-medium mb-1">Signature</label>
-                <SignaturePad
-                  ref={sigPadRef}
-                  canvasProps={{
-                    className: "border border-gray-300 rounded w-full h-32"
-                  }}
-                />
-                <button
-                  type="button"
-                  className="text-sm text-blue-600 mt-1"
-                  onClick={() => sigPadRef.current.clear()}
-                >
-                  Clear Signature
-                </button>
-              </div>
-            );
-          }
+  {/* 2. Static content (unchanged) */}
+  {staticText && (
+    <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line">
+      {staticText.split('\n').map((para, idx) => (
+        <p key={idx}>{para.trim()}</p>
+      ))}
+    </div>
+  )}
 
-          return null;
-        })}
-
+  {/* 3. Render Signature(s) AFTER static text */}
+  {form.sheetFieldsTemplate
+    ?.filter(field => field.FieldType === 'SigBox')
+    .map((field, idx) => (
+      <div key={idx} className="mb-4 mt-6">
+        <label className="block text-sm font-medium mb-1">Signature</label>
+        <SignaturePad
+          ref={sigPadRef}
+          canvasProps={{
+            className: "border border-gray-300 rounded w-full h-32"
+          }}
+        />
         <button
-          type="submit"
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-          disabled={submitting}
+          type="button"
+          className="text-sm text-blue-600 mt-1"
+          onClick={() => sigPadRef.current.clear()}
         >
-          {submitting ? 'Submitting...' : 'Submit'}
+          Clear Signature
         </button>
-      </form>
+      </div>
+    ))}
 
-      {staticText && (
-        <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line">
-          {staticText.split('\n').map((para, idx) => (
-            <p key={idx}>{para.trim()}</p>
-          ))}
-        </div>
-      )}
+  {/* 4. Submit Button */}
+  <button
+    type="submit"
+    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+    disabled={submitting}
+  >
+    {submitting ? 'Submitting...' : 'Submit'}
+  </button>
+</form>
     </div>
   );
 }
