@@ -653,6 +653,25 @@ async getSheetFieldsBySheetNum(sheetNum) {
   }
 }
 
+  async uploadPdfToImaging({ PatNum, rawBase64, extension, Description, DocCategory }) {
+  try {
+    const response = await axios.post(`${this.baseUrl}/documents/Upload`, {
+      PatNum,
+      rawBase64,
+      extension,
+      Description,
+      DocCategory,
+      ImgType: 'Document',
+    }, { headers: this.headers });
+
+    console.log("✅ Uploaded PDF to Imaging:", response.data);
+    return response.data;
+  } catch (error) {
+    this._handleError('uploadPdfToImaging', error);
+    throw new Error(`Failed to upload PDF: ${error.message}`);
+  }
+}
+
 
 
 

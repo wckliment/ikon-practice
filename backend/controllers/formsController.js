@@ -3,7 +3,8 @@ const { getKeysFromLocation, getLocationCodeById } = require('../utils/locationU
 const crypto = require('crypto');
 const db = require('../config/db');
 const { formTemplates } = require('../../frontend/src/data/formTemplates');
-
+const { generateFormPdf } = require('../utils/pdfGenerator');
+const { getDocCategory } = require('../utils/formToDocCategoryMap');
 
 // Fetch completed forms for a patient
 const getFormsForPatient = async (req, res) => {
@@ -206,7 +207,7 @@ const submitForm = async (req, res) => {
     const { devKey, custKey } = await getKeysFromLocation(locationCode);
     const openDental = new OpenDentalService(devKey, custKey);
 
-    // 3. Fetch SheetDef to determine SheetType
+    // 3. Fetch SheetDef
     const sheetDefResult = await openDental.getSheetDef(Number(sheet_def_id));
     const sheetDef = Array.isArray(sheetDefResult)
       ? sheetDefResult.find(def => def.SheetDefNum === Number(sheet_def_id))
@@ -218,75 +219,70 @@ const submitForm = async (req, res) => {
     console.log("🧪 fieldResponses from frontend:");
     console.log(JSON.stringify(fieldResponses, null, 2));
 
-    // 4. Filter out any reserved field names (optional)
-    const reservedFieldNames = [
-      'sheet.Description',
-      'dateTime.Today',
-      'patientName.FName',
-      'patientName.LName',
-      'birthdate'
-    ];
-
+    // 4. Map fields
     const fieldTypeMap = {
-      InputField: 1,
-      StaticText: 2,
-      Image: 3,
-      Line: 4,
-      Rectangle: 5,
-      CheckBox: 6,
-      RadioButton: 7,
-      ComboBox: 8,
-      SigBox: 9,
+      InputField: 1, StaticText: 2, Image: 3, Line: 4, Rectangle: 5,
+      CheckBox: 6, RadioButton: 7, ComboBox: 8, SigBox: 9,
     };
 
- const sheetFields = fieldResponses.map(field => {
-  const FieldType = fieldTypeMap[field.FieldType] || 1;
+    const sheetFields = fieldResponses.map(field => ({
+      FieldType: fieldTypeMap[field.FieldType] || 1,
+      FieldName: field.FieldName,
+      FieldValue: field.FieldValue || '',
+      IsRequired: field.IsRequired || false,
+    }));
 
-  return {
-    FieldType,
-    FieldName: field.FieldName,
-    FieldValue: field.FieldValue || '',
-    IsRequired: field.IsRequired || false
-  };
-});
-
-
-    // ✅ Inject the Description field to ensure it’s visible in UI
     sheetFields.push({
       FieldType: 1,
       FieldName: 'sheet.Description',
       FieldValue: Description,
-      IsRequired: false
+      IsRequired: false,
     });
 
+    // 5. Submit to Open Dental
     const fullSheetPayload = {
-  PatNum: pat_num,
-  SheetDefNum: sheetDef?.SheetDefNum,  // ✅ Add this line
-  SheetType,
-  Description,
-  DateTimeSheet: new Date().toISOString(),
-  SheetFields: sheetFields
-};
+      PatNum: pat_num,
+      SheetDefNum: sheetDef?.SheetDefNum,
+      SheetType,
+      Description,
+      DateTimeSheet: new Date().toISOString(),
+      SheetFields: sheetFields,
+    };
 
     console.log("📤 Sending Sheet to Open Dental:");
     console.log(JSON.stringify(fullSheetPayload, null, 2));
 
     const createdSheet = await openDental.createSheet(fullSheetPayload);
 
-    // 5. Mark as completed
+    // 6. Mark as completed in ikonPractice
     await db.query(
       `UPDATE forms_log SET status = 'completed', completed_at = NOW() WHERE id = ?`,
       [logEntry.id]
     );
 
+    // 7. Generate PDF and upload to Open Dental Imaging
+    const patient = await openDental.getPatient(pat_num);
+    const pdfBuffer = await generateFormPdf(patient, sheetFields, Description);
+    const base64Pdf = pdfBuffer.toString('base64');
+
+  const docCategory = getDocCategory(Description);
+
+await openDental.uploadPdfToImaging({
+  PatNum: pat_num,
+  rawBase64: base64Pdf,
+  extension: '.pdf',
+  Description: `${Description} (Submitted Online)`,
+  DocCategory: docCategory,
+});
+
+    console.log(`✅ PDF generated and uploaded for PatNum ${pat_num}`);
     res.json({ message: 'Form submitted and saved successfully.' });
+
   } catch (error) {
     console.error('❌ Error in submitForm:', error);
     res.status(500).json({ error: error.message || 'Failed to submit form.' });
   }
 };
-
-
 
 
 

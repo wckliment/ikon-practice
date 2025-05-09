@@ -1,6 +1,6 @@
 export const formTemplates = {
   "Extraction Consent": {
-    openDentalOnly: true,
+    openDentalOnly: false,
     fields: [
       {
         FieldName: "dateTime.Today",
@@ -92,4 +92,3 @@ export const formTemplates = {
     ]
   }
 };
-
