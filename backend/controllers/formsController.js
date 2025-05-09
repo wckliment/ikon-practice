@@ -239,12 +239,17 @@ const submitForm = async (req, res) => {
       SigBox: 9,
     };
 
-    const sheetFields = fieldResponses.map(field => ({
-      FieldType: fieldTypeMap[field.FieldType] || 1,
-      FieldName: field.FieldName,
-      FieldValue: field.FieldValue || '',
-      IsRequired: field.IsRequired || false
-    }));
+ const sheetFields = fieldResponses.map(field => {
+  const FieldType = fieldTypeMap[field.FieldType] || 1;
+
+  return {
+    FieldType,
+    FieldName: field.FieldName,
+    FieldValue: field.FieldValue || '',
+    IsRequired: field.IsRequired || false
+  };
+});
+
 
     // ✅ Inject the Description field to ensure it’s visible in UI
     sheetFields.push({

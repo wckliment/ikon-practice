@@ -10,7 +10,14 @@ Extraction(s) are to be performed on the tooth/teeth listed above. While we expe
 
 By signing below you acknowledge that you understand the information presented, have had all your questions answered satisfactorily, and give consent to perform this procedure.
   `,
-  // Add more form names here as needed.
+
+  "Excuse Letter": `
+Please excuse [nameFL] due to a dental appointment on [dateToday].
+You are welcome to contact us with any questions.
+
+Sincerely,
+[providerFL]
+  `
 };
 
 export default formStaticContent;

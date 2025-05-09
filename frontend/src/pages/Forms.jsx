@@ -3,6 +3,7 @@ import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 import axios from "axios";
 import ReactSelect from "react-select";
+import { formTemplates } from "../data/formTemplates";
 
 const Forms = () => {
   const [searchPatientTerm, setSearchPatientTerm] = useState("");
@@ -364,11 +365,22 @@ return (
             className="w-full border border-gray-300 rounded mb-4 px-3 py-2"
           >
             <option value="">Select a form...</option>
-            {availableForms.map((form) => (
-              <option key={form.SheetDefNum} value={form.SheetDefNum}>
-                {form.Description}
-              </option>
-            ))}
+{availableForms.map((form) => {
+  const template = formTemplates[form.Description];
+  const isDisabled = template?.openDentalOnly;
+
+  return (
+    <option
+      key={form.SheetDefNum}
+      value={form.SheetDefNum}
+      disabled={isDisabled}
+    >
+      {form.Description} {isDisabled ? ' (In-Office Only)' : ''}
+    </option>
+  );
+})}
+
+
           </select>
 
           {/* Action buttons */}
