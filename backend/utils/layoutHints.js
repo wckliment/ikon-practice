@@ -10,7 +10,13 @@ const layoutHints = {
     includeDate: true,
     staticText: true,
     staticTextPosition: "bottom"
-  }
+  },
+  "Medical History": {
+    groupPatientInfoRow: true,
+    includeDate: true,
+    staticText: false,
+    staticTextPosition: null
+}
 };
 
 module.exports = layoutHints;

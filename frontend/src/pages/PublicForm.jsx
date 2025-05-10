@@ -2,10 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import SignaturePad from 'react-signature-canvas';
-
 import staticContentMap from '../data/formStaticContent';
 import { formTemplates } from '../data/formTemplates';
 import fieldDisplayMap from '../data/fieldDisplayMap';
+import MedicalHistoryForm from '../forms/MedicalHistoryForm';
 
 export default function PublicForm() {
   const { token } = useParams();
@@ -15,7 +15,8 @@ export default function PublicForm() {
   const [fieldValues, setFieldValues] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const sigPadRef = useRef(null); // <-- Signature pad ref
+  const sigPadRef = useRef(null);
+
 
  useEffect(() => {
   const fetchForm = async () => {
@@ -174,64 +175,71 @@ fields.forEach((field, idx) => {
         For {patient.firstName} {patient.lastName} (DOB: {patient.birthdate})
       </p>
 
- <form className="mb-6" onSubmit={handleSubmit}>
-  {/* 1. Render InputFields first */}
-  {form.sheetFieldsTemplate
-    ?.filter(field => field.FieldType === 'InputField')
-    .map((field, idx) => (
-      <div key={idx} className="mb-4">
-        <label className="block text-sm font-medium mb-1">
-          {getDisplayLabel(field.FieldName)}
-        </label>
-        <input
-          type="text"
-          className="w-full border border-gray-300 rounded px-3 py-2"
-          value={fieldValues[idx] || ''}
-          onChange={(e) => handleChange(idx, e.target.value)}
-        />
-      </div>
-    ))}
-
-  {/* 2. Static content (unchanged) */}
-  {staticText && (
-    <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line">
-      {staticText.split('\n').map((para, idx) => (
-        <p key={idx}>{para.trim()}</p>
+ {form.sheetDef.Description === "Medical History" ? (
+  <MedicalHistoryForm
+    fieldValues={fieldValues}
+    handleChange={handleChange}
+    sigPadRef={sigPadRef}
+    submitting={submitting}
+    handleSubmit={handleSubmit}
+  />
+) : (
+  <form className="mb-6" onSubmit={handleSubmit}>
+    {form.sheetFieldsTemplate
+      ?.filter(field => field.FieldType === 'InputField')
+      .map((field, idx) => (
+        <div key={idx} className="mb-4">
+          <label className="block text-sm font-medium mb-1">
+            {getDisplayLabel(field.FieldName)}
+          </label>
+          <input
+            type="text"
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            value={fieldValues[idx] || ''}
+            onChange={(e) => handleChange(idx, e.target.value)}
+          />
+        </div>
       ))}
-    </div>
-  )}
 
-  {/* 3. Render Signature(s) AFTER static text */}
-  {form.sheetFieldsTemplate
-    ?.filter(field => field.FieldType === 'SigBox')
-    .map((field, idx) => (
-      <div key={idx} className="mb-4 mt-6">
-        <label className="block text-sm font-medium mb-1">Signature</label>
-        <SignaturePad
-          ref={sigPadRef}
-          canvasProps={{
-            className: "border border-gray-300 rounded w-full h-32"
-          }}
-        />
-        <button
-          type="button"
-          className="text-sm text-blue-600 mt-1"
-          onClick={() => sigPadRef.current.clear()}
-        >
-          Clear Signature
-        </button>
+    {staticText && (
+      <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line">
+        {staticText.split('\n').map((para, idx) => (
+          <p key={idx}>{para.trim()}</p>
+        ))}
       </div>
-    ))}
+    )}
 
-  {/* 4. Submit Button */}
-  <button
-    type="submit"
-    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-    disabled={submitting}
-  >
-    {submitting ? 'Submitting...' : 'Submit'}
-  </button>
-</form>
+   {form.sheetFieldsTemplate
+  ?.filter(field => field.FieldType === 'SigBox')
+  .map((_, idx) => (
+    <div key={idx} className="mb-4 mt-6">
+      <label className="block text-sm font-medium mb-1">Signature</label>
+      <SignaturePad
+        ref={sigPadRef}
+        canvasProps={{
+          className: "border border-gray-300 rounded w-full h-32"
+        }}
+      />
+      <button
+        type="button"
+        className="text-sm text-blue-600 mt-1"
+        onClick={() => sigPadRef.current.clear()}
+      >
+        Clear Signature
+      </button>
+    </div>
+  ))}
+
+    <button
+      type="submit"
+      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+      disabled={submitting}
+    >
+      {submitting ? 'Submitting...' : 'Submit'}
+    </button>
+  </form>
+)}
+
     </div>
   );
 }
