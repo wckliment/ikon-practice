@@ -17,54 +17,51 @@ export default function PublicForm() {
   const [submitted, setSubmitted] = useState(false);
   const sigPadRef = useRef(null);
 
+  useEffect(() => {
+    const fetchForm = async () => {
+      try {
+        const res = await axios.get(`/api/public-forms/fill/${token}`);
+        console.log("📦 Form response:", res.data);
 
- useEffect(() => {
-  const fetchForm = async () => {
-    try {
-      const res = await axios.get(`/api/public-forms/fill/${token}`);
-      console.log("📦 Form response:", res.data);
+        const sheetDef = res.data.form.sheetDef;
+        const templateEntry = formTemplates[sheetDef.Description];
 
-      const sheetDef = res.data.form.sheetDef;
-      const templateEntry = formTemplates[sheetDef.Description];
+        const fields = Array.isArray(templateEntry?.fields) ? templateEntry.fields : [];
+        const openDentalOnly = !!templateEntry?.openDentalOnly;
 
-      const fields = Array.isArray(templateEntry?.fields) ? templateEntry.fields : [];
-      const openDentalOnly = !!templateEntry?.openDentalOnly;
+        setForm({
+          ...res.data.form,
+          sheetFieldsTemplate: fields,
+          openDentalOnly
+        });
 
-      setForm({
-        ...res.data.form,
-        sheetFieldsTemplate: fields,
-        openDentalOnly
-      });
+        setPatient(res.data.patient);
 
-      setPatient(res.data.patient);
-
-     const initial = {};
-fields.forEach((field, idx) => {
-  const name = field.FieldName;
-
-  if (name === 'patient.nameFL') {
-    initial[idx] = `${res.data.patient.firstName} ${res.data.patient.lastName}`;
-  } else if (name === 'patient.address') {
-    initial[idx] = res.data.patient.Address || '';
-  } else if (name === 'patient.cityStateZip') {
-    const { City, State, Zip } = res.data.patient;
-    initial[idx] = [City, State, Zip].filter(Boolean).join(', ');
-  } else if (name === 'patient.priProvNameFL') {
-    initial[idx] = res.data.patient.ProviderName || '';
-  } else {
-    initial[idx] = field.FieldValue || '';
-  }
-});
-      setFieldValues(initial);
-      console.log("🧪 Initial field values:", initial);
-    } catch (err) {
-      console.error('❌ Failed to load form:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchForm();
-}, [token]);
+        const initial = {};
+        fields.forEach((field, idx) => {
+          const name = field.FieldName;
+          if (name === 'patient.nameFL') {
+            initial[idx] = `${res.data.patient.firstName} ${res.data.patient.lastName}`;
+          } else if (name === 'patient.address') {
+            initial[idx] = res.data.patient.Address || '';
+          } else if (name === 'patient.cityStateZip') {
+            const { City, State, Zip } = res.data.patient;
+            initial[idx] = [City, State, Zip].filter(Boolean).join(', ');
+          } else if (name === 'patient.priProvNameFL') {
+            initial[idx] = res.data.patient.ProviderName || '';
+          } else {
+            initial[idx] = field.FieldValue || '';
+          }
+        });
+        setFieldValues(initial);
+      } catch (err) {
+        console.error('❌ Failed to load form:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchForm();
+  }, [token]);
 
   const handleChange = (idx, value) => {
     setFieldValues((prev) => ({
@@ -73,86 +70,75 @@ fields.forEach((field, idx) => {
     }));
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-   setSubmitting(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
 
-     // ✅ Signature required check
-  if (form.sheetFieldsTemplate.some(f => f.FieldType === 'SigBox' && f.IsRequired)) {
-    if (sigPadRef.current?.isEmpty()) {
-      alert("Signature is required.");
-      setSubmitting(false); // reset submitting state
-      return;
+    if (form.sheetFieldsTemplate.some(f => f.FieldType === 'SigBox' && f.IsRequired)) {
+      if (sigPadRef.current?.isEmpty()) {
+        alert("Signature is required.");
+        setSubmitting(false);
+        return;
+      }
     }
-  }
 
+    try {
+      const reservedFieldNames = [
+        'dateTime.Today',
+        'patientName.FName',
+        'patientName.LName',
+        'birthdate',
+        'sheet.Description'
+      ];
 
-  try {
-    const reservedFieldNames = [
-      'dateTime.Today',
-      'patientName.FName',
-      'patientName.LName',
-      'birthdate',
-      'sheet.Description'
-    ];
+      const updatedFields = form.sheetFieldsTemplate
+        .map((field, idx) => ({
+          FieldName: field.FieldName || '',
+          FieldType: field.FieldType,
+          FieldValue: fieldValues[idx] || '',
+          IsRequired: field.IsRequired
+        }))
+        .filter(field =>
+          !reservedFieldNames.includes(field.FieldName) &&
+          field.FieldType !== 'SigBox'
+        );
 
-      // ✅ Debug raw values before transformation
-  console.log("📝 Raw fieldValues:", fieldValues);
+      if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
+        const sigImage = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
+        updatedFields.push({
+          FieldType: 'SigBox',
+          FieldName: 'signature',
+          FieldValue: sigImage,
+          IsRequired: true
+        });
+      }
 
-    // Step 1: Filter out template SigBoxes (which have empty FieldValue and are static)
-    const updatedFields = form.sheetFieldsTemplate
-      .map((field, idx) => ({
-        FieldName: field.FieldName || '', // fallback to empty string
-        FieldType: field.FieldType,
-        FieldValue: fieldValues[idx] || '',
-        IsRequired: field.IsRequired
-      }))
-      .filter(field =>
-        !reservedFieldNames.includes(field.FieldName) &&
-        !(field.FieldType === 'SigBox') // remove placeholder SigBoxes
-      );
-
-    // Step 2: Add actual signature as a new SigBox field (if drawn)
-    console.log("🖊️ SigPad isEmpty?", sigPadRef.current?.isEmpty());
-    if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
-      const sigImage = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
-      updatedFields.push({
-        FieldType: 'SigBox',
-        FieldName: 'signature',
-        FieldValue: sigImage,
-        IsRequired: true
+      await axios.post(`/api/public-forms/submit/${token}`, {
+        fieldResponses: updatedFields
       });
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error("❌ Error submitting form:", err);
+      alert("There was an error submitting the form.");
+    } finally {
+      setSubmitting(false);
     }
-
-
-    // Step 3: Submit to backend
-    await axios.post(`/api/public-forms/submit/${token}`, {
-      fieldResponses: updatedFields
-    });
-
-    setSubmitted(true);
-  } catch (err) {
-    console.error("❌ Error submitting form:", err);
-    alert("There was an error submitting the form.");
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   if (loading) return <div className="text-center mt-8">Loading...</div>;
   if (!form || !patient) return <div>Error loading form</div>;
 
   if (form.openDentalOnly) {
-  return (
-    <div className="text-center mt-8">
-      <h2 className="text-xl font-semibold">📄 In-Office Form Only</h2>
-      <p className="text-sm mt-2">
-        This form must be completed directly inside Open Dental. Online submission is not supported for this form type.
-      </p>
-    </div>
-  );
-}
-
+    return (
+      <div className="text-center mt-8">
+        <h2 className="text-xl font-semibold">📄 In-Office Form Only</h2>
+        <p className="text-sm mt-2">
+          This form must be completed directly inside Open Dental. Online submission is not supported for this form type.
+        </p>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -163,6 +149,26 @@ fields.forEach((field, idx) => {
     );
   }
 
+  // ✅ Render Medical History Form with custom layout
+  if (form.sheetDef.Description === "Medical History") {
+    return (
+      <div className="p-4 max-w-2xl mx-auto bg-white shadow rounded">
+        <h1 className="text-xl font-bold mb-1">{form.sheetDef.Description}</h1>
+        <p className="text-sm mb-4">
+          For {patient.firstName} {patient.lastName} (DOB: {patient.birthdate})
+        </p>
+        <MedicalHistoryForm
+          fieldValues={fieldValues}
+          handleChange={handleChange}
+          sigPadRef={sigPadRef}
+          submitting={submitting}
+          handleSubmit={handleSubmit}
+        />
+      </div>
+    );
+  }
+
+  // ✅ Fallback generic renderer
   const staticText = staticContentMap[form.sheetDef.Description];
   const getDisplayLabel = (rawFieldName) => {
     return fieldDisplayMap[rawFieldName] || rawFieldName;
@@ -175,71 +181,104 @@ fields.forEach((field, idx) => {
         For {patient.firstName} {patient.lastName} (DOB: {patient.birthdate})
       </p>
 
- {form.sheetDef.Description === "Medical History" ? (
-  <MedicalHistoryForm
-    fieldValues={fieldValues}
-    handleChange={handleChange}
-    sigPadRef={sigPadRef}
-    submitting={submitting}
-    handleSubmit={handleSubmit}
-  />
-) : (
-  <form className="mb-6" onSubmit={handleSubmit}>
-    {form.sheetFieldsTemplate
-      ?.filter(field => field.FieldType === 'InputField')
-      .map((field, idx) => (
-        <div key={idx} className="mb-4">
-          <label className="block text-sm font-medium mb-1">
-            {getDisplayLabel(field.FieldName)}
-          </label>
-          <input
-            type="text"
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            value={fieldValues[idx] || ''}
-            onChange={(e) => handleChange(idx, e.target.value)}
-          />
-        </div>
-      ))}
+      <form className="mb-6" onSubmit={handleSubmit}>
+        {form.sheetFieldsTemplate?.map((field, idx) => {
+          const label = getDisplayLabel(field.FieldName);
 
-    {staticText && (
-      <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line">
-        {staticText.split('\n').map((para, idx) => (
-          <p key={idx}>{para.trim()}</p>
-        ))}
-      </div>
-    )}
+          if (field.FieldType === 'InputField') {
+            return (
+              <div key={idx} className="mb-4">
+                <label className="block text-sm font-medium mb-1">{label}</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  value={fieldValues[idx] || ''}
+                  onChange={(e) => handleChange(idx, e.target.value)}
+                />
+              </div>
+            );
+          }
 
-   {form.sheetFieldsTemplate
-  ?.filter(field => field.FieldType === 'SigBox')
-  .map((_, idx) => (
-    <div key={idx} className="mb-4 mt-6">
-      <label className="block text-sm font-medium mb-1">Signature</label>
-      <SignaturePad
-        ref={sigPadRef}
-        canvasProps={{
-          className: "border border-gray-300 rounded w-full h-32"
-        }}
-      />
-      <button
-        type="button"
-        className="text-sm text-blue-600 mt-1"
-        onClick={() => sigPadRef.current.clear()}
-      >
-        Clear Signature
-      </button>
-    </div>
-  ))}
+          if (field.FieldType === 'RadioButton') {
+            const options = field.options || ['Yes', 'No'];
+            return (
+              <div key={idx} className="mb-4">
+                <label className="block text-sm font-medium mb-1">{label}</label>
+                <div className="flex gap-4 flex-wrap">
+                  {options.map((option) => (
+                    <label key={option} className="flex items-center gap-1">
+                      <input
+                        type="radio"
+                        name={`radio-${idx}`}
+                        value={option}
+                        checked={fieldValues[idx] === option}
+                        onChange={() => handleChange(idx, option)}
+                      />
+                      {option}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          }
 
-    <button
-      type="submit"
-      className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-      disabled={submitting}
-    >
-      {submitting ? 'Submitting...' : 'Submit'}
-    </button>
-  </form>
-)}
+          if (field.FieldType === 'Select') {
+            return (
+              <div key={idx} className="mb-4">
+                <label className="block text-sm font-medium mb-1">{label}</label>
+                <select
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  value={fieldValues[idx] || ''}
+                  onChange={(e) => handleChange(idx, e.target.value)}
+                >
+                  <option value="">Select...</option>
+                  {field.options?.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          }
 
+          return null;
+        })}
+
+        {staticText && (
+          <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line">
+            {Array.isArray(staticText)
+              ? staticText.map((block, idx) => <p key={idx}>{block.text}</p>)
+              : staticText.split('\n').map((para, idx) => <p key={idx}>{para.trim()}</p>)}
+          </div>
+        )}
+
+        {form.sheetFieldsTemplate?.some(field => field.FieldType === 'SigBox') && (
+          <div className="mb-4 mt-6">
+            <label className="block text-sm font-medium mb-1">Signature</label>
+            <SignaturePad
+              ref={sigPadRef}
+              canvasProps={{
+                className: "border border-gray-300 rounded w-full h-32"
+              }}
+            />
+            <button
+              type="button"
+              className="text-sm text-blue-600 mt-1"
+              onClick={() => sigPadRef.current.clear()}
+            >
+              Clear Signature
+            </button>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          disabled={submitting}
+        >
+          {submitting ? 'Submitting...' : 'Submit'}
+        </button>
+      </form>
     </div>
   );
 }
+

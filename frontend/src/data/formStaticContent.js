@@ -24,7 +24,18 @@ I have had full opportunity to read and consider the contents of the Notice of P
 I understand that I am giving my permission to your use and disclosure of my protected health information
 in order to carry out treatment, payment activities, and healthcare operations.
 I also understand that I have the right to revoke permission.
-  `
+  `,
+    "Registration HIPAA Form2": [
+    {
+      id: "hipaaConsentBlock",
+      text: `Private Practices: I (the patient) have the right to read the Privacy Practices...
+...if you do agree then you are bound to abide by such restrictions.`,
+    },
+    {
+      id: "accessListNote",
+      text: `Please list any other parties who can have access to your health information. Indicate the person's name and relationship to the patient...`,
+    },
+  ],
 };
 
 export default formStaticContent;

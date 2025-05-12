@@ -1,14 +1,11 @@
 import React from 'react';
 import fieldDisplayMap from '../data/fieldDisplayMap';
-
-
+import medicalHistoryLayout from '../data/medicalHistoryLayout';
 
 export default function MedicalHistoryForm({ fieldValues, handleChange, sigPadRef, submitting, handleSubmit }) {
   const renderRadioGroup = (label, idx) => (
     <div key={idx} className="mb-4">
-      <label className="block font-medium mb-1">
-  {fieldDisplayMap[label] || label}
-</label>
+      <label className="block font-medium mb-1">{fieldDisplayMap[label] || label}</label>
       <div className="flex gap-4">
         <label>
           <input
@@ -34,72 +31,63 @@ export default function MedicalHistoryForm({ fieldValues, handleChange, sigPadRe
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2 className="text-lg font-semibold mb-4">Emergency Contacts</h2>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {["MedicalDoctor", "CityState", "ICEContact", "ICEPhone", "Relationship"].map((fieldName, idx) => (
-          <div key={idx}>
-           <label className="block text-sm font-medium mb-1">
-  {fieldDisplayMap[fieldName] || fieldName}
-</label>
-            <input
-              type="text"
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              value={fieldValues[idx] || ''}
-              onChange={(e) => handleChange(idx, e.target.value)}
-            />
+      {medicalHistoryLayout.map((section, sectionIndex) => (
+        <div key={sectionIndex} className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">{section.title}</h2>
+
+          {/* Static note text if present */}
+          {section.note && (
+            <p className="text-sm text-gray-600 italic mb-2">{section.note}</p>
+          )}
+
+          <div className={section.columns === 2 ? "grid grid-cols-2 gap-4" : ""}>
+            {section.fields.map((field, i) => {
+              const idx = field.index;
+              const label = fieldDisplayMap[field.name] || field.name;
+
+              if (field.type === 'radio') {
+                return renderRadioGroup(field.name, idx);
+              }
+
+              if (field.type === 'medication') {
+                return (
+                  <div key={idx} className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      disabled
+                      className="form-checkbox"
+                    />
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      value={fieldValues[idx] || ''}
+                      onChange={(e) => handleChange(idx, e.target.value)}
+                      placeholder={label}
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <div key={idx} className={section.columns === 2 ? "" : "mb-4"}>
+                  <label className="block text-sm font-medium mb-1">{label}</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    value={fieldValues[idx] || ''}
+                    onChange={(e) => handleChange(idx, e.target.value)}
+                    placeholder={label}
+                  />
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
 
-      <h2 className="text-lg font-semibold mb-4">Medications</h2>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {Array.from({ length: 10 }, (_, i) => (
-          <input
-            key={i}
-            type="text"
-            placeholder={`Medication ${i + 1}`}
-            className="border border-gray-300 rounded px-3 py-2"
-            value={fieldValues[5 + i] || ''}
-            onChange={(e) => handleChange(5 + i, e.target.value)}
-          />
-        ))}
-      </div>
-
-      <h2 className="text-lg font-semibold mb-4">Allergies</h2>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {[
-          "Allergy_Anesthetic", "Allergy_Aspirin", "Allergy_Codeine",
-          "Allergy_Ibuprofen", "Allergy_Iodine", "Allergy_Latex",
-          "Allergy_Penicillin", "Allergy_Sulfa"
-        ].map((label, i) => renderRadioGroup(label, 15 + i))}
-        <input
-          type="text"
-          placeholder="Other Allergy"
-          className="col-span-2 border border-gray-300 rounded px-3 py-2"
-          value={fieldValues[23] || ''}
-          onChange={(e) => handleChange(23, e.target.value)}
-        />
-      </div>
-
-      <h2 className="text-lg font-semibold mb-4">Medical Conditions</h2>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {[
-          "Asthma", "BleedingProblems", "Cancer", "Diabetes", "HeartMurmur",
-          "HeartTrouble", "HighBloodPressure", "JointReplacement",
-          "KidneyDisease", "LiverDisease", "Pregnancy", "PsychiatricTreatment",
-          "RheumaticFever", "SinusTrouble", "Stroke", "Ulcers"
-        ].map((label, i) => renderRadioGroup(label, 24 + i))}
-        <input
-          type="text"
-          placeholder="Other Condition"
-          className="col-span-2 border border-gray-300 rounded px-3 py-2"
-          value={fieldValues[40] || ''}
-          onChange={(e) => handleChange(40, e.target.value)}
-        />
-      </div>
-
+      {/* Signature Field */}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">Signature</label>
+        <label className="block text-sm font-medium mb-1">Patient/Guardian Signature</label>
         <div className="border border-gray-300 rounded">
           <canvas ref={sigPadRef} className="w-full h-32" />
         </div>
@@ -122,3 +110,4 @@ export default function MedicalHistoryForm({ fieldValues, handleChange, sigPadRe
     </form>
   );
 }
+

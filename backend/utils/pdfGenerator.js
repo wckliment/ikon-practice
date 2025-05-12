@@ -1,7 +1,7 @@
 const PDFDocument = require('pdfkit');
 const layoutHints = require('./layoutHints');
 const formStaticContent = require('./formStaticContent');
-
+const fieldLabels = require('./fieldLables');
 
 function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
   const doc = new PDFDocument({ margin: 50 });
@@ -9,10 +9,16 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
 
   doc.on('data', chunk => chunks.push(chunk));
 
-  const layout = layoutHints[formTitle] || {};
+
+  const cleanTitle = formTitle.replace(/\s+/g, ' ').trim();
+  console.log("🧼 Clean title used for layout lookup:", cleanTitle);
+  const layout = layoutHints[cleanTitle] || {};
+
+  const getLabel = (fieldName) => fieldLabels[fieldName] || fieldName;
 
   // -- Title
-  doc.font('Helvetica-Bold').fontSize(18).text(formTitle, { align: 'center' }).moveDown(2);
+doc.font('Helvetica-Bold').fontSize(18).text(cleanTitle, { align: 'center' }).moveDown(2);
+
 
   // -- Patient Info Row
   if (layout.groupPatientInfoRow) {
@@ -31,7 +37,7 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
 
   // -- Static content (top)
   if (layout.staticText && layout.staticTextPosition === "top") {
-    const staticBlock = formStaticContent[formTitle];
+    const staticBlock = formStaticContent[cleanTitle];
     if (staticBlock) {
       doc.moveDown(1);
       doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
@@ -41,52 +47,63 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
     }
   }
 
-// -- Render non-signature fields first
-formFields
-  .filter(f => (f.FieldName || '').toLowerCase() !== 'signature')
-  .forEach(field => {
-    doc.font('Helvetica').fontSize(12);
-    const label = `${field.FieldName}: `;
-    const value = field.FieldValue || '';
+  // -- Grouped section rendering
+  if (Array.isArray(layout.sections)) {
+    console.log("🧩 Detected layout sections:", layout.sections);
+    layout.sections.forEach(section => {
+      doc.font('Helvetica-Bold').fontSize(14).text(section.title).moveDown(0.5);
 
-    // Underlined value
-    const labelWidth = doc.widthOfString(label);
-    const valueWidth = doc.widthOfString(value);
-    const lineLength = 300;
+      section.fields.forEach(fieldName => {
+        if (fieldName.toLowerCase() === 'signature') return; // handled separately
+        const field = formFields.find(f => f.FieldName === fieldName);
+        if (!field) return;
 
-    doc.text(label, { continued: true });
-    doc.text(value);
-    doc.moveTo(doc.x - valueWidth, doc.y) // underline under value
-       .lineTo(doc.x - valueWidth + Math.max(valueWidth, lineLength * 0.5), doc.y)
-       .stroke();
+        const label = getLabel(field.FieldName);
+        const value = field.FieldValue || '';
 
-    doc.moveDown(1.5);
-  });
+        doc.font('Helvetica-Bold').fontSize(12).text(label + ':', { continued: true });
+        doc.font('Helvetica').text(` ${value}`);
+        doc.moveDown(0.75);
+      });
 
-// -- Static content (bottom)
-if (layout.staticText && layout.staticTextPosition === "bottom") {
-  const staticBlock = formStaticContent[formTitle];
-  if (staticBlock) {
-    doc.moveDown(2);
-    doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
-      align: 'left',
-      lineGap: 4
+      doc.moveDown(1);
     });
-  }
-}
+  } else {
+    // -- Fallback if no sections defined
+    formFields
+      .filter(f => (f.FieldName || '').toLowerCase() !== 'signature')
+      .forEach(field => {
+        const label = getLabel(field.FieldName);
+        const value = field.FieldValue || '';
 
-// -- Render signature field(s) last
-formFields
-  .filter(f => (f.FieldName || '').toLowerCase() === 'signature')
-  .forEach(field => {
+        doc.font('Helvetica-Bold').fontSize(12).text(label + ':', { continued: true });
+        doc.font('Helvetica').text(` ${value}`);
+        doc.moveDown(1);
+      });
+  }
+
+  // -- Static content (bottom)
+  if (layout.staticText && layout.staticTextPosition === "bottom") {
+    const staticBlock = formStaticContent[cleanTitle];
+    if (staticBlock) {
+      doc.moveDown(2);
+      doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
+        align: 'left',
+        lineGap: 4
+      });
+    }
+  }
+
+  // -- Signature field
+  const signatureField = formFields.find(f => (f.FieldName || '').toLowerCase() === 'signature');
+  if (signatureField) {
     doc.moveDown(1.5);
     doc.font('Helvetica-Bold').fontSize(12).text('Signature:').moveDown(0.5);
 
-    if (field.FieldValue?.startsWith('data:image/png;base64,')) {
+    if (signatureField.FieldValue?.startsWith('data:image/png;base64,')) {
       try {
-        const base64Data = field.FieldValue.replace(/^data:image\/png;base64,/, '');
+        const base64Data = signatureField.FieldValue.replace(/^data:image\/png;base64,/, '');
         const imageBuffer = Buffer.from(base64Data, 'base64');
-
         doc.image(imageBuffer, {
           fit: [300, 80],
           align: 'left',
@@ -98,8 +115,7 @@ formFields
     } else {
       doc.text('[Signed]').moveDown(1);
     }
-  });
-
+  }
 
   doc.end();
 
