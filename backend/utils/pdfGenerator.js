@@ -91,6 +91,10 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
       });
   }
 
+  console.log("📄 Clean title:", cleanTitle);
+console.log("📄 Static content found:", typeof formStaticContent[cleanTitle], formStaticContent[cleanTitle]?.substring?.(0, 100));
+
+
   // Static content (bottom)
   if (layout.staticText && layout.staticTextPosition === "bottom") {
     const staticBlock = formStaticContent[cleanTitle];
@@ -137,4 +141,3 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
 }
 
 module.exports = { generateFormPdf };
-

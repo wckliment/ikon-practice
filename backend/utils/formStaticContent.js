@@ -24,7 +24,22 @@ I have had full opportunity to read and consider the contents of the Notice of P
 I understand that I am giving my permission to your use and disclosure of my protected health information
 in order to carry out treatment, payment activities, and healthcare operations.
 I also understand that I have the right to revoke permission.
-  `
+  `,
+
+"Registration/HIPAA Form2": `
+Private Practices: I (the patient) have the right to read the Privacy Practices. A copy of the Notice and/or this consent is available upon request and anytime on our website. The Notice provides a description of our practice’s treatment, payment activities, healthcare operations and the uses and disclosures we make of your protected health information.
+
+Purpose of Consent: I (the patient) understand and consent to the use and disclosure of my protected health information to carry out treatment, payment activities, and healthcare operations.
+
+Personal protected information cannot be shared with anyone unless otherwise allowed by HIPAA rules.
+
+Notice of Private Practices Authorization: I understand that under the Health Insurance Portability Act of 1996 (□HIPAA□) I have certain rights regarding my protected health information. I have received, read and understand your Notice of Privacy Practices. I understand that I may contact this organization at any time, at the address above to obtain a current copy of the notice of private practices. I understand that I may request in writing that you restrict how my private information is used or disclosed to carry out treatment, payment or health care operations. I also understand you are not required to agree to my requested restrictions, but, if you do agree then you are bound to abide by such restrictions.
+
+Please list any other parties who can have access to your health information. Indicate the person's name and relationship to the patient. If you do not want anyone to access your health information write n/a.
+`,
+
+
+
 };
 
 module.exports = formStaticContent;
