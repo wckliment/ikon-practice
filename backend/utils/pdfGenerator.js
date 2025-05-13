@@ -44,8 +44,47 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
     }
   }
 
-  // Section-based rendering
-  if (Array.isArray(layout.sections)) {
+ // Section-based rendering
+if (Array.isArray(layout.sections)) {
+  const isConsentForm = cleanTitle.toLowerCase().includes("consent");
+
+  if (isConsentForm) {
+    const patientSection = layout.sections.find(s => s.title === "Patient Information");
+    const signatureSection = layout.sections.find(s => s.title === "Signature");
+
+    // 1️⃣ Patient Info
+    if (patientSection) {
+      doc.font('Helvetica-Bold').fontSize(14).text(patientSection.title).moveDown(0.5);
+
+      patientSection.fields.forEach(fieldName => {
+        const label = getLabel(fieldName);
+        const field = formFields.find(f => f.FieldName === fieldName);
+        const value = field?.FieldValue || '';
+
+        doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`, { continued: true });
+        doc.font('Helvetica').text(` ${value}`);
+        doc.moveDown(0.75);
+      });
+
+      doc.moveDown(1);
+    }
+
+    // 2️⃣ Static Text
+    const staticBlock = formStaticContent[cleanTitle];
+    if (layout.staticText && staticBlock) {
+      doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
+        align: 'left',
+        lineGap: 4
+      }).moveDown(2);
+    }
+
+    // 3️⃣ Signature Section Heading (just the heading — actual signature rendering happens later)
+    if (signatureSection) {
+      doc.font('Helvetica-Bold').fontSize(14).text(signatureSection.title).moveDown(0.5);
+    }
+
+  } else {
+    // 🧾 Normal layout for all other forms
     layout.sections.forEach(section => {
       doc.font('Helvetica-Bold').fontSize(14).text(section.title).moveDown(0.5);
 
@@ -57,7 +96,6 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
         if (fieldName.toLowerCase() === 'signature') return;
 
         const label = getLabel(fieldName);
-
         const field = formFields.find(f => f.FieldName === fieldName);
         const value = field?.FieldValue || '';
 
@@ -77,7 +115,9 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
 
       doc.moveDown(1);
     });
-  } else {
+  }
+}
+  else {
     // Fallback: flat list
     formFields
       .filter(f => (f.FieldName || '').toLowerCase() !== 'signature')
@@ -95,17 +135,7 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
 console.log("📄 Static content found:", typeof formStaticContent[cleanTitle], formStaticContent[cleanTitle]?.substring?.(0, 100));
 
 
-  // Static content (bottom)
-  if (layout.staticText && layout.staticTextPosition === "bottom") {
-    const staticBlock = formStaticContent[cleanTitle];
-    if (staticBlock) {
-      doc.moveDown(2);
-      doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
-        align: 'left',
-        lineGap: 4
-      });
-    }
-  }
+  
 
   // Signature field
   const signatureField = formFields.find(f => (f.FieldName || '').toLowerCase() === 'signature');

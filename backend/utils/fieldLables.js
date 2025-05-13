@@ -101,7 +101,18 @@ CreditCardNumber: "Credit Card Number",
 ExpDate: "Expiration Date",
 CVV: "CVV",
 BillingAddress: "Billing Address",
-ZipCode: "ZIP Code",
+  ZipCode: "ZIP Code",
+
+  // Denture/Partial Repair Consent
+"dateTime.Today": "Date",
+"patient.nameFL": "Patient Name",
+"toothNum": "Tooth Number(s)",
+
+// Implant Consent
+"dateTime.Today": "Date",
+"patient.nameFL": "Patient Name",
+"toothNum": "Tooth Number(s)",
+
 
 // Signature
 signature: "Signature"

@@ -143,27 +143,51 @@ const getFormByToken = async (req, res) => {
     const { devKey, custKey } = await getKeysFromLocation(locationCode);
     const openDental = new OpenDentalService(devKey, custKey);
 
-    // 3. Get SheetDef and patient info
-    const sheetDefResult = await openDental.getSheetDef(Number(sheet_def_id));
-    const sheetDef = Array.isArray(sheetDefResult)
-      ? sheetDefResult.find(def => def.SheetDefNum === Number(sheet_def_id))
-      : sheetDefResult;
+// 3. Get the actual SheetDef by ID (directly)
 
+const result = await openDental.getSheetDef(Number(sheet_def_id));
+
+const sheetDef = Array.isArray(result)
+  ? result.find(def => def.SheetDefNum === Number(sheet_def_id))
+  : result;
+
+if (!sheetDef) {
+  console.warn(`❌ No SheetDef found for ID: ${sheet_def_id}`);
+  return res.status(400).json({ error: `This form could not be located.` });
+}
+
+console.log("📄 Matched SheetDef:", sheetDef);
+
+const rawDescription = sheetDef.Description;
+
+if (!rawDescription || !rawDescription.trim()) {
+  console.warn(`❌ SheetDef ${sheetDef.SheetDefNum} is missing a Description.`);
+  return res.status(400).json({ error: `This form cannot be loaded because it lacks a description.` });
+}
+
+
+if (!rawDescription || !rawDescription.trim()) {
+  console.warn(`❌ SheetDef ${sheetDef.SheetDefNum} is missing a Description.`);
+  return res.status(400).json({ error: `This form cannot be loaded because it lacks a description.` });
+}
+
+const descKey = rawDescription.replace(/\s+/g, ' ').trim().toLowerCase();
+
+// 4. Match form template from formTemplates using cleaned description
+const matchedTemplate = Object.entries(formTemplates).find(
+  ([key]) => key.replace(/\s+/g, ' ').trim().toLowerCase() === descKey
+)?.[1];
+
+if (!matchedTemplate) {
+  console.warn(`⚠️ No formTemplates match for description: "${rawDescription}" (normalized: "${descKey}")`);
+  console.warn("✅ Available formTemplates:", Object.keys(formTemplates));
+  return res.status(400).json({ error: `No matching form template found for: ${rawDescription}` });
+}
+
+    // 5. Fetch patient data
     const patient = await openDental.getPatient(pat_num);
 
-    // 4. Get template fields from SheetDef (to render inputs before submission)
-    const rawDescription = sheetDef?.Description || '';
-    const descKey = rawDescription.trim().toLowerCase();
-
-    const matchedTemplate = Object.entries(formTemplates).find(
-      ([key]) => key.trim().toLowerCase() === descKey
-    )?.[1] || [];
-
-    console.log('🧩 SheetDef.Description:', rawDescription);
-    console.log('🔎 Normalized Description Key:', descKey);
-    console.log('✅ Matched Template Fields:', matchedTemplate);
-
-    // 5. Return all data to frontend
+    // 6. Return all data to frontend
     res.json({
       token,
       form: {
@@ -183,6 +207,8 @@ const getFormByToken = async (req, res) => {
     res.status(500).json({ error: 'Server error while loading form.' });
   }
 };
+
+
 
 const submitForm = async (req, res) => {
   try {
@@ -208,13 +234,22 @@ const submitForm = async (req, res) => {
     const openDental = new OpenDentalService(devKey, custKey);
 
     // 3. Fetch SheetDef
-    const sheetDefResult = await openDental.getSheetDef(Number(sheet_def_id));
-    const sheetDef = Array.isArray(sheetDefResult)
-      ? sheetDefResult.find(def => def.SheetDefNum === Number(sheet_def_id))
-      : sheetDefResult;
+const result = await openDental.getSheetDef(Number(sheet_def_id));
+const sheetDef = Array.isArray(result)
+  ? result.find(def => def.SheetDefNum === Number(sheet_def_id))
+  : result;
 
-    const SheetType = sheetDef?.SheetType || 'Consent';
-    const Description = sheetDef?.Description || 'Online Form';
+if (!sheetDef) {
+  throw new Error(`❌ Could not load SheetDef for ID: ${sheet_def_id}`);
+}
+
+const rawDescription = sheetDef.Description || '';
+if (!rawDescription.trim()) {
+  throw new Error(`❌ SheetDef ${sheetDef.SheetDefNum} is missing a Description.`);
+}
+
+const SheetType = sheetDef.SheetType || 'Consent';
+const Description = sheetDef.Description;
 
     console.log("🧪 fieldResponses from frontend:");
     console.log(JSON.stringify(fieldResponses, null, 2));

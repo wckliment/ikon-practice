@@ -185,6 +185,63 @@ export const formTemplates = {
     // Signature
     { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
   ]
-}
+  },
+
+  "Denture/Partial Repair Consent": {
+    openDentalOnly: false,
+    customComponent: "ConsentForm",
+    fields: [
+      { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+      { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+      { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+      { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+    ]
+  },
+
+  "Implant Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+},
+
+  "Filling Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Crown/Bridge Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Apicoectomy Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+},
+
+
 
 };

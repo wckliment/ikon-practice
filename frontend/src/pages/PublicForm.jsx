@@ -7,6 +7,7 @@ import { formTemplates } from '../data/formTemplates';
 import fieldDisplayMap from '../data/fieldDisplayMap';
 import MedicalHistoryForm from '../forms/MedicalHistoryForm';
 import StaticContentRenderer from '../components/StaticContentRenderer';
+import ConsentForm from '../components/ConsentForm';
 
 export default function PublicForm() {
   const { token } = useParams();
@@ -64,12 +65,22 @@ export default function PublicForm() {
     fetchForm();
   }, [token]);
 
-  const handleChange = (fieldName, value) => {
+const handleChange = (fieldOrEvent, maybeValue) => {
+  if (typeof fieldOrEvent === 'object' && fieldOrEvent.target) {
+    // Called like: handleChange({ target: { name, value } })
+    const { name, value } = fieldOrEvent.target;
     setFieldValues((prev) => ({
       ...prev,
-      [fieldName]: value,
+      [name]: value,
     }));
-  };
+  } else {
+    // Called like: handleChange("FieldName", value)
+    setFieldValues((prev) => ({
+      ...prev,
+      [fieldOrEvent]: maybeValue,
+    }));
+  }
+};
 
 const handleSubmit = async (e) => {
   e.preventDefault();
@@ -79,7 +90,7 @@ const handleSubmit = async (e) => {
     const updatedFields = [];
 
     for (const [key, value] of Object.entries(fieldValues)) {
-      if (key === 'signature') continue; // handled separately
+      if (key === 'signature') continue;
 
       updatedFields.push({
         FieldName: key,
@@ -89,16 +100,14 @@ const handleSubmit = async (e) => {
       });
     }
 
-    if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
-      const sigImage = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
-      updatedFields.push({
-        FieldName: "signature",
-        FieldType: "SigBox",
-        FieldValue: sigImage,
-        IsRequired: true
-      });
-    }
-
+if (fieldValues.signature) {
+  updatedFields.push({
+    FieldName: "signature",
+    FieldType: "SigBox",
+    FieldValue: fieldValues.signature,
+    IsRequired: true
+  });
+}
     await axios.post(`/api/public-forms/submit/${token}`, {
       fieldResponses: updatedFields
     });
@@ -115,6 +124,13 @@ const handleSubmit = async (e) => {
 
   if (loading) return <div className="text-center mt-8">Loading...</div>;
   if (!form || !patient) return <div>Error loading form</div>;
+  if (!Array.isArray(form?.sheetFieldsTemplate) || form.sheetFieldsTemplate.length === 0) {
+  return (
+    <div className="text-center mt-8">
+      ⚠️ This form is currently unavailable. Please contact the office.
+    </div>
+  );
+}
 
   if (form.openDentalOnly) {
     return (
@@ -155,11 +171,59 @@ const handleSubmit = async (e) => {
     );
   }
 
+ // ✅ ConsentForm layout if customComponent is "ConsentForm"
+
+// Clean the description to avoid trailing/leading space issues
+const cleanDescription = form.sheetDef.Description.trim();
+
+console.log("🧪 Cleaned Description:", JSON.stringify(cleanDescription));
+console.log("🧪 Available formTemplates keys:", Object.keys(formTemplates));
+console.log("🧪 Available staticContentMap keys:", Object.keys(staticContentMap));
+
+const formTemplate = formTemplates[cleanDescription];
+const staticText = staticContentMap[cleanDescription];
+const getDisplayLabel = (rawFieldName) => fieldDisplayMap[rawFieldName] || rawFieldName;
+
+console.log("🧪 Loaded formTemplate:", formTemplate);
+console.log("🧪 Using customComponent:", formTemplate?.customComponent);
+console.log("🧪 ConsentForm fields:", formTemplate?.fields);
+
+
+
+
+  if (formTemplate?.customComponent === "ConsentForm") {
+  return (
+    <div className="p-4 max-w-2xl mx-auto bg-white shadow rounded">
+      <h1 className="text-xl font-bold mb-1">{form.sheetDef.Description}</h1>
+      <p className="text-sm mb-4">
+        For {patient.firstName} {patient.lastName} (DOB: {patient.birthdate})
+      </p>
+
+     <ConsentForm
+  fieldValues={fieldValues}
+  handleChange={handleChange}
+  staticText={staticText}
+  fieldLabels={fieldDisplayMap}
+  fields={formTemplate.fields}
+/>
+      <form className="mt-6" onSubmit={handleSubmit}>
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          disabled={submitting}
+        >
+          {submitting ? 'Submitting...' : 'Submit'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+
+
   // ✅ Generic fallback form rendering
-  const staticText = staticContentMap[form.sheetDef.Description];
-  const getDisplayLabel = (rawFieldName) => {
-    return fieldDisplayMap[rawFieldName] || rawFieldName;
-  };
+
+
 
 
   console.log("🧪 Form Name:", form.sheetDef.Description);

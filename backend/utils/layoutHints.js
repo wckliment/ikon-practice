@@ -146,7 +146,83 @@ const layoutHints = {
       fields: ["signature"]
     }
   ]
-}
+  },
+
+  "Denture/Partial Repair Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Implant Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Filling Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Crown/Bridge Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Apicoectomy Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+},
+
 
 };
 
