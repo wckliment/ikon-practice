@@ -122,7 +122,32 @@ const layoutHints = {
         fields: ["signature"]
       }
     ]
-  }
+  },
+
+  "Dental Insurance Secural/IAO": {
+  staticText: true,
+  staticTextPosition: "top",
+  sections: [
+    {
+      title: "Insurance & Personal Info",
+      fields: [
+        "dateToday", "FName", "LName", "Birthdate", "toothNum"
+      ]
+    },
+    {
+      title: "Credit Card Info",
+      fields: [
+        "CreditCardNumber", "ExpDate", "CVV",
+        "BillingAddress", "City", "State", "ZipCode"
+      ]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+}
+
 };
 
 module.exports = layoutHints;

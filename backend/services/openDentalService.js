@@ -626,12 +626,23 @@ async getSheetDef(sheetDefNum) {
   }
 }
 
-  async createSheet(sheetData) {
+async createSheet(sheetData) {
   try {
     console.log("🆕 Creating Sheet with data:", sheetData);
-    const response = await axios.post(`${this.baseUrl}/sheets`, sheetData, {
+    console.log("📤 Attempting to create sheet with Description:", sheetData.Description);
+
+    // 🔧 Strip out Description and SheetType if present
+    const cleanSheetData = {
+      PatNum: sheetData.PatNum,
+      SheetDefNum: sheetData.SheetDefNum,
+      DateTimeSheet: sheetData.DateTimeSheet,
+      SheetFields: sheetData.SheetFields
+    };
+
+    const response = await axios.post(`${this.baseUrl}/sheets`, cleanSheetData, {
       headers: this.headers
     });
+
     return response.data;
   } catch (error) {
     this._handleError('createSheet', error);

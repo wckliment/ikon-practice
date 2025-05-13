@@ -244,7 +244,6 @@ console.log("🧪 Static Content:", staticContentMap[form.sheetDef.Description])
           return null;
         })}
 
-        <StaticContentRenderer formName={form.sheetDef.Description} />
 
         {form.sheetFieldsTemplate?.some(field => field.FieldType === 'SigBox') && (
           <div className="mb-4 mt-6">
