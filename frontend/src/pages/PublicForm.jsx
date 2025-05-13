@@ -161,6 +161,9 @@ const handleSubmit = async (e) => {
     return fieldDisplayMap[rawFieldName] || rawFieldName;
   };
 
+
+  console.log("🧪 Form Name:", form.sheetDef.Description);
+console.log("🧪 Static Content:", staticContentMap[form.sheetDef.Description]);
   return (
     <div className="p-4 max-w-2xl mx-auto bg-white shadow rounded">
       <h1 className="text-xl font-bold mb-1">{form.sheetDef.Description}</h1>
@@ -169,6 +172,9 @@ const handleSubmit = async (e) => {
       </p>
 
       <form className="mb-6" onSubmit={handleSubmit}>
+  {form.sheetDef.Description.startsWith("Dental Insurance Secural") && (
+    <StaticContentRenderer formName={form.sheetDef.Description} />
+  )}
         {form.sheetFieldsTemplate?.map((field) => {
           const label = getDisplayLabel(field.FieldName);
           const value = fieldValues[field.FieldName] || '';

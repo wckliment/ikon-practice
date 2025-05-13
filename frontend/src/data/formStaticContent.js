@@ -40,7 +40,49 @@ Notice of Private Practices Authorization: I understand that under the Health In
     id: "accessListNote",
     text: `Please list any other parties who can have access to your health information. Indicate the person's name and relationship to the patient. If you do not want anyone to access your health information write n/a.`,
   },
-],
+  ],
+
+  "Dental Insurance Secural/IAO": [
+    {
+      id: "insuranceAssignmentOptions",
+      text: `INSURANCE ASSIGNMENT OPTIONS – Please remember that we are treating the patient and not your insurance company.
+Our responsibility is to provide the highest quality of care. Sometimes insurance companies reimburse on a different
+and lesser quality treatment and make it challenging to give up an accurate estimate.
+WHATEVER THE INS DOES NOT PAY, YOU AGREE TO BE RESPONSIBLE FOR THE DIFFERENCE.
+
+We will be happy to work with your insurance to make sure that you get the max benefits from your policy. In order
+for our office to carry your balance until the insurance pays their portion it will be necessary for you to establish
+an account with us. You may elect to fill out a credit application in our office or may elect to use your credit
+card – visa, mastercard, amex, or discover. It will only be necessary to debit this account should your insurance
+company not pay the expected amount within 30 days. Should it be necessary to debit your account we will notify you
+in writing. We will include any information we have received from your insurance so that you may use this information
+to pursue reimbursement from your insurance company. We are not responsible for collecting a disputed amount.`,
+    },
+    {
+      id: "option1",
+      text: `Option #1 – We will file your insurance for you with a secured form of payment in the case your insurance does not
+pay within 30–40 days or your insurance pays less than estimated. Should it be necessary to debit your account
+we will notify you in writing first. Your account will be debited 10 days after written notification. We will
+include any information that we have received from your insurance company and a copy of the claim that we submitted.
+You may use this information to pursue reimbursement from your insurance company. We are not responsible for
+collecting a disputed insurance amount.`,
+    },
+    {
+      id: "option2",
+      text: `Option #2 – An additional 20% of the treatment plan total will be added to your co-payment for any account not secured
+with a credit card.`,
+    },
+    {
+      id: "option3",
+      text: `Option #3 – We will be happy to provide all the necessary paperwork and you may file your own insurance.
+(Payment will be due in full at each Date of Service)`,
+    },
+    {
+      id: "medicaidNote",
+      text: `If you are an Active Medicaid Patient with us this does not apply to you.`,
+    },
+  ],
+
 
 };
 

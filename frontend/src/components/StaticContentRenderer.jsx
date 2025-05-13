@@ -2,24 +2,23 @@ import React from 'react';
 import staticContentMap from '../data/formStaticContent';
 
 export default function StaticContentRenderer({ formName }) {
-  const staticText = staticContentMap[formName];
+  const content = staticContentMap[formName];
 
-  // 🔍 Diagnostic log
-  console.log("📄 StaticContentRenderer called with:", formName);
-  console.log("📄 Matched static text:", staticText);
+  if (!content) return null;
 
-  if (!staticText) return null;
+  if (typeof content === 'string') {
+    return <p className="text-sm whitespace-pre-line mb-6">{content}</p>;
+  }
 
-  return (
-    <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line mt-6">
-      {Array.isArray(staticText)
-        ? staticText.map((block) => (
-            <p key={block.id || block.text.slice(0, 20)}>{block.text}</p>
-          ))
-        : staticText
-            .split('\n')
-            .filter((para) => para.trim().length > 0)
-            .map((para, idx) => <p key={idx}>{para.trim()}</p>)}
-    </div>
-  );
+  if (Array.isArray(content)) {
+    return (
+      <div className="text-sm whitespace-pre-line mb-6 space-y-4">
+        {content.map(block => (
+          <p key={block.id}>{block.text}</p>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
 }

@@ -132,6 +132,19 @@ const fieldDisplayMap = {
   "FormerDentistCityState": "City/State",
   "DateOfLastCleaning": "Date of last cleaning and exam",
 
+ // Dental Insurance Secural Fields
+"dateToday": "Date",
+"FName": "First Name",
+"LName": "Last Name",
+"Birthdate": "Date of Birth",
+"toothNum": "Tooth Number(s)",
+"CreditCardNumber": "Credit Card Number",
+"ExpDate": "Expiration Date",
+"CVV": "CVV",
+"BillingAddress": "Billing Address",
+"City": "City",
+"State": "State",
+"ZipCode": "ZIP Code",
 
 
 

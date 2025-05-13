@@ -162,5 +162,29 @@ export const formTemplates = {
     fields: [
       { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
     ]
-  }
+  },
+
+  "Dental Insurance Secural/IAO": {
+  openDentalOnly: false,
+  fields: [
+    { FieldName: "dateToday", FieldType: "InputField", IsRequired: false },
+    { FieldName: "FName", FieldType: "InputField", IsRequired: true },
+    { FieldName: "LName", FieldType: "InputField", IsRequired: true },
+    { FieldName: "Birthdate", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: false },
+
+    // Credit card section
+    { FieldName: "CreditCardNumber", FieldType: "InputField", IsRequired: false },
+    { FieldName: "ExpDate", FieldType: "InputField", IsRequired: false },
+    { FieldName: "CVV", FieldType: "InputField", IsRequired: false },
+    { FieldName: "BillingAddress", FieldType: "InputField", IsRequired: false },
+    { FieldName: "City", FieldType: "InputField", IsRequired: false },
+    { FieldName: "State", FieldType: "InputField", IsRequired: false },
+    { FieldName: "ZipCode", FieldType: "InputField", IsRequired: false },
+
+    // Signature
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+}
+
 };
