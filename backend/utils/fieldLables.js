@@ -91,7 +91,17 @@ PanoramicXRays: "Do you have a Panoramic x-ray or Full Mouth x-rays that are les
 BiteWingXRays: "Do you have BiteWing x-rays that are less than 1 year old?",
 FormerDentist: "Name of former Dentist",
 FormerDentistCityState: "City/State",
-DateOfLastCleaning: "Date of last cleaning and exam",
+  DateOfLastCleaning: "Date of last cleaning and exam",
+
+
+  // Dental Insurance Secural/IAO
+dateToday: "Date",
+toothNum: "Tooth Number",
+CreditCardNumber: "Credit Card Number",
+ExpDate: "Expiration Date",
+CVV: "CVV",
+BillingAddress: "Billing Address",
+ZipCode: "ZIP Code",
 
 // Signature
 signature: "Signature"
