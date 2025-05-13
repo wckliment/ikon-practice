@@ -38,6 +38,64 @@ const fieldLabels = {
   ins2GroupName: "Group Name (Policy 2)",
   ins2GroupNum: "Group Number (Policy 2)",
   misc: "Other Authorized Party",
+// Medical History – Medications
+inputMed1: "Medication 1",
+inputMed2: "Medication 2",
+inputMed3: "Medication 3",
+inputMed4: "Medication 4",
+inputMed5: "Medication 5",
+inputMed6: "Medication 6",
+inputMed7: "Medication 7",
+inputMed8: "Medication 8",
+inputMed9: "Medication 9",
+inputMed10: "Medication 10",
+
+// Medical History – Allergies
+Allergy_Anesthetic: "Anesthetic",
+Allergy_Aspirin: "Aspirin",
+Allergy_Codeine: "Codeine",
+Allergy_Ibuprofen: "Ibuprofen",
+Allergy_Iodine: "Iodine",
+Allergy_Latex: "Latex",
+Allergy_Penicillin: "Penicillin",
+Allergy_Sulfa: "Sulfa",
+Allergy_Other: "Other Allergies",
+
+// Medical History – Conditions
+Asthma: "Asthma",
+BleedingProblems: "Bleeding Problems",
+Cancer: "Cancer",
+Diabetes: "Diabetes",
+HeartMurmur: "Heart Murmur",
+HeartTrouble: "Heart Trouble",
+HighBloodPressure: "High Blood Pressure",
+JointReplacement: "Joint Replacement",
+KidneyDisease: "Kidney Disease",
+LiverDisease: "Liver Disease",
+Pregnancy: "Pregnancy",
+PsychiatricTreatment: "Psychiatric Treatment",
+RheumaticFever: "Rheumatic Fever",
+SinusTrouble: "Sinus Trouble",
+Stroke: "Stroke",
+Ulcers: "Ulcers",
+MedicalCondition_Other: "Other Medical Conditions",
+
+// Today’s Visit
+TobaccoUse: "Tobacco use? If so, what kind and how much?",
+InjectionReactions: "Unusual reaction to dental injections?",
+ReasonForVisit: "Reason for today’s visit",
+AreYouInPain: "Are you in pain?",
+
+// New Patients
+PanoramicXRays: "Do you have a Panoramic x-ray or Full Mouth x-rays that are less than 5 years old?",
+BiteWingXRays: "Do you have BiteWing x-rays that are less than 1 year old?",
+FormerDentist: "Name of former Dentist",
+FormerDentistCityState: "City/State",
+DateOfLastCleaning: "Date of last cleaning and exam",
+
+// Signature
+signature: "Signature"
+
 };
 
 module.exports = fieldLabels;

@@ -11,11 +11,68 @@ const layoutHints = {
     staticText: true,
     staticTextPosition: "bottom"
   },
-  "Medical History": {
+   "Medical History": {
     groupPatientInfoRow: true,
-    includeDate: true,
-    staticText: false,
-    staticTextPosition: null
+     includeDate: true,
+    staticText: true,
+    sections: [
+      {
+        title: "Emergency Contacts",
+        fields: [
+          "MedicalDoctor",
+          "CityState",
+          "ICEContact",
+          "ICEPhone",
+          "Relationship"
+        ]
+      },
+      {
+        title: "Medications",
+        note: "**EXISTING PATIENTS** Check the box next to any medication no longer being taken.",
+        fields: [
+          "inputMed1", "inputMed2", "inputMed3", "inputMed4", "inputMed5",
+          "inputMed6", "inputMed7", "inputMed8", "inputMed9", "inputMed10"
+        ]
+      },
+      {
+        title: "Allergies",
+        note: "Are you allergic to any of the following?",
+        fields: [
+          "Allergy_Anesthetic", "Allergy_Aspirin", "Allergy_Codeine", "Allergy_Ibuprofen",
+          "Allergy_Iodine", "Allergy_Latex", "Allergy_Penicillin", "Allergy_Sulfa",
+          "Allergy_Other"
+        ]
+      },
+      {
+        title: "Medical Conditions",
+        note: "Do you have any of the following medical conditions?",
+        fields: [
+          "Asthma", "BleedingProblems", "Cancer", "Diabetes", "HeartMurmur",
+          "HeartTrouble", "HighBloodPressure", "JointReplacement",
+          "KidneyDisease", "LiverDisease", "Pregnancy", "PsychiatricTreatment",
+          "RheumaticFever", "SinusTrouble", "Stroke", "Ulcers",
+          "MedicalCondition_Other"
+        ]
+      },
+      {
+        title: "Today’s Visit",
+        fields: [
+          "TobaccoUse", "InjectionReactions", "ReasonForVisit", "AreYouInPain"
+        ]
+      },
+      {
+        title: "New Patients",
+        note: "New Patients:",
+        fields: [
+          "PanoramicXRays", "BiteWingXRays", "FormerDentist",
+          "FormerDentistCityState", "DateOfLastCleaning"
+        ]
+      },
+      {
+        title: "Signature",
+        fields: ["signature"]
+      }
+    ]
   },
   "Registration/HIPAA Form2": {
     groupPatientInfoRow: true,

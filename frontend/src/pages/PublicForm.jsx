@@ -6,6 +6,7 @@ import staticContentMap from '../data/formStaticContent';
 import { formTemplates } from '../data/formTemplates';
 import fieldDisplayMap from '../data/fieldDisplayMap';
 import MedicalHistoryForm from '../forms/MedicalHistoryForm';
+import StaticContentRenderer from '../components/StaticContentRenderer';
 
 export default function PublicForm() {
   const { token } = useParams();
@@ -21,11 +22,8 @@ export default function PublicForm() {
     const fetchForm = async () => {
       try {
         const res = await axios.get(`/api/public-forms/fill/${token}`);
-        console.log("📦 Form response:", res.data);
-
         const sheetDef = res.data.form.sheetDef;
         const templateEntry = formTemplates[sheetDef.Description];
-
         const fields = Array.isArray(templateEntry?.fields) ? templateEntry.fields : [];
         const openDentalOnly = !!templateEntry?.openDentalOnly;
 
@@ -38,21 +36,23 @@ export default function PublicForm() {
         setPatient(res.data.patient);
 
         const initial = {};
-        fields.forEach((field, idx) => {
+        fields.forEach((field) => {
           const name = field.FieldName;
+
           if (name === 'patient.nameFL') {
-            initial[idx] = `${res.data.patient.firstName} ${res.data.patient.lastName}`;
+            initial[name] = `${res.data.patient.firstName} ${res.data.patient.lastName}`;
           } else if (name === 'patient.address') {
-            initial[idx] = res.data.patient.Address || '';
+            initial[name] = res.data.patient.Address || '';
           } else if (name === 'patient.cityStateZip') {
             const { City, State, Zip } = res.data.patient;
-            initial[idx] = [City, State, Zip].filter(Boolean).join(', ');
+            initial[name] = [City, State, Zip].filter(Boolean).join(', ');
           } else if (name === 'patient.priProvNameFL') {
-            initial[idx] = res.data.patient.ProviderName || '';
+            initial[name] = res.data.patient.ProviderName || '';
           } else {
-            initial[idx] = field.FieldValue || '';
+            initial[name] = field.FieldValue || '';
           }
         });
+
         setFieldValues(initial);
       } catch (err) {
         console.error('❌ Failed to load form:', err);
@@ -60,71 +60,58 @@ export default function PublicForm() {
         setLoading(false);
       }
     };
+
     fetchForm();
   }, [token]);
 
-  const handleChange = (idx, value) => {
+  const handleChange = (fieldName, value) => {
     setFieldValues((prev) => ({
       ...prev,
-      [idx]: value,
+      [fieldName]: value,
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setSubmitting(true);
 
-    if (form.sheetFieldsTemplate.some(f => f.FieldType === 'SigBox' && f.IsRequired)) {
-      if (sigPadRef.current?.isEmpty()) {
-        alert("Signature is required.");
-        setSubmitting(false);
-        return;
-      }
-    }
+  try {
+    const updatedFields = [];
 
-    try {
-      const reservedFieldNames = [
-        'dateTime.Today',
-        'patientName.FName',
-        'patientName.LName',
-        'birthdate',
-        'sheet.Description'
-      ];
+    for (const [key, value] of Object.entries(fieldValues)) {
+      if (key === 'signature') continue; // handled separately
 
-      const updatedFields = form.sheetFieldsTemplate
-        .map((field, idx) => ({
-          FieldName: field.FieldName || '',
-          FieldType: field.FieldType,
-          FieldValue: fieldValues[idx] || '',
-          IsRequired: field.IsRequired
-        }))
-        .filter(field =>
-          !reservedFieldNames.includes(field.FieldName) &&
-          field.FieldType !== 'SigBox'
-        );
-
-      if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
-        const sigImage = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
-        updatedFields.push({
-          FieldType: 'SigBox',
-          FieldName: 'signature',
-          FieldValue: sigImage,
-          IsRequired: true
-        });
-      }
-
-      await axios.post(`/api/public-forms/submit/${token}`, {
-        fieldResponses: updatedFields
+      updatedFields.push({
+        FieldName: key,
+        FieldType: 'InputField',
+        FieldValue: value,
+        IsRequired: false
       });
-
-      setSubmitted(true);
-    } catch (err) {
-      console.error("❌ Error submitting form:", err);
-      alert("There was an error submitting the form.");
-    } finally {
-      setSubmitting(false);
     }
-  };
+
+    if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
+      const sigImage = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
+      updatedFields.push({
+        FieldName: "signature",
+        FieldType: "SigBox",
+        FieldValue: sigImage,
+        IsRequired: true
+      });
+    }
+
+    await axios.post(`/api/public-forms/submit/${token}`, {
+      fieldResponses: updatedFields
+    });
+
+    setSubmitted(true);
+  } catch (err) {
+    console.error("❌ Error submitting form:", err);
+    alert("There was an error submitting the form.");
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   if (loading) return <div className="text-center mt-8">Loading...</div>;
   if (!form || !patient) return <div>Error loading form</div>;
@@ -149,7 +136,7 @@ export default function PublicForm() {
     );
   }
 
-  // ✅ Render Medical History Form with custom layout
+  // ✅ Custom medical history layout
   if (form.sheetDef.Description === "Medical History") {
     return (
       <div className="p-4 max-w-2xl mx-auto bg-white shadow rounded">
@@ -168,7 +155,7 @@ export default function PublicForm() {
     );
   }
 
-  // ✅ Fallback generic renderer
+  // ✅ Generic fallback form rendering
   const staticText = staticContentMap[form.sheetDef.Description];
   const getDisplayLabel = (rawFieldName) => {
     return fieldDisplayMap[rawFieldName] || rawFieldName;
@@ -182,37 +169,45 @@ export default function PublicForm() {
       </p>
 
       <form className="mb-6" onSubmit={handleSubmit}>
-        {form.sheetFieldsTemplate?.map((field, idx) => {
+        {form.sheetFieldsTemplate?.map((field) => {
           const label = getDisplayLabel(field.FieldName);
+          const value = fieldValues[field.FieldName] || '';
 
           if (field.FieldType === 'InputField') {
-            return (
-              <div key={idx} className="mb-4">
-                <label className="block text-sm font-medium mb-1">{label}</label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  value={fieldValues[idx] || ''}
-                  onChange={(e) => handleChange(idx, e.target.value)}
-                />
-              </div>
-            );
-          }
+         return (
+    <div key={field.FieldName} className="mb-4">
+      <label className="block text-sm font-medium mb-1">{label}</label>
+
+      {label === "Other Authorized Party" && (
+        <p className="text-xs text-gray-600 mb-1">
+          Please list any other parties who can have access to your health information. Indicate the person's name and relationship to the patient. If you do not want anyone to access your health information write n/a.
+        </p>
+      )}
+
+      <input
+        type="text"
+        className="w-full border border-gray-300 rounded px-3 py-2"
+        value={value}
+        onChange={(e) => handleChange(field.FieldName, e.target.value)}
+      />
+    </div>
+  );
+}
 
           if (field.FieldType === 'RadioButton') {
             const options = field.options || ['Yes', 'No'];
             return (
-              <div key={idx} className="mb-4">
+              <div key={field.FieldName} className="mb-4">
                 <label className="block text-sm font-medium mb-1">{label}</label>
                 <div className="flex gap-4 flex-wrap">
                   {options.map((option) => (
                     <label key={option} className="flex items-center gap-1">
                       <input
                         type="radio"
-                        name={`radio-${idx}`}
+                        name={`radio-${field.FieldName}`}
                         value={option}
-                        checked={fieldValues[idx] === option}
-                        onChange={() => handleChange(idx, option)}
+                        checked={value === option}
+                        onChange={() => handleChange(field.FieldName, option)}
                       />
                       {option}
                     </label>
@@ -224,12 +219,12 @@ export default function PublicForm() {
 
           if (field.FieldType === 'Select') {
             return (
-              <div key={idx} className="mb-4">
+              <div key={field.FieldName} className="mb-4">
                 <label className="block text-sm font-medium mb-1">{label}</label>
                 <select
                   className="w-full border border-gray-300 rounded px-3 py-2"
-                  value={fieldValues[idx] || ''}
-                  onChange={(e) => handleChange(idx, e.target.value)}
+                  value={value}
+                  onChange={(e) => handleChange(field.FieldName, e.target.value)}
                 >
                   <option value="">Select...</option>
                   {field.options?.map((option) => (
@@ -243,13 +238,7 @@ export default function PublicForm() {
           return null;
         })}
 
-        {staticText && (
-          <div className="text-sm text-gray-800 space-y-4 whitespace-pre-line">
-            {Array.isArray(staticText)
-              ? staticText.map((block, idx) => <p key={idx}>{block.text}</p>)
-              : staticText.split('\n').map((para, idx) => <p key={idx}>{para.trim()}</p>)}
-          </div>
-        )}
+        <StaticContentRenderer formName={form.sheetDef.Description} />
 
         {form.sheetFieldsTemplate?.some(field => field.FieldType === 'SigBox') && (
           <div className="mb-4 mt-6">
@@ -281,4 +270,3 @@ export default function PublicForm() {
     </div>
   );
 }
-
