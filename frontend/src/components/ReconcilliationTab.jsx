@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const ReconcilliationTab = ({ selectedPatient }) => {
+const ReconcilliationTab = ({ patientId }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [resolvingId, setResolvingId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!selectedPatient?.PatNum) return;
+    if (!patientId) return;
 
     const fetchEntries = async () => {
       setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`/api/reconcilliation/${selectedPatient.PatNum}`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await axios.get(`/api/reconcilliation/${patientId}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         setEntries(res.data);
       } catch (err) {
@@ -24,66 +26,95 @@ const ReconcilliationTab = ({ selectedPatient }) => {
     };
 
     fetchEntries();
-  }, [selectedPatient]);
+  }, [patientId]);
 
   const handleResolve = async (entryId) => {
+    const confirm = window.confirm("Are you sure you want to accept this updated value?");
+    if (!confirm) return;
+
+    setResolvingId(entryId);
+    setError(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.patch(`/api/reconcilliation/${entryId}/resolve`, null, {
-        headers: { Authorization: `Bearer ${token}` }
+      await axios.patch(`/api/reconcilliation/${entryId}/resolve`, null, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      setEntries(prev => prev.filter(e => e.id !== entryId));
+      setEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === entryId
+            ? { ...entry, resolved: true } // Soft-mark as resolved
+            : entry
+        )
+      );
     } catch (err) {
       console.error("❌ Failed to resolve entry:", err.message);
+      setError("Something went wrong while updating. Please try again.");
+    } finally {
+      setResolvingId(null);
     }
   };
 
-  if (!selectedPatient) return null;
+  if (!patientId) return null;
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4">
-        Reconciliation for {selectedPatient.FName} {selectedPatient.LName}
-      </h2>
+      <h2 className="text-2xl font-semibold mb-4">Reconciliation Needed</h2>
 
       {loading ? (
-        <p>Loading reconciliation entries...</p>
+        <p className="text-gray-500">Loading reconciliation entries...</p>
       ) : entries.length === 0 ? (
-        <p>No unresolved entries for this patient.</p>
+        <p className="text-gray-500">No unresolved entries for this patient.</p>
       ) : (
         <table className="min-w-full border border-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-3 py-2 text-left">Field</th>
-              <th className="px-3 py-2 text-left">Original</th>
-              <th className="px-3 py-2 text-left">Submitted</th>
-              <th className="px-3 py-2 text-left">Form</th>
-              <th className="px-3 py-2 text-left">Actions</th>
+              <th className="px-4 py-2 text-left">Field</th>
+              <th className="px-4 py-2 text-left text-blue-800">Submitted</th>
+              <th className="px-4 py-2 text-left text-gray-500">Original</th>
+              <th className="px-4 py-2 text-left">Form</th>
+              <th className="px-4 py-2 text-left">Action</th>
             </tr>
           </thead>
           <tbody>
-            {entries.map(entry => (
-              <tr key={entry.id} className="border-t">
-                <td className="px-3 py-2">{entry.field_name}</td>
-                <td className="px-3 py-2 text-gray-500">{entry.original_value || "—"}</td>
-                <td className="px-3 py-2 font-medium">{entry.submitted_value}</td>
-                <td className="px-3 py-2">{entry.form_name}</td>
-                <td className="px-3 py-2">
-                  <button
-                    onClick={() => handleResolve(entry.id)}
-                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                  >
-                    Resolve
-                  </button>
+            {entries.map((entry) => (
+              <tr
+                key={entry.id}
+                className={`border-t ${
+                  entry.resolved ? "bg-green-50 text-green-700" : ""
+                }`}
+              >
+                <td className="px-4 py-2 font-medium">{entry.field_name}</td>
+                <td className="px-4 py-2 text-blue-700">{entry.submitted_value}</td>
+                <td className="px-4 py-2 text-gray-500">
+                  {entry.original_value || "(empty)"}
+                </td>
+                <td className="px-4 py-2">{entry.form_name}</td>
+                <td className="px-4 py-2">
+                  {entry.resolved ? (
+                    <span className="text-green-600 font-semibold">Accepted</span>
+                  ) : (
+                    <button
+                      disabled={resolvingId === entry.id}
+                      onClick={() => handleResolve(entry.id)}
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {resolvingId === entry.id ? "Updating..." : "Accept"}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
+      {error && (
+        <div className="text-red-600 mt-4 font-medium text-sm">{error}</div>
+      )}
     </div>
   );
 };
 
 export default ReconcilliationTab;
+

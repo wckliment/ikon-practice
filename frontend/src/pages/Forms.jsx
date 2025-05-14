@@ -52,78 +52,78 @@ const Forms = () => {
   }, [searchPatientTerm]);
 
 
-// 📋 Fetch forms for the selected patient
-const fetchForms = async () => {
-  if (selectedPatient) {
-    try {
-      setIsLoadingForms(true);
-      const res = await axios.get(`/api/forms/patient/${selectedPatient.value}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-      });
-
-      setForms(res.data || []);
-    } catch (err) {
-      console.error("❌ Failed to fetch forms:", err);
-      setForms([]);
-    } finally {
-      setIsLoadingForms(false);
-    }
-  }
-};
-
-// 📋 Automatically fetch forms when patient is selected
-useEffect(() => {
-  fetchForms();
-}, [selectedPatient]);
-
-  useEffect(() => {
-  const fetchAvailableForms = async () => {
-    if (showSendModal) {
+  // 📋 Fetch forms for the selected patient
+  const fetchForms = async () => {
+    if (selectedPatient) {
       try {
-        const res = await axios.get("/api/forms/sheetdefs", {
+        setIsLoadingForms(true);
+        const res = await axios.get(`/api/forms/patient/${selectedPatient.value}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         });
-        setAvailableForms(res.data || []);
+
+        setForms(res.data || []);
       } catch (err) {
-        console.error("❌ Failed to fetch form templates:", err);
+        console.error("❌ Failed to fetch forms:", err);
+        setForms([]);
+      } finally {
+        setIsLoadingForms(false);
       }
     }
   };
 
-  fetchAvailableForms();
+  // 📋 Automatically fetch forms when patient is selected
+  useEffect(() => {
+    fetchForms();
+  }, [selectedPatient]);
+
+  useEffect(() => {
+    const fetchAvailableForms = async () => {
+      if (showSendModal) {
+        try {
+          const res = await axios.get("/api/forms/sheetdefs", {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+          });
+          setAvailableForms(res.data || []);
+        } catch (err) {
+          console.error("❌ Failed to fetch form templates:", err);
+        }
+      }
+    };
+
+    fetchAvailableForms();
   }, [showSendModal]);
 
   const handleSendForm = async () => {
-  try {
-    if (!selectedFormId || !selectedPatient) return;
+    try {
+      if (!selectedFormId || !selectedPatient) return;
 
-    const res = await axios.post(
-      "/api/forms/send",
-      {
-        patNum: selectedPatient.value,
-        sheetDefId: selectedFormId,
-        method: method,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      const res = await axios.post(
+        "/api/forms/send",
+        {
+          patNum: selectedPatient.value,
+          sheetDefId: selectedFormId,
+          method: method,
         },
-      }
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
+      );
 
-    alert(`✅ Form sent! Link: ${res.data.link}`);
+      alert(`✅ Form sent! Link: ${res.data.link}`);
 
 
-    setShowSendModal(false);
-    setSelectedFormId("");
-    setMethod("website");
-  } catch (err) {
-    console.error("❌ Failed to send form:", err);
-    alert("Error sending form. Check console.");
-  }
-};
+      setShowSendModal(false);
+      setSelectedFormId("");
+      setMethod("website");
+    } catch (err) {
+      console.error("❌ Failed to send form:", err);
+      alert("Error sending form. Check console.");
+    }
+  };
 
-return (
+  return (
     <div className="flex h-screen bg-[#EBEAE6]">
       <Sidebar />
       <div className="ml-20 w-full">
@@ -167,21 +167,19 @@ return (
                 {/* 🔀 Tab toggle buttons */}
                 <div className="mb-6 flex space-x-4 justify-center">
                   <button
-                    className={`px-4 py-2 rounded ${
-                      activeTab === "completed"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
+                    className={`px-4 py-2 rounded ${activeTab === "completed"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-700"
+                      }`}
                     onClick={() => setActiveTab("completed")}
                   >
                     Completed & Pending
                   </button>
                   <button
-                    className={`px-4 py-2 rounded ${
-                      activeTab === "reconciliation"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
+                    className={`px-4 py-2 rounded ${activeTab === "reconciliation"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-700"
+                      }`}
                     onClick={() => setActiveTab("reconciliation")}
                   >
                     Reconciliation
@@ -192,125 +190,130 @@ return (
                 {activeTab === "completed" ? (
                   <div className="max-w-7xl mx-auto flex space-x-10">
                     {/* ✅ Completed Forms Table */}
-                 <div className="w-1/2">
-  <h2 className="text-2xl font-bold mb-4">
-    Completed Forms for {selectedPatient.label}
-  </h2>
-  {forms.completed.length === 0 ? (
-    <p className="text-gray-500 text-sm">No completed forms.</p>
-  ) : (
-    <table className="w-full bg-white rounded shadow overflow-hidden">
-      <thead className="bg-gray-100">
-        <tr>
-          <th className="px-4 py-2 text-sm font-semibold text-gray-700">Form Name</th>
-          <th className="px-4 py-2 text-sm font-semibold text-gray-700">Completed</th>
-          <th className="px-4 py-2 text-sm font-semibold text-gray-700">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {forms.completed.map((form) => (
-          <tr key={form.SheetNum} className="border-t">
-            <td className="px-4 py-2 text-sm">{form.Description}</td>
-            <td className="px-4 py-2 text-sm">
-              {new Date(form.DateTimeSheet).toLocaleString()}
-            </td>
-            <td className="px-4 py-2 text-sm">
-              <button
-                className="text-blue-600 hover:underline"
-                onClick={() => alert("TODO: View form logic")}
-              >
-                View
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )}
-</div>
+                    <div className="w-1/2">
+                      <h2 className="text-2xl font-bold mb-4">
+                        Completed Forms for {selectedPatient.label}
+                      </h2>
+                      {forms.completed.length === 0 ? (
+                        <p className="text-gray-500 text-sm">No completed forms.</p>
+                      ) : (
+                        <table className="w-full bg-white rounded shadow overflow-hidden">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-2 text-sm font-semibold text-gray-700">Form Name</th>
+                              <th className="px-4 py-2 text-sm font-semibold text-gray-700">Completed</th>
+                              <th className="px-4 py-2 text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {forms.completed.map((form) => (
+                              <tr key={form.SheetNum} className="border-t">
+                                <td className="px-4 py-2 text-sm">{form.Description}</td>
+                                <td className="px-4 py-2 text-sm">
+                                  {new Date(form.DateTimeSheet).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-2 text-sm">
+                                  <button
+                                    className="text-blue-600 hover:underline"
+                                    onClick={() => alert("TODO: View form logic")}
+                                  >
+                                    View
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
 
-                <div className="w-1/2">
-  <h2 className="text-2xl font-bold mb-4">
-    Pending Forms for {selectedPatient.label}
-  </h2>
-  {forms.pending.length === 0 ? (
-    <p className="text-gray-500 text-sm">No pending forms.</p>
-  ) : (
-    <table className="w-full bg-white rounded shadow overflow-hidden">
-      <thead className="bg-gray-100">
-        <tr>
-          <th className="px-4 py-2 text-sm font-semibold text-gray-700">Form ID</th>
-          <th className="px-4 py-2 text-sm font-semibold text-gray-700">Sent</th>
-          <th className="px-4 py-2 text-sm font-semibold text-gray-700">Method</th>
-          <th className="px-4 py-2 text-sm font-semibold text-gray-700">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {forms.pending.map((form) => (
-          <tr key={form.id} className="border-t">
-            <td className="px-4 py-2 text-sm">{form.sheet_def_id}</td>
-            <td className="px-4 py-2 text-sm">
-              {new Date(form.sent_at).toLocaleString()}
-            </td>
-            <td className="px-4 py-2 text-sm">{form.method}</td>
-            <td className="px-4 py-2 text-sm space-x-2">
-              {form.method === "website" && (
-                <>
-                  <a
-                    href={`/forms/fill/${form.token}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    Open
-                  </a>
-                  <button
-                    onClick={() => {
-                      const origin = window.location.origin || "http://localhost:5173";
-                      const fullUrl = `${origin}/forms/fill/${form.token}`;
-                      navigator.clipboard.writeText(fullUrl);
-                      alert(`🔗 Link copied to clipboard:\n${fullUrl}`);
-                    }}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Copy Link
-                  </button>
-                </>
-              )}
-              <button
-                className="text-red-600 hover:underline"
-                onClick={async () => {
-                  if (!window.confirm("Are you sure you want to cancel this form?")) return;
-                  try {
-                    await axios.patch(
-                      `/api/forms/${form.id}/cancel`,
-                      {},
-                      {
-                        headers: {
-                          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-                        },
-                      }
-                    );
-                    alert("❌ Form cancelled.");
-                    fetchForms();
-                  } catch (err) {
-                    console.error("Error cancelling form:", err);
-                    alert("Something went wrong. Check console.");
-                  }
-                }}
-              >
-                Cancel
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )}
-</div>
+                    {/* 🕒 Pending Forms Table */}
+                    <div className="w-1/2">
+                      <h2 className="text-2xl font-bold mb-4">
+                        Pending Forms for {selectedPatient.label}
+                      </h2>
+                      {forms.pending.length === 0 ? (
+                        <p className="text-gray-500 text-sm">No pending forms.</p>
+                      ) : (
+                        <table className="w-full bg-white rounded shadow overflow-hidden">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-2 text-sm font-semibold text-gray-700">Form ID</th>
+                              <th className="px-4 py-2 text-sm font-semibold text-gray-700">Sent</th>
+                              <th className="px-4 py-2 text-sm font-semibold text-gray-700">Method</th>
+                              <th className="px-4 py-2 text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {forms.pending.map((form) => (
+                              <tr key={form.id} className="border-t">
+                                <td className="px-4 py-2 text-sm">{form.sheet_def_id}</td>
+                                <td className="px-4 py-2 text-sm">
+                                  {new Date(form.sent_at).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-2 text-sm capitalize">{form.method}</td>
+                                <td className="px-4 py-2 text-sm space-x-2">
+                                  {form.method === "website" && (
+                                    <>
+                                      <a
+                                        href={`/forms/fill/${form.token}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline"
+                                      >
+                                        Open
+                                      </a>
+                                      <button
+                                        onClick={() => {
+                                          const origin = window.location.origin || "http://localhost:5173";
+                                          const fullUrl = `${origin}/forms/fill/${form.token}`;
+                                          navigator.clipboard.writeText(fullUrl);
+                                          alert(`🔗 Link copied to clipboard:\n${fullUrl}`);
+                                        }}
+                                        className="text-blue-600 hover:underline"
+                                      >
+                                        Copy Link
+                                      </button>
+                                    </>
+                                  )}
+                                  <button
+                                    className="text-red-600 hover:underline"
+                                    onClick={async () => {
+                                      if (!window.confirm("Are you sure you want to cancel this form?")) return;
+                                      try {
+                                        await axios.patch(
+                                          `/api/forms/${form.id}/cancel`,
+                                          {},
+                                          {
+                                            headers: {
+                                              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+                                            },
+                                          }
+                                        );
+                                        alert("❌ Form cancelled.");
+                                        fetchForms();
+                                      } catch (err) {
+                                        console.error("Error cancelling form:", err);
+                                        alert("Something went wrong. Check console.");
+                                      }
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
-                ) : (
+                ) : activeTab === "reconciliation" && selectedPatient?.value ? (
                   <ReconcilliationTab patientId={selectedPatient.value} />
+                ) : (
+                  <p className="text-center text-gray-400 mt-10">
+                    Please search and select a patient above.
+                  </p>
                 )}
               </>
             ) : (
