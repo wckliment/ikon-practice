@@ -558,6 +558,25 @@ async getFormFields(sheetNum) {
   }
 }
 
+  async updatePatient(patNum, updateData) {
+  try {
+    console.log(`📝 Updating patient ${patNum} with data:`, updateData);
+
+    const response = await axios.put(
+      `${this.baseUrl}/patients/${patNum}`,
+      updateData,
+      { headers: this.headers }
+    );
+
+    console.log("✅ Patient update successful:", response.data);
+    return response.data;
+  } catch (error) {
+    this._handleError("updatePatient", error);
+    throw new Error(`Failed to update patient: ${error.message}`);
+  }
+}
+
+
 
 
 

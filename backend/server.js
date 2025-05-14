@@ -38,6 +38,8 @@ app.use("/api/appointment-requests", appointmentRequestRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/forms", formsRoutes);
 app.use("/api/public-forms", publicFormsRoutes);
+app.use("/api/reconcilliation", require("./routes/reconcilliationRoutes"));
+
 // Initialize HTTP server
 const server = http.createServer(app);
 

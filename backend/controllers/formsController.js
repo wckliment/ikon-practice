@@ -5,6 +5,8 @@ const db = require('../config/db');
 const { formTemplates } = require('../../frontend/src/data/formTemplates');
 const { generateFormPdf } = require('../utils/pdfGenerator');
 const { getDocCategory } = require('../utils/formToDocCategoryMap');
+const { hasChanged } = require('../utils/reconcilliation');
+
 
 // Fetch completed forms for a patient
 const getFormsForPatient = async (req, res) => {
@@ -288,6 +290,34 @@ console.log("📄 Description from sheetDef:", Description);
       FieldValue: field.FieldValue || '',
       IsRequired: field.IsRequired || false,
     }));
+
+// 5. Reconciliation: Compare field values with Open Dental data
+const currentPatient = await openDental.getPatient(pat_num);
+
+// Define which patient fields you want to track
+const trackableFields = [
+  'Address', 'Address2', 'City', 'State', 'Zip',
+  'HmPhone', 'WkPhone', 'WirelessPhone', 'Email'
+];
+
+for (const field of sheetFields) {
+  const { FieldName, FieldValue } = field;
+
+  if (trackableFields.includes(FieldName)) {
+    const currentValue = currentPatient[FieldName] || '';
+    if (hasChanged(FieldValue, currentValue)) {
+      await db.query(`
+        INSERT INTO reconciled_form_data
+          (patient_id, field_name, submitted_value, original_value, form_name)
+        VALUES (?, ?, ?, ?, ?)`,
+        [pat_num, FieldName, FieldValue, currentValue, Description]
+      );
+      console.log(`🔁 Queued for reconciliation: ${FieldName} = "${currentValue}" → "${FieldValue}"`);
+    }
+  }
+}
+
+
 
 
     // 5. Submit to Open Dental
