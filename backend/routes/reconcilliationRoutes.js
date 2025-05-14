@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const reconcilliationController = require("../controllers/reconcilliationController");
 const authenticateUser = require("../middleware/authMiddleware");
-const ensureOpenDental = require("../middleware/ensureOpenDental"); // ✅ import it
+const ensureOpenDental = require("../middleware/ensureOpenDental");
+const db = require("../config/db");
+
 
 // 🔒 JWT protection
 router.use(authenticateUser);
@@ -14,20 +16,47 @@ router.use(ensureOpenDental);
 router.post("/", reconcilliationController.createEntry);
 router.get("/:patNum", reconcilliationController.getPendingByPatient);
 
-// 🧪 TEMP: Test PATCH route (only for Postman)
-router.patch("/resolve-test/:patNum", async (req, res) => {
+
+router.patch("/:id/resolve", async (req, res) => {
+  const reconciliationId = req.params.id;
+
   try {
-    const patNum = req.params.patNum;
-    const { field_name, new_value } = req.body;
+    // 1. Get the reconciliation entry
+    const [rows] = await db.query(
+      `SELECT * FROM reconciled_form_data WHERE id = ? AND is_resolved = false LIMIT 1`,
+      [reconciliationId]
+    );
 
-    const payload = { [field_name]: new_value };
-    const response = await req.openDentalService.updatePatient(patNum, payload);
+    if (!rows.length) {
+      return res.status(404).json({ error: "Reconciliation entry not found or already resolved." });
+    }
 
-    res.status(200).json({ success: true, response });
+    const entry = rows[0];
+    const { patient_id, field_name, submitted_value } = entry;
+
+    // 2. Patch the value into Open Dental
+    const payload = { [field_name]: submitted_value };
+    const response = await req.openDentalService.updatePatient(patient_id, payload);
+
+    // 3. Mark as resolved in the DB
+    await db.query(
+      `UPDATE reconciled_form_data SET is_resolved = true, resolved_at = NOW() WHERE id = ?`,
+      [reconciliationId]
+    );
+
+    res.status(200).json({
+      success: true,
+      updatedField: field_name,
+      newValue: submitted_value,
+      openDentalResponse: response,
+    });
   } catch (err) {
-    console.error("❌ Test patch failed:", err.message);
+    console.error("❌ Failed to resolve reconciliation entry:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
+
+
+
 
 module.exports = router;
