@@ -19,51 +19,63 @@ export default function PublicForm() {
   const [submitted, setSubmitted] = useState(false);
   const sigPadRef = useRef(null);
 
-  useEffect(() => {
-    const fetchForm = async () => {
-      try {
-        const res = await axios.get(`/api/public-forms/fill/${token}`);
-        const sheetDef = res.data.form.sheetDef;
-        const templateEntry = formTemplates[sheetDef.Description];
-        const fields = Array.isArray(templateEntry?.fields) ? templateEntry.fields : [];
-        const openDentalOnly = !!templateEntry?.openDentalOnly;
+useEffect(() => {
+  const fetchForm = async () => {
+    try {
+      const res = await axios.get(`/api/public-forms/fill/${token}`);
+      const sheetDef = res.data.form.sheetDef;
+      const description = sheetDef.Description || '';
+      const normalizedKey = description.replace(/\s+/g, ' ').trim().toLowerCase();
 
-        setForm({
-          ...res.data.form,
-          sheetFieldsTemplate: fields,
-          openDentalOnly
-        });
+      const matchedTemplate = Object.entries(formTemplates).find(
+        ([key]) => key.replace(/\s+/g, ' ').trim().toLowerCase() === normalizedKey
+      )?.[1];
 
-        setPatient(res.data.patient);
-
-        const initial = {};
-        fields.forEach((field) => {
-          const name = field.FieldName;
-
-          if (name === 'patient.nameFL') {
-            initial[name] = `${res.data.patient.firstName} ${res.data.patient.lastName}`;
-          } else if (name === 'patient.address') {
-            initial[name] = res.data.patient.Address || '';
-          } else if (name === 'patient.cityStateZip') {
-            const { City, State, Zip } = res.data.patient;
-            initial[name] = [City, State, Zip].filter(Boolean).join(', ');
-          } else if (name === 'patient.priProvNameFL') {
-            initial[name] = res.data.patient.ProviderName || '';
-          } else {
-            initial[name] = field.FieldValue || '';
-          }
-        });
-
-        setFieldValues(initial);
-      } catch (err) {
-        console.error('❌ Failed to load form:', err);
-      } finally {
-        setLoading(false);
+      if (!matchedTemplate || !Array.isArray(matchedTemplate.fields)) {
+        console.warn(`⚠️ No matching form template for: "${description}"`);
+        setForm(null);
+        return;
       }
-    };
 
-    fetchForm();
-  }, [token]);
+      setForm({
+        ...res.data.form,
+        sheetFieldsTemplate: matchedTemplate,
+        openDentalOnly: !!matchedTemplate.openDentalOnly
+      });
+
+      console.log("✅ sheetFieldsTemplate from backend:", res.data.form.sheetFieldsTemplate);
+
+
+      setPatient(res.data.patient);
+
+      const initial = {};
+      matchedTemplate.fields.forEach((field) => {
+        const name = field.FieldName;
+        const pat = res.data.patient;
+
+        if (name === 'patient.nameFL') {
+          initial[name] = `${pat.firstName} ${pat.lastName}`;
+        } else if (name === 'patient.address') {
+          initial[name] = pat.Address || '';
+        } else if (name === 'patient.cityStateZip') {
+          initial[name] = [pat.City, pat.State, pat.Zip].filter(Boolean).join(', ');
+        } else if (name === 'patient.priProvNameFL') {
+          initial[name] = pat.ProviderName || '';
+        } else {
+          initial[name] = field.FieldValue || '';
+        }
+      });
+
+      setFieldValues(initial);
+    } catch (err) {
+      console.error('❌ Failed to load form:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchForm();
+}, [token]);
 
 const handleChange = (fieldOrEvent, maybeValue) => {
   if (typeof fieldOrEvent === 'object' && fieldOrEvent.target) {
@@ -83,7 +95,7 @@ const handleChange = (fieldOrEvent, maybeValue) => {
 };
 
 const handleSubmit = async (e) => {
-  e.preventDefault();
+  if (e?.preventDefault) e.preventDefault();
   setSubmitting(true);
 
   try {
@@ -124,7 +136,7 @@ if (fieldValues.signature) {
 
   if (loading) return <div className="text-center mt-8">Loading...</div>;
   if (!form || !patient) return <div>Error loading form</div>;
-  if (!Array.isArray(form?.sheetFieldsTemplate) || form.sheetFieldsTemplate.length === 0) {
+  if (!Array.isArray(form?.sheetFieldsTemplate?.fields) || form.sheetFieldsTemplate.fields.length === 0) {
   return (
     <div className="text-center mt-8">
       ⚠️ This form is currently unavailable. Please contact the office.
@@ -174,14 +186,24 @@ if (fieldValues.signature) {
  // ✅ ConsentForm layout if customComponent is "ConsentForm"
 
 // Clean the description to avoid trailing/leading space issues
-const cleanDescription = form.sheetDef.Description.trim();
+const cleanDescription = form.sheetDef.Description || "";
+const normalizedKey = cleanDescription.replace(/\s+/g, ' ').trim().toLowerCase();
 
-console.log("🧪 Cleaned Description:", JSON.stringify(cleanDescription));
-console.log("🧪 Available formTemplates keys:", Object.keys(formTemplates));
-console.log("🧪 Available staticContentMap keys:", Object.keys(staticContentMap));
+const formTemplate = Object.entries(formTemplates).find(
+  ([key]) => key.replace(/\s+/g, ' ').trim().toLowerCase() === normalizedKey
+)?.[1];
 
-const formTemplate = formTemplates[cleanDescription];
-const staticText = staticContentMap[cleanDescription];
+const staticTextKey = Object.keys(staticContentMap).find(
+  key => key.replace(/\s+/g, ' ').trim().toLowerCase() === normalizedKey
+);
+  const staticText = staticTextKey ? staticContentMap[staticTextKey] : null;
+// ✅ Add debug logs here
+console.log("🧪 formName:", cleanDescription);
+console.log("🧪 normalizedKey:", normalizedKey);
+console.log("🧪 matched staticTextKey:", staticTextKey);
+console.log("🧪 Static Text Found?", !!staticText);
+
+
 const getDisplayLabel = (rawFieldName) => fieldDisplayMap[rawFieldName] || rawFieldName;
 
 console.log("🧪 Loaded formTemplate:", formTemplate);
@@ -239,7 +261,7 @@ console.log("🧪 Static Content:", staticContentMap[form.sheetDef.Description])
   {form.sheetDef.Description.startsWith("Dental Insurance Secural") && (
     <StaticContentRenderer formName={form.sheetDef.Description} />
   )}
-        {form.sheetFieldsTemplate?.map((field) => {
+        {form.sheetFieldsTemplate.fields.map((field) => {
           const label = getDisplayLabel(field.FieldName);
           const value = fieldValues[field.FieldName] || '';
 
@@ -308,25 +330,35 @@ console.log("🧪 Static Content:", staticContentMap[form.sheetDef.Description])
           return null;
         })}
 
+{form.sheetFieldsTemplate.fields.some(field => field.FieldType === 'SigBox') && (
+  <div className="mb-4 mt-6">
+    <label className="block text-sm font-medium mb-1">Signature</label>
+    <SignaturePad
+      ref={sigPadRef}
+      canvasProps={{
+        className: "border border-gray-300 rounded w-full h-32"
+      }}
+      onEnd={() => {
+        const sigData = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
+        setFieldValues((prev) => ({
+          ...prev,
+          signature: sigData
+        }));
+      }}
+    />
+    <button
+      type="button"
+      className="text-sm text-blue-600 mt-1"
+      onClick={() => {
+        sigPadRef.current.clear();
+        setFieldValues((prev) => ({ ...prev, signature: '' }));
+      }}
+    >
+      Clear Signature
+    </button>
+  </div>
+)}
 
-        {form.sheetFieldsTemplate?.some(field => field.FieldType === 'SigBox') && (
-          <div className="mb-4 mt-6">
-            <label className="block text-sm font-medium mb-1">Signature</label>
-            <SignaturePad
-              ref={sigPadRef}
-              canvasProps={{
-                className: "border border-gray-300 rounded w-full h-32"
-              }}
-            />
-            <button
-              type="button"
-              className="text-sm text-blue-600 mt-1"
-              onClick={() => sigPadRef.current.clear()}
-            >
-              Clear Signature
-            </button>
-          </div>
-        )}
 
         <button
           type="submit"

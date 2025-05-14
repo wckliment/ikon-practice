@@ -233,26 +233,48 @@ const submitForm = async (req, res) => {
     const { devKey, custKey } = await getKeysFromLocation(locationCode);
     const openDental = new OpenDentalService(devKey, custKey);
 
-    // 3. Fetch SheetDef
-const result = await openDental.getSheetDef(Number(sheet_def_id));
-const sheetDef = Array.isArray(result)
-  ? result.find(def => def.SheetDefNum === Number(sheet_def_id))
-  : result;
+let sheetDef;
 
-if (!sheetDef) {
-  throw new Error(`❌ Could not load SheetDef for ID: ${sheet_def_id}`);
+// Attempt normal fetch first
+try {
+  const result = await openDental.getSheetDef(Number(sheet_def_id));
+  sheetDef = Array.isArray(result)
+    ? result.find(def => def.SheetDefNum === Number(sheet_def_id))
+    : result;
+} catch (err) {
+  console.warn(`⚠️ Failed to load SheetDefNum ${sheet_def_id} directly. Trying fallback by Description.`);
 }
+
+// Fallback: lookup by matching description (only if broken or not found)
+if (!sheetDef || sheetDef.Description?.trim() === '') {
+  console.log(`🔍 Attempting fallback SheetDef lookup by description...`);
+  const allDefs = await openDental.getSheetDefs();
+
+  const [fallbackRow] = await db.query(`SELECT description FROM forms_log WHERE id = ?`, [logEntry.id]);
+  const fallbackDesc = fallbackRow?.description?.trim().toLowerCase();
+
+  const fallbackMatch = allDefs.find(def =>
+    def.Description?.trim().toLowerCase() === fallbackDesc
+  );
+
+  if (!fallbackMatch) {
+    throw new Error(`❌ Could not find matching SheetDef by description "${fallbackDesc}"`);
+  }
+
+  sheetDef = fallbackMatch;
+  console.log(`✅ Fallback resolved to SheetDefNum: ${sheetDef.SheetDefNum}`);
+}
+
 
 const rawDescription = sheetDef.Description || '';
 if (!rawDescription.trim()) {
   throw new Error(`❌ SheetDef ${sheetDef.SheetDefNum} is missing a Description.`);
 }
 
-const SheetType = sheetDef.SheetType || 'Consent';
-const Description = sheetDef.Description;
 
-    console.log("🧪 fieldResponses from frontend:");
-    console.log(JSON.stringify(fieldResponses, null, 2));
+const Description = sheetDef.Description?.trim() || `Submitted Form ${sheetDef.SheetDefNum}`;
+console.log("📄 Description from sheetDef:", Description);
+
 
     // 4. Map fields
     const fieldTypeMap = {
@@ -269,14 +291,13 @@ const Description = sheetDef.Description;
 
 
     // 5. Submit to Open Dental
-    const fullSheetPayload = {
-      PatNum: pat_num,
-      SheetDefNum: sheetDef?.SheetDefNum,
-      SheetType,
-      Description,
-      DateTimeSheet: new Date().toISOString(),
-      SheetFields: sheetFields,
-    };
+  const fullSheetPayload = {
+  PatNum: pat_num,
+    SheetDefNum: sheetDef.SheetDefNum,
+   Description,
+  DateTimeSheet: new Date().toISOString(),
+  SheetFields: sheetFields,
+};
 
     console.log("📤 Sending Sheet to Open Dental:");
     console.log(JSON.stringify(fullSheetPayload, null, 2));

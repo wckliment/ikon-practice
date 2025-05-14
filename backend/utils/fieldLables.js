@@ -111,7 +111,10 @@ BillingAddress: "Billing Address",
 // Implant Consent
 "dateTime.Today": "Date",
 "patient.nameFL": "Patient Name",
-"toothNum": "Tooth Number(s)",
+  "toothNum": "Tooth Number(s)",
+
+  // Essix Retainer
+Arch: "Arch",
 
 
 // Signature

@@ -628,6 +628,7 @@ async getSheetDef(sheetDefNum) {
 
 async createSheet(sheetData) {
   try {
+    console.log("🧪 Description being used:", sheetData.Description);
     console.log("🆕 Creating Sheet with data:", sheetData);
     console.log("📤 Attempting to create sheet with Description:", sheetData.Description);
 
@@ -649,6 +650,7 @@ async createSheet(sheetData) {
     throw new Error(`Failed to create sheet: ${error.message}`);
   }
 }
+
 
 async getSheetFieldsBySheetNum(sheetNum) {
   try {

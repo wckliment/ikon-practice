@@ -144,7 +144,10 @@ const fieldDisplayMap = {
 "BillingAddress": "Billing Address",
 "City": "City",
 "State": "State",
-"ZipCode": "ZIP Code",
+  "ZipCode": "ZIP Code",
+
+  // Essix Retainer
+  "Arch": "Arch",
 
 
 

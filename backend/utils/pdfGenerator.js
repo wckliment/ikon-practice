@@ -11,6 +11,11 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
 
   const cleanTitle = formTitle.replace(/\s+/g, ' ').trim();
   const layout = layoutHints[cleanTitle] || {};
+  const staticBlock = formStaticContent[cleanTitle];
+
+  console.log("🧪 Injecting static text for:", cleanTitle);
+  console.log("🧪 Static Text Found:", !!staticBlock);
+  console.log("🧪 Static Text Preview:", staticBlock?.substring?.(0, 100));
 
   const getLabel = (fieldName) => fieldLabels[fieldName] || fieldName;
 
@@ -32,60 +37,11 @@ function generateFormPdf(patient, formFields, formTitle = "Patient Form") {
     doc.text(`Date: ${today}`).moveDown();
   }
 
-  // Static text (top)
-  if (layout.staticText && layout.staticTextPosition === "top") {
-    const staticBlock = formStaticContent[cleanTitle];
-    if (staticBlock) {
-      doc.moveDown(1);
-      doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
-        align: 'left',
-        lineGap: 4
-      }).moveDown(2);
-    }
-  }
-
- // Section-based rendering
-if (Array.isArray(layout.sections)) {
-  const isConsentForm = cleanTitle.toLowerCase().includes("consent");
-
-  if (isConsentForm) {
-    const patientSection = layout.sections.find(s => s.title === "Patient Information");
-    const signatureSection = layout.sections.find(s => s.title === "Signature");
-
-    // 1️⃣ Patient Info
-    if (patientSection) {
-      doc.font('Helvetica-Bold').fontSize(14).text(patientSection.title).moveDown(0.5);
-
-      patientSection.fields.forEach(fieldName => {
-        const label = getLabel(fieldName);
-        const field = formFields.find(f => f.FieldName === fieldName);
-        const value = field?.FieldValue || '';
-
-        doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`, { continued: true });
-        doc.font('Helvetica').text(` ${value}`);
-        doc.moveDown(0.75);
-      });
-
-      doc.moveDown(1);
-    }
-
-    // 2️⃣ Static Text
-    const staticBlock = formStaticContent[cleanTitle];
-    if (layout.staticText && staticBlock) {
-      doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
-        align: 'left',
-        lineGap: 4
-      }).moveDown(2);
-    }
-
-    // 3️⃣ Signature Section Heading (just the heading — actual signature rendering happens later)
-    if (signatureSection) {
-      doc.font('Helvetica-Bold').fontSize(14).text(signatureSection.title).moveDown(0.5);
-    }
-
-  } else {
-    // 🧾 Normal layout for all other forms
+  // Section-based rendering
+  if (Array.isArray(layout.sections)) {
     layout.sections.forEach(section => {
+      if (section.title === "Signature") return; // defer signature section for now
+
       doc.font('Helvetica-Bold').fontSize(14).text(section.title).moveDown(0.5);
 
       if (section.note) {
@@ -115,10 +71,42 @@ if (Array.isArray(layout.sections)) {
 
       doc.moveDown(1);
     });
-  }
-}
-  else {
-    // Fallback: flat list
+
+    // ✅ Inject static text before the Signature section
+    if (layout.staticText && ["top", "middle"].includes(layout.staticTextPosition)) {
+      console.log("📄 Injecting static text for:", cleanTitle);
+      console.log("📄 Static block exists?", !!staticBlock);
+
+      if (typeof staticBlock === "string") {
+        doc.font('Helvetica').fontSize(12).text(staticBlock.trim(), {
+          align: 'left',
+          lineGap: 4
+        }).moveDown(2);
+      }
+
+      if (Array.isArray(staticBlock)) {
+        staticBlock.forEach(block => {
+          if (typeof block.text === "string") {
+            doc.font('Helvetica').fontSize(12).text(block.text.trim(), {
+              align: 'left',
+              lineGap: 4
+            }).moveDown(1);
+          }
+        });
+      }
+
+      if (!staticBlock) {
+        console.warn(`⚠️ No static text found for ${cleanTitle}`);
+      }
+    }
+
+    // Signature Section Heading (if defined)
+    const signatureSection = layout.sections.find(s => s.title === "Signature");
+    if (signatureSection) {
+      doc.font('Helvetica-Bold').fontSize(14).text(signatureSection.title).moveDown(0.5);
+    }
+  } else {
+    // Fallback layout (flat list of fields)
     formFields
       .filter(f => (f.FieldName || '').toLowerCase() !== 'signature')
       .forEach(field => {
@@ -131,13 +119,8 @@ if (Array.isArray(layout.sections)) {
       });
   }
 
-  console.log("📄 Clean title:", cleanTitle);
-console.log("📄 Static content found:", typeof formStaticContent[cleanTitle], formStaticContent[cleanTitle]?.substring?.(0, 100));
-
-
-  
-
-  // Signature field
+  // Signature rendering
+  console.log("🧾 Available formFields:", formFields.map(f => f.FieldName));
   const signatureField = formFields.find(f => (f.FieldName || '').toLowerCase() === 'signature');
   if (signatureField) {
     doc.moveDown(1.5);

@@ -1,6 +1,7 @@
 export const formTemplates = {
   "Extraction Consent": {
     openDentalOnly: false,
+  customComponent: "ConsentForm",
     fields: [
       { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
       { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
@@ -240,8 +241,136 @@ export const formTemplates = {
     { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
     { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
   ]
+  },
+
+  "Bone Graft Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Build-Up Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Coronectomy Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Crown Lengthening Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
 },
 
+  "Essix Retainer": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "Arch", FieldType: "InputField", IsRequired: false },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
 
+  "Flipper Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "Arch", FieldType: "InputField", IsRequired: false },
+     { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Immidiate Denture": {
+    openDentalOnly: false,
+    customComponent: "ConsentForm",
+    fields: [
+      { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+      { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+      { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+      { FieldName: "Arch", FieldType: "InputField", IsRequired: false },
+      { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+    ]
+  },
+  "Incision & Drainage": {
+    openDentalOnly: false,
+    customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "Date" },
+    { FieldName: "patient.nameFL", FieldType: "PatientInfo" },
+    { FieldName: "toothNum", FieldType: "Input" },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Local Anesthesia Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "Date" },
+    { FieldName: "patient.nameFL", FieldType: "PatientInfo" },
+    { FieldName: "toothNum", FieldType: "Input" },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Nitrous Oxide Consent": {
+  openDentalOnly: false,
+  customComponent: "ConsentForm",
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "Date" },
+    { FieldName: "patient.nameFL", FieldType: "PatientInfo" },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ]
+  },
+
+  "Oral Surgery Consent": {
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "toothNum", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ],
+  customComponent: "ConsentForm"
+  },
+
+  "Orthodontic Consent": {
+  fields: [
+    { FieldName: "dateTime.Today", FieldType: "InputField", IsRequired: true },
+    { FieldName: "patient.nameFL", FieldType: "InputField", IsRequired: true },
+    { FieldName: "signature", FieldType: "SigBox", IsRequired: true }
+  ],
+  customComponent: "ConsentForm"
+},
 
 };

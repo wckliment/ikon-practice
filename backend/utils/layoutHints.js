@@ -1,4 +1,20 @@
 const layoutHints = {
+
+  "Extraction Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+},
+
   "HIPAA": {
     groupPatientInfoRow: true,
     includeDate: true,
@@ -221,8 +237,184 @@ const layoutHints = {
       fields: ["signature"]
     }
   ]
-},
+  },
 
+  "Bone Graft Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Build-Up Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+  "Coronectomy Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+"Crown Lengthening Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+"Essix Retainer": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum", "Arch"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Flipper Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum", "Arch"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+  "Immidiate Denture": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum", "Arch"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Incision & Drainage": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+      },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Local Anesthesia Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+"Nitrous Oxide Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+  "Oral Surgery Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL", "toothNum"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+  },
+
+"Orthodontic Consent": {
+  staticText: true,
+  staticTextPosition: "middle",
+  sections: [
+    {
+      title: "Patient Information",
+      fields: ["dateTime.Today", "patient.nameFL"]
+    },
+    {
+      title: "Signature",
+      fields: ["signature"]
+    }
+  ]
+},
 
 };
 
