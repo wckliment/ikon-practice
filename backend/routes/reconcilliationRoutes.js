@@ -1,3 +1,4 @@
+
 const express = require("express");
 const router = express.Router();
 const reconcilliationController = require("../controllers/reconcilliationController");
@@ -63,6 +64,24 @@ router.patch("/:id/reject", async (req, res) => {
     await db.query(
       `UPDATE reconciled_form_data SET is_resolved = true, rejected = true, resolved_at = NOW() WHERE id = ?`,
       [reconciliationId]
+    );
+
+    res.status(200).json({ success: true, message: "Entry rejected." });
+  } catch (err) {
+    console.error("❌ Failed to reject reconciliation entry:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch("/:id/reject", async (req, res) => {
+  const reconciliationId = req.params.id;
+
+  try {
+    await db.query(
+      `UPDATE reconciled_form_data
+       SET is_resolved = true, rejected = true, resolved_at = NOW(), resolved_by = ?
+       WHERE id = ?`,
+      [req.user.id, reconciliationId]
     );
 
     res.status(200).json({ success: true, message: "Entry rejected." });

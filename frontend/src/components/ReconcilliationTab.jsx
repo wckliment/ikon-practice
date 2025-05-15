@@ -55,6 +55,22 @@ const ReconcilliationTab = ({ patientId }) => {
     }
   };
 
+    const handleReject = async (entryId) => {
+  try {
+    setResolvingId(entryId);
+    const token = localStorage.getItem("token");
+    await axios.patch(`/api/reconcilliation/${entryId}/reject`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setEntries((prev) => prev.filter((e) => e.id !== entryId));
+  } catch (err) {
+    console.error("❌ Failed to reject entry:", err.message);
+  } finally {
+    setResolvingId(null);
+  }
+};
+
+
   if (!patientId) return null;
 
   return (
@@ -91,7 +107,7 @@ const ReconcilliationTab = ({ patientId }) => {
                 </td>
                 <td className="px-4 py-2">{entry.form_name}</td>
                 <td className="px-4 py-2">
-                  {entry.resolved ? (
+                  {/* {entry.resolved ? (
                     <span className="text-green-600 font-semibold">Accepted</span>
                   ) : (
                     <button
@@ -101,7 +117,27 @@ const ReconcilliationTab = ({ patientId }) => {
                     >
                       {resolvingId === entry.id ? "Updating..." : "Accept"}
                     </button>
-                  )}
+                  )} */}
+                        {entry.resolved ? (
+  <span className="text-green-600 font-semibold">Accepted</span>
+) : (
+  <div className="flex space-x-2">
+    <button
+      disabled={resolvingId === entry.id}
+      onClick={() => handleResolve(entry.id)}
+      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50"
+    >
+      {resolvingId === entry.id ? "Updating..." : "Accept"}
+    </button>
+    <button
+      disabled={resolvingId === entry.id}
+      onClick={() => handleReject(entry.id)}
+      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 disabled:opacity-50"
+    >
+      Reject
+    </button>
+  </div>
+)}
                 </td>
               </tr>
             ))}
@@ -117,4 +153,3 @@ const ReconcilliationTab = ({ patientId }) => {
 };
 
 export default ReconcilliationTab;
-
