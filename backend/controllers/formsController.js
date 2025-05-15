@@ -1,5 +1,5 @@
 const OpenDentalService = require('../services/openDentalService');
-const { getKeysFromLocation, getLocationCodeById } = require('../utils/locationUtils');
+const { getKeysFromLocation, getLocationCodeById, getLocationIdByCode } = require('../utils/locationUtils');
 const crypto = require('crypto');
 const db = require('../config/db');
 const { formTemplates } = require('../../frontend/src/data/formTemplates');
@@ -138,58 +138,55 @@ const getFormByToken = async (req, res) => {
     }
 
     const logEntry = rows[0];
-    const { sheet_def_id, pat_num, location_id } = logEntry;
+    const { sheet_def_id, pat_num, location_id, patient_metadata } = logEntry;
 
     // 2. Get API keys from location
     const locationCode = await getLocationCodeById(location_id);
     const { devKey, custKey } = await getKeysFromLocation(locationCode);
     const openDental = new OpenDentalService(devKey, custKey);
 
-// 3. Get the actual SheetDef by ID (directly)
+    // 3. Get the SheetDef
+    const result = await openDental.getSheetDef(Number(sheet_def_id));
+    const sheetDef = Array.isArray(result)
+      ? result.find(def => def.SheetDefNum === Number(sheet_def_id))
+      : result;
 
-const result = await openDental.getSheetDef(Number(sheet_def_id));
+    if (!sheetDef || !sheetDef.Description?.trim()) {
+      return res.status(400).json({ error: `This form cannot be loaded because it lacks a description.` });
+    }
 
-const sheetDef = Array.isArray(result)
-  ? result.find(def => def.SheetDefNum === Number(sheet_def_id))
-  : result;
+    const descKey = sheetDef.Description.replace(/\s+/g, ' ').trim().toLowerCase();
+    const matchedTemplate = Object.entries(formTemplates).find(
+      ([key]) => key.replace(/\s+/g, ' ').trim().toLowerCase() === descKey
+    )?.[1];
 
-if (!sheetDef) {
-  console.warn(`❌ No SheetDef found for ID: ${sheet_def_id}`);
-  return res.status(400).json({ error: `This form could not be located.` });
-}
+    if (!matchedTemplate) {
+      return res.status(400).json({ error: `No matching form template found for: ${sheetDef.Description}` });
+    }
 
-console.log("📄 Matched SheetDef:", sheetDef);
+    // 4. Get patient info
+    let patient = null;
 
-const rawDescription = sheetDef.Description;
+    if (pat_num) {
+      // Normal case: patient exists in Open Dental
+      patient = await openDental.getPatient(pat_num);
+    } else if (patient_metadata) {
+      // Fallback for public forms with no PatNum
+      const parsed = typeof patient_metadata === 'string'
+        ? JSON.parse(patient_metadata)
+        : patient_metadata;
 
-if (!rawDescription || !rawDescription.trim()) {
-  console.warn(`❌ SheetDef ${sheetDef.SheetDefNum} is missing a Description.`);
-  return res.status(400).json({ error: `This form cannot be loaded because it lacks a description.` });
-}
+      patient = {
+        PatNum: null,
+        FName: parsed.name?.split(' ')[0] || '',
+        LName: parsed.name?.split(' ').slice(1).join(' ') || '',
+        Birthdate: null,
+      };
+    } else {
+      return res.status(400).json({ error: "No patient information available for this form." });
+    }
 
-
-if (!rawDescription || !rawDescription.trim()) {
-  console.warn(`❌ SheetDef ${sheetDef.SheetDefNum} is missing a Description.`);
-  return res.status(400).json({ error: `This form cannot be loaded because it lacks a description.` });
-}
-
-const descKey = rawDescription.replace(/\s+/g, ' ').trim().toLowerCase();
-
-// 4. Match form template from formTemplates using cleaned description
-const matchedTemplate = Object.entries(formTemplates).find(
-  ([key]) => key.replace(/\s+/g, ' ').trim().toLowerCase() === descKey
-)?.[1];
-
-if (!matchedTemplate) {
-  console.warn(`⚠️ No formTemplates match for description: "${rawDescription}" (normalized: "${descKey}")`);
-  console.warn("✅ Available formTemplates:", Object.keys(formTemplates));
-  return res.status(400).json({ error: `No matching form template found for: ${rawDescription}` });
-}
-
-    // 5. Fetch patient data
-    const patient = await openDental.getPatient(pat_num);
-
-    // 6. Return all data to frontend
+    // 5. Return everything to frontend
     res.json({
       token,
       form: {
@@ -209,6 +206,7 @@ if (!matchedTemplate) {
     res.status(500).json({ error: 'Server error while loading form.' });
   }
 };
+
 
 
 
@@ -364,6 +362,77 @@ await openDental.uploadPdfToImaging({
   }
 };
 
+const generateFormToken = async (req, res) => {
+  try {
+    const { formName, method = "website", patientMetadata = {} } = req.body;
+
+    console.log("📥 generateFormToken called with:", {
+      formName,
+      method,
+      patientMetadata,
+    });
+
+    // Use Relaxation Dental’s location code
+    const locationCode = "relaxation";
+    const { devKey, custKey } = await getKeysFromLocation(locationCode);
+    const location_id = await getLocationIdByCode(locationCode); // ✅ Dynamic lookup
+
+    const openDental = new OpenDentalService(devKey, custKey);
+
+    const sheetDefs = await openDental.getSheetDefs();
+    const match = sheetDefs.find(
+      def => def.Description?.trim().toLowerCase() === formName.trim().toLowerCase()
+    );
+
+    if (!match) {
+      console.warn(`❌ No matching form found for: ${formName}`);
+      return res.status(404).json({ error: `No matching form found in Open Dental for: ${formName}` });
+    }
+
+    const sheetDefId = match.SheetDefNum;
+    const token = crypto.randomUUID();
+    const sentAt = new Date();
+
+    const patNum = null;
+    const createdBy = null;
+
+    console.log("🧪 About to insert into forms_log with:", {
+      patNum,
+      sheetDefId,
+      method,
+      sentAt,
+      token,
+      createdBy,
+      location_id,
+      patientMetadata,
+    });
+
+    await db.query(
+      `INSERT INTO forms_log
+        (pat_num, sheet_def_id, method, status, sent_at, token, created_by, location_id, patient_metadata)
+       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+      [
+        patNum,
+        sheetDefId,
+        method,
+        sentAt,
+        token,
+        createdBy,
+        location_id,
+        JSON.stringify(patientMetadata),
+      ]
+    );
+
+    const fullLink = `http://127.0.0.1:5500/forms/fill/index.html?token=${token}`;
+    console.log("✅ Token generated:", token);
+
+    res.json({ token, link: fullLink });
+  } catch (err) {
+    console.error("❌ Error generating public form token:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
 
 
@@ -375,5 +444,6 @@ module.exports = {
   getSheetDefs,
   cancelForm,
   getFormByToken,
-  submitForm
+  submitForm,
+  generateFormToken
 };
