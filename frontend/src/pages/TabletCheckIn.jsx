@@ -5,6 +5,7 @@ import ConfirmAppointment from "../components/Tablet/ConfirmAppointment";
 import CheckInChecklist from "../components/Tablet/CheckInChecklist";
 import CompletionScreen from "../components/Tablet/CompletionScreen";
 import TabletLogin from "../components/Tablet/TabletLogin";
+import PendingForms from "../components/Tablet/PendingForms"; // ✅ Import
 
 const TabletCheckIn = () => {
   const { locationCode } = useParams();
@@ -18,7 +19,6 @@ const TabletCheckIn = () => {
   useEffect(() => {
     const token = localStorage.getItem("tabletToken");
     if (token) {
-
       setUser({ token });
     }
   }, []);
@@ -41,15 +41,25 @@ const TabletCheckIn = () => {
           }}
         />
       )}
+
       {step === 2 && (
-       <ConfirmAppointment
-  appointment={appointment}
-  patient={patientData}
-  onConfirm={goToNext}
-  onReject={() => setStep(1)}
-/>
+        <ConfirmAppointment
+          appointment={appointment}
+          patient={patientData}
+          onConfirm={goToNext}
+          onReject={() => setStep(1)}
+        />
       )}
+
       {step === 3 && (
+        <PendingForms
+          patient={patientData}
+          locationCode={locationCode}
+          onComplete={goToNext}
+        />
+      )}
+
+      {step === 4 && (
         <CheckInChecklist
           patient={patientData}
           appointment={appointment}
@@ -57,7 +67,8 @@ const TabletCheckIn = () => {
           onComplete={goToNext}
         />
       )}
-      {step === 4 && <CompletionScreen locationCode={locationCode} />}
+
+      {step === 5 && <CompletionScreen locationCode={locationCode} />}
     </div>
   );
 };

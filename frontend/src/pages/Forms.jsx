@@ -62,6 +62,10 @@ const Forms = () => {
         });
 
         setForms(res.data || []);
+        setForms((prev) => ({
+  completed: prev.completed,
+  pending: prev.pending.filter((form) => form.status !== 'completed')
+}));
       } catch (err) {
         console.error("❌ Failed to fetch forms:", err);
         setForms([]);

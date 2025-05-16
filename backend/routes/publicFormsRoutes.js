@@ -11,4 +11,7 @@ router.post('/submit/:token', formsController.submitForm);
 // Generate a form token
 router.post('/generate-token', formsController.generateFormToken);
 
+// ✅ New: Fetch pending tablet forms (public)
+router.get('/pending/:patNum', formsController.getPendingTabletFormsPublic);
+
 module.exports = router;

@@ -21,10 +21,27 @@ const getFormsForPatient = async (req, res) => {
     const completedForms = await openDental.getFormsByPatient(patNum);
 
 
-    const [pendingForms] = await db.query(
-      `SELECT * FROM forms_log WHERE pat_num = ? AND status = 'pending' ORDER BY sent_at DESC`,
-      [patNum]
-    );
+  // Optional filters
+const { method, status } = req.query;
+
+let query = `SELECT id, sheet_def_id, method, sent_at, token, status FROM forms_log WHERE pat_num = ?`;
+const queryParams = [patNum];
+
+if (status === "pending") {
+  query += ` AND status = 'pending'`;
+} else if (status) {
+  query += ` AND status = ?`;
+  queryParams.push(status);
+}
+
+if (method) {
+  query += ` AND method = ?`;
+  queryParams.push(method);
+}
+
+query += ` ORDER BY sent_at DESC`;
+
+const [pendingForms] = await db.query(query, queryParams);
 
 
     res.json({
@@ -289,33 +306,35 @@ console.log("📄 Description from sheetDef:", Description);
       IsRequired: field.IsRequired || false,
     }));
 
-// 5. Reconciliation: Compare field values with Open Dental data
-const currentPatient = await openDental.getPatient(pat_num);
+// 5. Reconciliation (only if pat_num exists)
+if (pat_num) {
+  const currentPatient = await openDental.getPatient(pat_num);
 
-// Define which patient fields you want to track
-const trackableFields = [
-  'Address', 'Address2', 'City', 'State', 'Zip',
-  'HmPhone', 'WkPhone', 'WirelessPhone', 'Email'
-];
+  // Define which patient fields you want to track
+  const trackableFields = [
+    'Address', 'Address2', 'City', 'State', 'Zip',
+    'HmPhone', 'WkPhone', 'WirelessPhone', 'Email'
+  ];
 
-for (const field of sheetFields) {
-  const { FieldName, FieldValue } = field;
+  for (const field of sheetFields) {
+    const { FieldName, FieldValue } = field;
 
-  if (trackableFields.includes(FieldName)) {
-    const currentValue = currentPatient[FieldName] || '';
-    if (hasChanged(FieldValue, currentValue)) {
-      await db.query(`
-        INSERT INTO reconciled_form_data
-          (patient_id, field_name, submitted_value, original_value, form_name)
-        VALUES (?, ?, ?, ?, ?)`,
-        [pat_num, FieldName, FieldValue, currentValue, Description]
-      );
-      console.log(`🔁 Queued for reconciliation: ${FieldName} = "${currentValue}" → "${FieldValue}"`);
+    if (trackableFields.includes(FieldName)) {
+      const currentValue = currentPatient[FieldName] || '';
+      if (hasChanged(FieldValue, currentValue)) {
+        await db.query(`
+          INSERT INTO reconciled_form_data
+            (patient_id, field_name, submitted_value, original_value, form_name)
+          VALUES (?, ?, ?, ?, ?)`,
+          [pat_num, FieldName, FieldValue, currentValue, Description]
+        );
+        console.log(`🔁 Queued for reconciliation: ${FieldName} = "${currentValue}" → "${FieldValue}"`);
+      }
     }
   }
+} else {
+  console.log("📄 No PatNum — skipping reconciliation logic.");
 }
-
-
 
 
     // 5. Submit to Open Dental
@@ -330,7 +349,12 @@ for (const field of sheetFields) {
     console.log("📤 Sending Sheet to Open Dental:");
     console.log(JSON.stringify(fullSheetPayload, null, 2));
 
-    const createdSheet = await openDental.createSheet(fullSheetPayload);
+
+if (pat_num) {
+  createdSheet = await openDental.createSheet(fullSheetPayload);
+} else {
+  console.log("📭 No PatNum — skipping Open Dental Sheet creation for public form.");
+}
 
     // 6. Mark as completed in ikonPractice
     await db.query(
@@ -338,23 +362,28 @@ for (const field of sheetFields) {
       [logEntry.id]
     );
 
-    // 7. Generate PDF and upload to Open Dental Imaging
-    const patient = await openDental.getPatient(pat_num);
-    const pdfBuffer = await generateFormPdf(patient, sheetFields, Description);
-    const base64Pdf = pdfBuffer.toString('base64');
+// 7. Generate PDF and upload to Open Dental Imaging (only if patNum exists)
+if (pat_num) {
+  const patient = await openDental.getPatient(pat_num);
+  const pdfBuffer = await generateFormPdf(patient, sheetFields, Description);
+  const base64Pdf = pdfBuffer.toString('base64');
 
   const docCategory = getDocCategory(Description);
 
-await openDental.uploadPdfToImaging({
-  PatNum: pat_num,
-  rawBase64: base64Pdf,
-  extension: '.pdf',
-  Description: `${Description} (Submitted Online)`,
-  DocCategory: docCategory,
-});
+  await openDental.uploadPdfToImaging({
+    PatNum: pat_num,
+    rawBase64: base64Pdf,
+    extension: '.pdf',
+    Description: `${Description} (Submitted Online)`,
+    DocCategory: docCategory,
+  });
 
-    console.log(`✅ PDF generated and uploaded for PatNum ${pat_num}`);
-    res.json({ message: 'Form submitted and saved successfully.' });
+  console.log(`✅ PDF generated and uploaded for PatNum ${pat_num}`);
+} else {
+  console.log("📁 No PatNum — skipping upload to Open Dental Imaging for now.");
+}
+
+res.json({ message: 'Form submitted and saved successfully.' });
 
   } catch (error) {
     console.error('❌ Error in submitForm:', error);
@@ -433,6 +462,45 @@ const generateFormToken = async (req, res) => {
   }
 };
 
+const getPendingTabletFormsPublic = async (req, res) => {
+  try {
+    const { patNum } = req.params;
+
+    // Get all pending tablet forms for this patient
+    const [rows] = await db.query(
+      `SELECT token, sheet_def_id, location_id
+       FROM forms_log
+       WHERE pat_num = ? AND method = 'tablet' AND status = 'pending'
+       ORDER BY sent_at DESC`,
+      [patNum]
+    );
+
+    if (rows.length === 0) return res.json([]);
+
+    // Get Open Dental keys from first matching location (assuming all forms are same location)
+    const locationId = rows[0].location_id;
+    const locationCode = await getLocationCodeById(locationId);
+    const { devKey, custKey } = await getKeysFromLocation(locationCode);
+    const openDental = new OpenDentalService(devKey, custKey);
+
+    // Fetch all SheetDefs once
+    const allDefs = await openDental.getSheetDefs();
+
+    // Map forms with matched descriptions
+    const results = rows.map(row => {
+      const match = allDefs.find(def => def.SheetDefNum === row.sheet_def_id);
+      return {
+        token: row.token,
+        description: match?.Description || "Unknown Form"
+      };
+    });
+
+    res.json(results);
+  } catch (error) {
+    console.error("❌ Error fetching tablet forms (public):", error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 
 
@@ -445,5 +513,6 @@ module.exports = {
   cancelForm,
   getFormByToken,
   submitForm,
-  generateFormToken
+  generateFormToken,
+  getPendingTabletFormsPublic
 };
