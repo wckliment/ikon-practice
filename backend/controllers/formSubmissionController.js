@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { generateFormPdf } = require('../utils/generateFormPdf');
+const { uploadToImaging } = require('../utils/openDentalUploader');
 
 exports.submitForm = async (req, res) => {
   const formId = req.params.formId;
@@ -15,11 +16,17 @@ exports.submitForm = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Insert into custom_form_submissions
-    const [submissionResult] = await connection.query(
-      `INSERT INTO custom_form_submissions (form_id, patient_id, submitted_by_ip)
-       VALUES (?, ?, ?)`,
-      [formId, patient_id || null, submitted_by_ip || null]
-    );
+  const locationId = req.user?.location_id;
+
+if (!locationId) {
+  return res.status(400).json({ error: "Missing location_id for submission." });
+}
+
+const [submissionResult] = await connection.query(
+  `INSERT INTO custom_form_submissions (form_id, patient_id, submitted_by_ip, location_id)
+   VALUES (?, ?, ?, ?)`,
+  [formId, patient_id || null, submitted_by_ip || null, locationId]
+);
 
     const submissionId = submissionResult.insertId;
 
@@ -135,5 +142,51 @@ exports.downloadSubmissionPdf = async (req, res) => {
   } catch (err) {
     console.error("Error generating PDF:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.uploadToImaging = async (req, res) => {
+  const { submissionId } = req.params;
+
+  try {
+    // 1. Lookup submission
+    const [[submission]] = await db.query(
+      `SELECT * FROM custom_form_submissions WHERE id = ?`,
+      [submissionId]
+    );
+
+    if (!submission) {
+      return res.status(404).json({ error: "Submission not found" });
+    }
+
+    // 2. Lookup answers with metadata
+    const [answers] = await db.query(
+      `SELECT a.value, f.label, f.field_type, f.options
+       FROM custom_form_answers a
+       JOIN custom_form_fields f ON a.field_id = f.id
+       WHERE a.submission_id = ?`,
+      [submissionId]
+    );
+
+    const parsedAnswers = answers.map(a => ({
+      ...a,
+      options: a.options ? JSON.parse(a.options) : null
+    }));
+
+    // 3. Generate PDF
+    const pdfBuffer = await generateFormPdf(submission, parsedAnswers, "Custom Form Submission");
+
+    // 4. Upload to Open Dental Imaging
+    const result = await uploadToImaging({
+      patNum: submission.patient_id,
+      locationId: submission.location_id,
+      buffer: pdfBuffer,
+      description: "Custom Form Submission"
+    });
+
+    res.status(200).json({ success: true, upload: result });
+  } catch (err) {
+    console.error("❌ Imaging upload error:", err);
+    res.status(500).json({ error: "Failed to upload to imaging." });
   }
 };
