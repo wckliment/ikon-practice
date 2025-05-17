@@ -1,0 +1,65 @@
+const PDFDocument = require('pdfkit');
+
+/**
+ * Generates a PDF buffer from a custom form submission.
+ * @param {Object} submission - Metadata about the submission
+ * @param {Array} answers - List of submitted answers, each with label, field_type, value, etc.
+ * @param {String} formTitle - Optional title to display on the PDF
+ * @returns {Promise<Buffer>}
+ */
+function generateFormPdf(submission, answers, formTitle = 'Submitted Form') {
+  const doc = new PDFDocument({ margin: 50 });
+  const chunks = [];
+
+  doc.on('data', chunk => chunks.push(chunk));
+  doc.on('end', () => {});
+
+  // Title
+  doc.font('Helvetica-Bold').fontSize(18).text(formTitle, { align: 'center' }).moveDown(1.5);
+
+  // Submission metadata
+  doc.font('Helvetica').fontSize(12);
+  doc.text(`Submission ID: ${submission.id}`);
+  doc.text(`Patient ID: ${submission.patient_id || 'N/A'}`);
+  doc.text(`Submitted At: ${new Date(submission.submitted_at).toLocaleString()}`);
+  doc.moveDown();
+
+  // Render all form answers
+  answers.forEach((field) => {
+    const { label, value, field_type } = field;
+
+    if (!label) return;
+
+    if (field_type === 'signature' && value?.startsWith('data:image/png;base64,')) {
+      doc.moveDown(1.5);
+      doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`).moveDown(0.5);
+
+      try {
+        const base64Data = value.replace(/^data:image\/png;base64,/, '');
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        doc.image(imageBuffer, {
+          fit: [300, 80],
+          align: 'left'
+        }).moveDown(1);
+      } catch (err) {
+        console.warn("⚠️ Signature image failed:", err.message);
+        doc.font('Helvetica').text('[Signed]');
+        doc.moveDown(1);
+      }
+    } else {
+      doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`, { continued: true });
+      doc.font('Helvetica').text(` ${value || ''}`).moveDown(1);
+    }
+  });
+
+  doc.end();
+
+  return new Promise((resolve) => {
+    doc.on('end', () => {
+      const pdfBuffer = Buffer.concat(chunks);
+      resolve(pdfBuffer);
+    });
+  });
+}
+
+module.exports = { generateFormPdf };

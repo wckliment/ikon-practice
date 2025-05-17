@@ -10,6 +10,8 @@ const appointmentRequestRoutes = require("./routes/appointmentRequestRoutes");
 const notesRoutes = require("./routes/notesRoutes");
 const formsRoutes = require("./routes/formsRoutes");
 const publicFormsRoutes = require("./routes/publicFormsRoutes");
+const formTemplatesRoutes = require("./routes/formTemplatesRoutes");
+const formSubmissionRoutes = require("./routes/formSubmissionRoutes");
 
 const app = express();
 
@@ -36,7 +38,9 @@ app.use("/api/poll", require("./routes/pollRoutes"));
 app.use("/api/messages/hidden", require("./routes/hiddenMessagesRoutes"));
 app.use("/api/appointment-requests", appointmentRequestRoutes);
 app.use("/api/notes", notesRoutes);
-app.use("/api/forms", formsRoutes);
+// app.use("/api/forms", formsRoutes); //Legacy route — now deprecated
+app.use("/api/forms", formTemplatesRoutes);
+app.use("/api/forms/:formId/submissions", formSubmissionRoutes);
 app.use("/api/public-forms", publicFormsRoutes);
 app.use("/api/reconcilliation", require("./routes/reconcilliationRoutes"));
 
