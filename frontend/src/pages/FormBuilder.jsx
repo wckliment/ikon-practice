@@ -21,13 +21,13 @@ export default function FormBuilder() {
     const newField = {
       label,
       fieldType,
-      required,
+      required: fieldType !== "static_text" ? required : false,
       options: fieldType === "radio" || fieldType === "checkbox" ? ["Yes", "No"] : null,
     };
 
     setFields([...fields, newField]);
     setLabel("");
-    setFieldType("text");
+    setFieldType(fieldType === "static_text" ? "static_text" : "text");
     setRequired(false);
   };
 
@@ -113,17 +113,21 @@ export default function FormBuilder() {
           <option value="checkbox">checkbox</option>
           <option value="textarea">textarea</option>
           <option value="signature">signature</option>
+          <option value="static_text">static text</option>
         </select>
 
-        <div className="flex items-center mb-3">
-          <input
-            type="checkbox"
-            checked={required}
-            onChange={(e) => setRequired(e.target.checked)}
-            className="mr-2"
-          />
-          <label>Required</label>
-        </div>
+      {fieldType !== "static_text" && (
+  <div className="flex items-center mb-3">
+    <input
+      type="checkbox"
+      checked={required}
+      onChange={(e) => setRequired(e.target.checked)}
+      className="mr-2"
+    />
+    <label>Required</label>
+  </div>
+)}
+
 
         <button
           onClick={handleAddField}
@@ -151,14 +155,20 @@ export default function FormBuilder() {
           key={index}
           className="border p-2 rounded flex justify-between items-center"
         >
-          <span>
-            {index + 1}. {field.label} ({field.fieldType})
-            {field.options && (
-              <span className="ml-2 text-sm text-gray-600">
-                - {field.options.join(", ")}
-              </span>
-            )}
-          </span>
+        {field.fieldType === "static_text" ? (
+  <span className="italic text-gray-700">
+    📌 Static Text: “{field.label}”
+  </span>
+) : (
+  <span>
+    {index + 1}. {field.label} ({field.fieldType})
+    {field.options && (
+      <span className="ml-2 text-sm text-gray-600">
+        - {field.options.join(", ")}
+      </span>
+    )}
+  </span>
+)}
           <div className="space-x-1">
             <button
               onClick={() => moveField(index, -1)}

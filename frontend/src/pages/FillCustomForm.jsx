@@ -33,12 +33,17 @@ export default function FillCustomForm() {
   const handleSubmit = async () => {
     try {
       const payload = {
-        patient_id: patient?.id || null, // 🔁 Will be null if anonymous
-        submitted_by_ip: "192.168.1.55", // 🔧 Replace if needed
-        answers: Object.entries(answers).map(([fieldId, value]) => ({
-          field_id: parseInt(fieldId),
-          value,
-        })),
+        patient_id: patient?.id || null,
+        submitted_by_ip: "192.168.1.55",
+        answers: Object.entries(answers)
+          .filter(([fieldId]) => {
+            const f = form.fields.find((f) => f.id === parseInt(fieldId));
+            return f?.field_type !== "static_text";
+          })
+          .map(([fieldId, value]) => ({
+            field_id: parseInt(fieldId),
+            value,
+          })),
       };
 
       await axios.post(`/api/forms/${form.id}/submissions`, payload, {
@@ -68,39 +73,50 @@ export default function FillCustomForm() {
 
       <form className="space-y-6">
         {form.fields.map((field) => (
-          <div key={field.id}>
-            <label className="block font-semibold mb-1">{field.label}</label>
-            {field.field_type === "text" && (
-              <input
-                type="text"
-                value={answers[field.id] || ""}
-                onChange={(e) => handleInputChange(field.id, e.target.value)}
-                className="w-full border px-3 py-2 rounded"
-              />
-            )}
-            {field.field_type === "textarea" && (
-              <textarea
-                value={answers[field.id] || ""}
-                onChange={(e) => handleInputChange(field.id, e.target.value)}
-                className="w-full border px-3 py-2 rounded"
-              />
-            )}
-            {field.field_type === "radio" && Array.isArray(field.options) && (
-              <div className="space-x-4">
-                {field.options.map((opt) => (
-                  <label key={opt} className="inline-flex items-center">
-                    <input
-                      type="radio"
-                      name={`field-${field.id}`}
-                      value={opt}
-                      checked={answers[field.id] === opt}
-                      onChange={() => handleInputChange(field.id, opt)}
-                      className="mr-1"
-                    />
-                    {opt}
-                  </label>
-                ))}
+          <div key={field.id} className="mb-4">
+            {field.field_type === "static_text" ? (
+              <div className="bg-gray-100 text-gray-700 p-3 rounded italic whitespace-pre-line">
+                {field.label}
               </div>
+            ) : (
+              <>
+                <label className="block font-semibold mb-1">{field.label}</label>
+
+                {field.field_type === "text" && (
+                  <input
+                    type="text"
+                    value={answers[field.id] || ""}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                )}
+
+                {field.field_type === "textarea" && (
+                  <textarea
+                    value={answers[field.id] || ""}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    className="w-full border px-3 py-2 rounded"
+                  />
+                )}
+
+                {field.field_type === "radio" && Array.isArray(field.options) && (
+                  <div className="space-x-4">
+                    {field.options.map((opt) => (
+                      <label key={opt} className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name={`field-${field.id}`}
+                          value={opt}
+                          checked={answers[field.id] === opt}
+                          onChange={() => handleInputChange(field.id, opt)}
+                          className="mr-1"
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         ))}
