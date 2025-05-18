@@ -15,6 +15,7 @@ import Forms from "./pages/Forms";
 import PracticeAnalytics from "./pages/PracticeAnalytics";
 import PublicForm from "./pages/PublicForm";
 import PendingForms from "./components/Tablet/PendingForms";
+import FormBuilder from "./pages/FormBuilder";
 
 
 
@@ -36,7 +37,8 @@ export default function App() {
         <Route path="/analytics" element={<PracticeAnalytics />} />
         <Route path="/forms/fill/:token" element={<PublicForm />} />
         <Route path="/tablet-checkin/:locationCode/forms" element={<PendingForms />} />
-       <Route path="/tablet-checkin/:locationCode/form/:token" element={<PublicForm isTablet />} />
+        <Route path="/tablet-checkin/:locationCode/form/:token" element={<PublicForm isTablet />} />
+        <Route path="/forms/builder" element={<FormBuilder />} />
 
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />

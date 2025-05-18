@@ -137,19 +137,30 @@ const Forms = () => {
             <h1 className="text-5xl font-bold text-gray-800 -mt-5">Forms</h1>
           </div>
 
-          {/* 🧠 Patient search */}
-          <div className="max-w-md mx-auto mb-10">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search Patient
-            </label>
-            <ReactSelect
-              placeholder="Start typing to search patients..."
-              isLoading={loadingPatients}
-              options={patientOptions}
-              onInputChange={(input) => setSearchPatientTerm(input)}
-              onChange={(selected) => setSelectedPatient(selected)}
-              value={selectedPatient}
-            />
+{/* 🧠 Search + Create New Form */}
+<div className="flex items-end justify-center gap-4 mb-10">
+  <div className="w-full max-w-md">
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Search Patient
+    </label>
+    <ReactSelect
+      placeholder="Start typing to search patients..."
+      isLoading={loadingPatients}
+      options={patientOptions}
+      onInputChange={(input) => setSearchPatientTerm(input)}
+      onChange={(selected) => setSelectedPatient(selected)}
+      value={selectedPatient}
+    />
+  </div>
+
+  <a
+    href="/forms/builder"
+    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded whitespace-nowrap"
+  >
+    ➕ Create New Form
+  </a>
+</div>
+
             {selectedPatient && (
               <div className="mt-4">
                 <button
@@ -160,7 +171,7 @@ const Forms = () => {
                 </button>
               </div>
             )}
-          </div>
+          
 
           {/* 📋 Forms Tab Layout */}
           <div className="px-6">

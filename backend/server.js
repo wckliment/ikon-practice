@@ -13,6 +13,7 @@ const publicFormsRoutes = require("./routes/publicFormsRoutes");
 const formTemplatesRoutes = require("./routes/formTemplatesRoutes");
 const formSubmissionRoutes = require("./routes/formSubmissionRoutes");
 
+
 const app = express();
 
 // Middleware
@@ -43,6 +44,7 @@ app.use("/api/forms", formTemplatesRoutes);
 app.use("/api/forms/:formId/submissions", formSubmissionRoutes);
 app.use("/api/public-forms", publicFormsRoutes);
 app.use("/api/reconcilliation", require("./routes/reconcilliationRoutes"));
+app.use("/api/custom-form-tokens", require("./routes/customFormTokenRoutes"));
 
 // Initialize HTTP server
 const server = http.createServer(app);
