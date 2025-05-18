@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import SignaturePad from "react-signature-canvas";
 
 export default function FillCustomForm() {
   const { token } = useParams();
@@ -9,6 +10,7 @@ export default function FillCustomForm() {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [groupedSections, setGroupedSections] = useState([]);
+  const signaturePads = useRef({});
 
   useEffect(() => {
     const fetchFormByToken = async () => {
@@ -18,7 +20,6 @@ export default function FillCustomForm() {
         setForm({ ...form, fields });
         setPatient(patient);
 
-        // Group fields by section_title
         const bySection = {};
         fields.forEach((field) => {
           const title = field.section_title || "General";
@@ -26,12 +27,11 @@ export default function FillCustomForm() {
           bySection[title].push(field);
         });
 
-        const grouped = Object.entries(bySection).map(
-          ([sectionTitle, fields]) => ({
-            sectionTitle,
-            fields,
-          })
-        );
+        const grouped = Object.entries(bySection).map(([sectionTitle, fields]) => ({
+          sectionTitle,
+          fields,
+        }));
+
         setGroupedSections(grouped);
         setLoading(false);
       } catch (err) {
@@ -49,10 +49,24 @@ export default function FillCustomForm() {
 
   const handleSubmit = async () => {
     try {
+      // Extract signature pad values as base64
+      const signatureData = {};
+      Object.keys(signaturePads.current).forEach((fieldId) => {
+        const pad = signaturePads.current[fieldId];
+        if (pad && !pad.isEmpty()) {
+          signatureData[fieldId] = pad.getTrimmedCanvas().toDataURL("image/png");
+        }
+      });
+
+      const combinedAnswers = {
+        ...answers,
+        ...signatureData,
+      };
+
       const payload = {
         patient_id: patient?.id || null,
-        submitted_by_ip: "192.168.1.55", // Replace if you want to collect real IP
-        answers: Object.entries(answers)
+        submitted_by_ip: "192.168.1.55",
+        answers: Object.entries(combinedAnswers)
           .filter(([fieldId]) => {
             const f = form.fields.find((f) => f.id === parseInt(fieldId));
             return f?.field_type !== "static_text";
@@ -103,12 +117,14 @@ export default function FillCustomForm() {
                   </div>
                 ) : (
                   <>
-                    <label className="block font-semibold mb-1">
-                      {field.label}
-                      {Boolean(field.is_required) && (
-                        <span className="text-red-500 ml-1">*</span>
-                      )}
-                    </label>
+                   <label className="block font-semibold mb-1">
+ {field.label}
+  {field.is_required === 1 && (
+    <span className="text-red-500 ml-1">*</span>
+  )}
+</label>
+
+
 
                     {field.field_type === "text" && (
                       <input
@@ -164,8 +180,22 @@ export default function FillCustomForm() {
                     )}
 
                     {field.field_type === "signature" && (
-                      <div className="border border-dashed py-4 px-2 text-center text-gray-500">
-                        🖋️ Signature Pad Placeholder (integrate react-signature-canvas)
+                      <div>
+                        <SignaturePad
+                          ref={(ref) => (signaturePads.current[field.id] = ref)}
+                          canvasProps={{
+                            width: 400,
+                            height: 150,
+                            className: "border border-gray-300 rounded bg-white",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => signaturePads.current[field.id]?.clear()}
+                          className="mt-2 px-3 py-1 bg-gray-200 rounded"
+                        >
+                          Clear
+                        </button>
                       </div>
                     )}
                   </>
@@ -186,4 +216,3 @@ export default function FillCustomForm() {
     </div>
   );
 }
-
