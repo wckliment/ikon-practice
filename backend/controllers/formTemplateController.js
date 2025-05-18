@@ -24,19 +24,21 @@ exports.createFormTemplate = async (req, res) => {
 
     // 2. Insert each field into custom_form_fields
     const fieldPromises = fields.map(field => {
-      const { label, field_type, is_required, field_order, options } = field;
+      const { label, field_type, is_required, field_order, options, section_title } = field;
+
 
       return connection.query(
         `INSERT INTO custom_form_fields
-         (form_id, label, field_type, is_required, field_order, options)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+         (form_id, label, field_type, is_required, field_order, options, section_title)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           formId,
           label,
           field_type,
           is_required ? 1 : 0,
           field_order || 0,
-          options ? JSON.stringify(options) : null
+          options ? JSON.stringify(options) : null,
+          section_title || null
         ]
       );
     });
@@ -72,7 +74,7 @@ exports.getFormTemplateById = async (req, res) => {
     if (!form) return res.status(404).json({ error: "Form not found" });
 
     const [fields] = await db.query(
-      `SELECT id, label, field_type, is_required, field_order, options
+      `SELECT id, label, field_type, is_required, field_order, options, section_title
        FROM custom_form_fields
        WHERE form_id = ?
        ORDER BY field_order ASC`,

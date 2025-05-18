@@ -8,6 +8,7 @@ export default function FillCustomForm() {
   const [patient, setPatient] = useState(null);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
+  const [groupedSections, setGroupedSections] = useState([]);
 
   useEffect(() => {
     const fetchFormByToken = async () => {
@@ -16,6 +17,22 @@ export default function FillCustomForm() {
         const { form, fields, patient } = res.data;
         setForm({ ...form, fields });
         setPatient(patient);
+
+        // Group fields by section_title
+        const bySection = {};
+        fields.forEach((field) => {
+          const title = field.section_title || "General";
+          if (!bySection[title]) bySection[title] = [];
+          bySection[title].push(field);
+        });
+
+        const grouped = Object.entries(bySection).map(
+          ([sectionTitle, fields]) => ({
+            sectionTitle,
+            fields,
+          })
+        );
+        setGroupedSections(grouped);
         setLoading(false);
       } catch (err) {
         console.error("Failed to load form by token:", err);
@@ -34,7 +51,7 @@ export default function FillCustomForm() {
     try {
       const payload = {
         patient_id: patient?.id || null,
-        submitted_by_ip: "192.168.1.55",
+        submitted_by_ip: "192.168.1.55", // Replace if you want to collect real IP
         answers: Object.entries(answers)
           .filter(([fieldId]) => {
             const f = form.fields.find((f) => f.id === parseInt(fieldId));
@@ -72,52 +89,89 @@ export default function FillCustomForm() {
       )}
 
       <form className="space-y-6">
-        {form.fields.map((field) => (
-          <div key={field.id} className="mb-4">
-            {field.field_type === "static_text" ? (
-              <div className="bg-gray-100 text-gray-700 p-3 rounded italic whitespace-pre-line">
-                {field.label}
-              </div>
-            ) : (
-              <>
-                <label className="block font-semibold mb-1">{field.label}</label>
+        {groupedSections.map((section, sectionIdx) => (
+          <div key={sectionIdx} className="mb-6">
+            <h3 className="text-lg font-bold text-blue-700 mb-2">
+              {section.sectionTitle}
+            </h3>
 
-                {field.field_type === "text" && (
-                  <input
-                    type="text"
-                    value={answers[field.id] || ""}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                )}
-
-                {field.field_type === "textarea" && (
-                  <textarea
-                    value={answers[field.id] || ""}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
-                    className="w-full border px-3 py-2 rounded"
-                  />
-                )}
-
-                {field.field_type === "radio" && Array.isArray(field.options) && (
-                  <div className="space-x-4">
-                    {field.options.map((opt) => (
-                      <label key={opt} className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name={`field-${field.id}`}
-                          value={opt}
-                          checked={answers[field.id] === opt}
-                          onChange={() => handleInputChange(field.id, opt)}
-                          className="mr-1"
-                        />
-                        {opt}
-                      </label>
-                    ))}
+            {section.fields.map((field) => (
+              <div key={field.id} className="mb-4">
+                {field.field_type === "static_text" ? (
+                  <div className="bg-gray-100 text-gray-700 p-3 rounded italic whitespace-pre-line">
+                    {field.label}
                   </div>
+                ) : (
+                  <>
+                    <label className="block font-semibold mb-1">
+                      {field.label}
+                      {Boolean(field.is_required) && (
+                        <span className="text-red-500 ml-1">*</span>
+                      )}
+                    </label>
+
+                    {field.field_type === "text" && (
+                      <input
+                        type="text"
+                        value={answers[field.id] || ""}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        className="w-full border px-3 py-2 rounded"
+                      />
+                    )}
+
+                    {field.field_type === "textarea" && (
+                      <textarea
+                        value={answers[field.id] || ""}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        className="w-full border px-3 py-2 rounded"
+                      />
+                    )}
+
+                    {field.field_type === "radio" && Array.isArray(field.options) && (
+                      <div className="space-x-4">
+                        {field.options.map((opt) => (
+                          <label key={opt} className="inline-flex items-center">
+                            <input
+                              type="radio"
+                              name={`field-${field.id}`}
+                              value={opt}
+                              checked={answers[field.id] === opt}
+                              onChange={() => handleInputChange(field.id, opt)}
+                              className="mr-1"
+                            />
+                            {opt}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {field.field_type === "checkbox" && (
+                      <input
+                        type="checkbox"
+                        checked={answers[field.id] || false}
+                        onChange={(e) => handleInputChange(field.id, e.target.checked)}
+                        className="mr-2"
+                      />
+                    )}
+
+                    {field.field_type === "date" && (
+                      <input
+                        type="date"
+                        value={answers[field.id] || ""}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        className="w-full border px-3 py-2 rounded"
+                      />
+                    )}
+
+                    {field.field_type === "signature" && (
+                      <div className="border border-dashed py-4 px-2 text-center text-gray-500">
+                        🖋️ Signature Pad Placeholder (integrate react-signature-canvas)
+                      </div>
+                    )}
+                  </>
                 )}
-              </>
-            )}
+              </div>
+            ))}
           </div>
         ))}
 
@@ -132,3 +186,4 @@ export default function FillCustomForm() {
     </div>
   );
 }
+

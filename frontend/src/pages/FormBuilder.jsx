@@ -1,4 +1,3 @@
-// frontend/src/pages/FormBuilder.jsx
 import React, { useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -9,7 +8,10 @@ export default function FormBuilder() {
   const [label, setLabel] = useState("");
   const [fieldType, setFieldType] = useState("text");
   const [required, setRequired] = useState(false);
-  const [fields, setFields] = useState([]);
+  const [sections, setSections] = useState([
+    { sectionTitle: "Untitled Section 1", fields: [] }
+  ]);
+  const [selectedSection, setSelectedSection] = useState(0);
   const currentUser = useSelector((state) => state.auth.user);
 
   const handleAddField = () => {
@@ -22,70 +24,88 @@ export default function FormBuilder() {
       label,
       fieldType,
       required: fieldType !== "static_text" ? required : false,
-      options: fieldType === "radio" || fieldType === "checkbox" ? ["Yes", "No"] : null,
+      options:
+        fieldType === "radio" || fieldType === "checkbox"
+          ? ["Yes", "No"]
+          : null,
     };
 
-    setFields([...fields, newField]);
+    const updatedSections = [...sections];
+
+    if (
+      selectedSection === null ||
+      isNaN(selectedSection) ||
+      !updatedSections[selectedSection]
+    ) {
+      toast.error("Please select a valid section.");
+      return;
+    }
+
+    const updatedFields = [
+      ...updatedSections[selectedSection].fields,
+      newField,
+    ];
+
+    updatedSections[selectedSection] = {
+      ...updatedSections[selectedSection],
+      fields: updatedFields,
+    };
+
+    setSections(updatedSections);
+
     setLabel("");
-    setFieldType(fieldType === "static_text" ? "static_text" : "text");
+    setFieldType("text");
     setRequired(false);
   };
 
+  const handleAddSection = () => {
+    setSections([
+      ...sections,
+      { sectionTitle: `Untitled Section ${sections.length + 1}`, fields: [] }
+    ]);
+    setSelectedSection(sections.length);
+  };
+
   const handleSaveForm = async () => {
-    if (!formName.trim() || fields.length === 0) {
+    if (!formName.trim() || sections.every(sec => sec.fields.length === 0)) {
       toast.error("Form name and at least one field are required.");
       return;
     }
 
     try {
-        const userId = currentUser?.id;
-
+      const userId = currentUser?.id;
       const payload = {
         name: formName,
         description: "",
         created_by: userId || 1,
-        fields: fields.map((f, index) => ({
-          label: f.label,
-          field_type: f.fieldType,
-          is_required: f.required,
-          field_order: index + 1,
-          options: f.options || null,
-        })),
+        fields: sections.flatMap((section, sectionIdx) =>
+          section.fields.map((f, fieldIdx) => ({
+            label: f.label,
+            field_type: f.fieldType,
+            is_required: f.required,
+            field_order: fieldIdx + 1,
+            section_title: section.sectionTitle,
+            options: f.options || null,
+          }))
+        ),
       };
 
       await axios.post("/api/forms", payload);
       toast.success("✅ Form saved!");
       setFormName("");
-      setFields([]);
+      setSections([{ sectionTitle: "Untitled Section 1", fields: [] }]);
     } catch (err) {
       console.error("❌ Save failed:", err);
       toast.error("Failed to save form.");
     }
   };
 
-  const moveField = (index, direction) => {
-    const updated = [...fields];
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= updated.length) return;
-    const temp = updated[index];
-    updated[index] = updated[newIndex];
-    updated[newIndex] = temp;
-    setFields(updated);
-  };
-
-  const removeField = (index) => {
-    const updated = [...fields];
-    updated.splice(index, 1);
-    setFields(updated);
-  };
-
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Left Panel - Add New Field */}
       <div className="border p-4 rounded shadow bg-white">
-        <h2 className="text-lg font-semibold mb-4">🧱 Add New Field</h2>
+        <h2 className="text-lg font-semibold mb-4">Add New Field</h2>
 
-        <label className="block font-medium mb-1">📝 Form Name:</label>
+        <label className="block font-medium mb-1">Form Name:</label>
         <input
           type="text"
           value={formName}
@@ -114,99 +134,171 @@ export default function FormBuilder() {
           <option value="textarea">textarea</option>
           <option value="signature">signature</option>
           <option value="static_text">static text</option>
+          <option value="date">date</option>
         </select>
 
-      {fieldType !== "static_text" && (
-  <div className="flex items-center mb-3">
-    <input
-      type="checkbox"
-      checked={required}
-      onChange={(e) => setRequired(e.target.checked)}
-      className="mr-2"
-    />
-    <label>Required</label>
-  </div>
-)}
+        <label className="block font-medium mb-1">Assign to Section:</label>
+        <select
+          value={selectedSection}
+          onChange={(e) => setSelectedSection(parseInt(e.target.value))}
+          className="w-full px-3 py-2 border rounded mb-3"
+        >
+          {sections.map((sec, idx) => (
+            <option key={idx} value={idx}>
+              {sec.sectionTitle || `Untitled Section ${idx + 1}`}
+            </option>
+          ))}
+        </select>
 
+        {fieldType !== "static_text" && (
+          <div className="flex items-center mb-3">
+            <input
+              type="checkbox"
+              checked={required}
+              onChange={(e) => setRequired(e.target.checked)}
+              className="mr-2"
+            />
+            <label>Required</label>
+          </div>
+        )}
 
         <button
           onClick={handleAddField}
           className="bg-blue-500 text-white px-4 py-2 rounded"
         >
-          ➕ Add Field
+          + Add Field
+        </button>
+
+        <button
+          onClick={handleAddSection}
+          className="ml-2 bg-green-600 text-white px-4 py-2 rounded"
+        >
+          + Add Section
         </button>
       </div>
 
- {/* Right Panel - Preview */}
-<div className="border p-4 rounded shadow bg-white">
-  <h2 className="text-lg font-semibold mb-1">📋 Field Preview</h2>
-  {formName && (
-    <div className="text-blue-700 font-semibold text-md mb-3">
-      📝 {formName}
-    </div>
-  )}
-
-  {fields.length === 0 ? (
-    <p className="text-gray-500">No fields added yet.</p>
-  ) : (
-    <ul className="space-y-2">
-      {fields.map((field, index) => (
-        <li
-          key={index}
-          className="border p-2 rounded flex justify-between items-center"
-        >
-        {field.fieldType === "static_text" ? (
-  <span className="italic text-gray-700">
-    📌 Static Text: “{field.label}”
-  </span>
-) : (
-  <span>
-    {index + 1}. {field.label} ({field.fieldType})
-    {field.options && (
-      <span className="ml-2 text-sm text-gray-600">
-        - {field.options.join(", ")}
-      </span>
-    )}
-  </span>
-)}
-          <div className="space-x-1">
-            <button
-              onClick={() => moveField(index, -1)}
-              className="px-2 py-1 bg-gray-300 rounded"
-            >
-              ⬆
-            </button>
-            <button
-              onClick={() => moveField(index, 1)}
-              className="px-2 py-1 bg-gray-300 rounded"
-            >
-              ⬇
-            </button>
-            <button
-              onClick={() => removeField(index)}
-              className="px-2 py-1 bg-red-400 text-white rounded"
-            >
-              🗑
-            </button>
+      <div className="border p-4 rounded shadow bg-white">
+        <h2 className="text-lg font-semibold mb-1">Field Preview</h2>
+        {formName && (
+          <div className="text-blue-700 font-semibold text-md mb-3">
+            {formName}
           </div>
-        </li>
-      ))}
-    </ul>
-  )}
+        )}
 
-  <div className="mt-6 flex justify-end gap-2">
-    <button className="bg-gray-300 text-gray-700 px-4 py-2 rounded">
-      🔄 Preview Form
-    </button>
-    <button
-      onClick={handleSaveForm}
-      className="bg-blue-600 text-white px-4 py-2 rounded"
-    >
-      💾 Save Form
-    </button>
-  </div>
-</div>
+        {sections.map((section, sectionIdx) => (
+          <div key={sectionIdx} className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <input
+                type="text"
+                value={section.sectionTitle}
+                onChange={(e) => {
+                  const updated = [...sections];
+                  updated[sectionIdx].sectionTitle = e.target.value;
+                  setSections(updated);
+                }}
+                className="text-md font-bold text-blue-700 border-b border-gray-300 focus:outline-none focus:border-blue-500 w-full mr-2"
+                placeholder={`Untitled Section ${sectionIdx + 1}`}
+              />
+              {sections.length > 1 && (
+                <button
+                  onClick={() => {
+                    const updated = sections.filter((_, idx) => idx !== sectionIdx);
+                    setSections(updated);
+                    if (selectedSection >= updated.length) setSelectedSection(0);
+                  }}
+                  className="text-red-600 text-sm px-2 py-1 hover:underline"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
 
+            {section.fields.length === 0 ? (
+              <p className="text-gray-400 italic">No fields in this section yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {section.fields.map((field, index) => (
+                  <li key={index} className="border p-2 rounded space-y-1">
+                    <span>
+                      {index + 1}. {field.label} ({field.fieldType})
+                      {field.options && (
+                        <span className="ml-2 text-sm text-gray-600">
+                          - {field.options.join(", ")}
+                        </span>
+                      )}
+                    </span>
+
+                    {field.fieldType === "text" && (
+                      <input type="text" className="border px-2 py-1 w-full" disabled />
+                    )}
+
+                    {field.fieldType === "textarea" && (
+                      <textarea className="border px-2 py-1 w-full" disabled />
+                    )}
+
+                    {field.fieldType === "checkbox" && (
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="checkbox" disabled />
+                        <span>Check here</span>
+                      </label>
+                    )}
+
+                    {field.fieldType === "radio" && (
+                      <div className="flex gap-4">
+                        {field.options?.map((option, idx) => (
+                          <label key={idx} className="flex items-center space-x-1">
+                            <input type="radio" name={`radio-${index}`} disabled />
+                            <span>{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {field.fieldType === "date" && (
+                      <input type="date" className="border px-2 py-1 w-full" disabled />
+                    )}
+
+                    {field.fieldType === "signature" && (
+                      <div className="border border-dashed px-2 py-6 text-center text-gray-500">
+                        Signature Pad (preview)
+                      </div>
+                    )}
+
+                    {field.fieldType === "static_text" && (
+                      <div className="bg-gray-100 p-2 italic text-gray-700">{field.label}</div>
+                    )}
+
+                    <div className="flex justify-end space-x-1 pt-1">
+                      <button
+                        onClick={() => {
+                          const updated = [...sections];
+                          updated[sectionIdx].fields.splice(index, 1);
+                          setSections(updated);
+                        }}
+                        className="px-2 py-1 bg-red-400 text-white rounded"
+                      >
+                        Delete Field
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button className="bg-gray-300 text-gray-700 px-4 py-2 rounded">
+            Preview Form
+          </button>
+          <button
+            onClick={handleSaveForm}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Save Form
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
