@@ -5,9 +5,11 @@ const {
   getCustomFormByToken // ✅ Add this controller
 } = require("../controllers/formTokenController");
 
+const ensureOpenDentalByToken = require("../middleware/ensureOpenDentalByToken");
+
 router.post("/generate", generateCustomFormToken);
 
-// ✅ This is the route your frontend is hitting: /api/custom-form-tokens/:token
-router.get("/:token", getCustomFormByToken);
+// ✅ Attach the middleware before the token-based form fetch
+router.get("/:token", ensureOpenDentalByToken, getCustomFormByToken);
 
 module.exports = router;

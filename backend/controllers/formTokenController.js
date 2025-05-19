@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const db = require("../config/db");
 
-
+// ✅ 1. Generate a form token
 exports.generateCustomFormToken = async (req, res) => {
   try {
     const { form_id, patient_id } = req.body;
@@ -29,6 +29,7 @@ exports.generateCustomFormToken = async (req, res) => {
   }
 };
 
+// ✅ 2. Fetch the form via token (now using Open Dental)
 exports.getCustomFormByToken = async (req, res) => {
   try {
     const { token } = req.params;
@@ -55,18 +56,27 @@ exports.getCustomFormByToken = async (req, res) => {
       options: field.options ? JSON.parse(field.options) : null,
     }));
 
+    // ✅ Use Open Dental API to get patient data
+    let patient = null;
+    if (row.patient_id && req.openDentalService) {
+      try {
+        patient = await req.openDentalService.getPatient(row.patient_id);
+      } catch (err) {
+        console.warn("⚠️ Failed to fetch patient from Open Dental:", err.message);
+      }
+    }
+
     res.json({
       form: {
         id: row.form_id,
         name: row.form_name,
         description: row.description,
-        patient_id: row.patient_id || null,
       },
       fields: parsedFields,
+      patient,
     });
   } catch (err) {
     console.error("❌ Error in getCustomFormByToken:", err);
     res.status(500).json({ error: "Failed to load form by token." });
   }
 };
-

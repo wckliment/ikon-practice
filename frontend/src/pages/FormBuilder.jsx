@@ -100,6 +100,26 @@ export default function FormBuilder() {
     }
   };
 
+const moveFieldUp = (sectionIdx, fieldIdx) => {
+  const updated = [...sections];
+  const fields = updated[sectionIdx].fields;
+  if (fieldIdx > 0) {
+    [fields[fieldIdx - 1], fields[fieldIdx]] = [fields[fieldIdx], fields[fieldIdx - 1]];
+    setSections(updated);
+  }
+};
+
+const moveFieldDown = (sectionIdx, fieldIdx) => {
+  const updated = [...sections];
+  const fields = updated[sectionIdx].fields;
+  if (fieldIdx < fields.length - 1) {
+    [fields[fieldIdx + 1], fields[fieldIdx]] = [fields[fieldIdx], fields[fieldIdx + 1]];
+    setSections(updated);
+  }
+};
+
+
+
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="border p-4 rounded shadow bg-white">
@@ -268,18 +288,34 @@ export default function FormBuilder() {
                       <div className="bg-gray-100 p-2 italic text-gray-700">{field.label}</div>
                     )}
 
-                    <div className="flex justify-end space-x-1 pt-1">
-                      <button
-                        onClick={() => {
-                          const updated = [...sections];
-                          updated[sectionIdx].fields.splice(index, 1);
-                          setSections(updated);
-                        }}
-                        className="px-2 py-1 bg-red-400 text-white rounded"
-                      >
-                        Delete Field
-                      </button>
-                    </div>
+<div className="flex justify-end space-x-1 pt-1">
+  <button
+    onClick={() => moveFieldUp(sectionIdx, index)}
+    disabled={index === 0}
+    className="px-2 py-1 bg-gray-200 text-sm rounded disabled:opacity-50"
+  >
+    ⬆
+  </button>
+  <button
+    onClick={() => moveFieldDown(sectionIdx, index)}
+    disabled={index === section.fields.length - 1}
+    className="px-2 py-1 bg-gray-200 text-sm rounded disabled:opacity-50"
+  >
+    ⬇
+  </button>
+  <button
+    onClick={() => {
+      const updated = [...sections];
+      updated[sectionIdx].fields.splice(index, 1);
+      setSections(updated);
+    }}
+    className="px-2 py-1 bg-red-400 text-white text-sm rounded"
+  >
+    🗑 Delete
+  </button>
+</div>
+
+
                   </li>
                 ))}
               </ul>

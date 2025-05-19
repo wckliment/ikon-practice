@@ -47,48 +47,63 @@ export default function FillCustomForm() {
     setAnswers((prev) => ({ ...prev, [fieldId]: value }));
   };
 
-  const handleSubmit = async () => {
-    try {
-      // Extract signature pad values as base64
-      const signatureData = {};
-      Object.keys(signaturePads.current).forEach((fieldId) => {
-        const pad = signaturePads.current[fieldId];
-        if (pad && !pad.isEmpty()) {
-          signatureData[fieldId] = pad.getTrimmedCanvas().toDataURL("image/png");
-        }
-      });
+const handleSubmit = async () => {
+  try {
+    // 1. Extract signature data
+    const signatureData = {};
+    Object.keys(signaturePads.current).forEach((fieldId) => {
+      const pad = signaturePads.current[fieldId];
+      if (pad && !pad.isEmpty()) {
+        signatureData[fieldId] = pad.getTrimmedCanvas().toDataURL("image/png");
+      }
+    });
 
-      const combinedAnswers = {
-        ...answers,
-        ...signatureData,
-      };
+    // 2. Combine answers
+    const combinedAnswers = {
+      ...answers,
+      ...signatureData,
+    };
 
-      const payload = {
-        patient_id: patient?.id || null,
-        submitted_by_ip: "192.168.1.55",
-        answers: Object.entries(combinedAnswers)
-          .filter(([fieldId]) => {
-            const f = form.fields.find((f) => f.id === parseInt(fieldId));
-            return f?.field_type !== "static_text";
-          })
-          .map(([fieldId, value]) => ({
-            field_id: parseInt(fieldId),
-            value,
-          })),
-      };
+    // 3. Build payload
+    const payload = {
+      patient_id: patient?.id || null,
+      submitted_by_ip: "192.168.1.55", // You can make this dynamic later
+      answers: Object.entries(combinedAnswers)
+        .filter(([fieldId]) => {
+          const f = form.fields.find((f) => f.id === parseInt(fieldId));
+          return f?.field_type !== "static_text";
+        })
+        .map(([fieldId, value]) => ({
+          field_id: parseInt(fieldId),
+          value,
+        })),
+    };
 
-      await axios.post(`/api/forms/${form.id}/submissions`, payload, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      });
+    // 4. Submit form answers
+    const res = await axios.post(`/api/forms/${form.id}/submissions`, payload, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
 
-      alert("✅ Form submitted!");
-    } catch (err) {
-      console.error("❌ Submission failed:", err);
-      alert("Failed to submit form.");
-    }
-  };
+    const submissionId = res.data.submission_id;
+
+    // 5. Upload PDF to Open Dental Imaging
+    await axios.post(`/api/forms/${form.id}/submissions/${submissionId}/upload`, {}, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+
+    // 6. Show confirmation and redirect
+    alert("✅ Form submitted and uploaded to Open Dental!");
+    window.location.href = "/forms/thank-you"; // 🔁 optional redirect
+
+  } catch (err) {
+    console.error("❌ Submission or imaging upload failed:", err);
+    alert("Failed to submit or upload form. Please try again.");
+  }
+};
 
   if (loading) return <div className="p-6">Loading form...</div>;
   if (!form) return <div className="p-6 text-red-500">Form not found or expired.</div>;
