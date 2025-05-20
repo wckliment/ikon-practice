@@ -18,7 +18,7 @@ import PendingForms from "./components/Tablet/PendingForms";
 import FormBuilder from "./pages/FormBuilder";
 import FillCustomForm from "./pages/FillCustomForm";
 import ThankYou from "./pages/ThankYou";
-
+import FormManagement from "./pages/FormManagement";
 
 export default function App() {
   return (
@@ -42,6 +42,7 @@ export default function App() {
         <Route path="/forms/builder" element={<FormBuilder />} />
         <Route path="/forms/custom/:token" element={<FillCustomForm />} />
         <Route path="/forms/thank-you" element={<ThankYou />} />
+        <Route path="/forms/manage" element={<FormManagement />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={3000} />
     </Router>
