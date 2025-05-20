@@ -80,3 +80,53 @@ exports.getCustomFormByToken = async (req, res) => {
     res.status(500).json({ error: "Failed to load form by token." });
   }
 };
+
+exports.getTokensByPatient = async (req, res) => {
+  const { patNum } = req.params;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT
+         t.token,
+         t.issued_at,
+         f.name AS form_name,
+         t.method,
+         t.id
+       FROM custom_form_tokens t
+       JOIN custom_forms f ON t.form_id = f.id
+       WHERE t.patient_id = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM custom_form_submissions s
+           WHERE s.form_id = t.form_id AND s.patient_id = t.patient_id
+         )
+       ORDER BY t.issued_at DESC`,
+      [patNum]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Error fetching tokens for patient:", err);
+    res.status(500).json({ error: "Failed to fetch form tokens." });
+  }
+};
+
+
+exports.deleteTokenById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await db.query(
+      `DELETE FROM custom_form_tokens WHERE id = ?`,
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Token not found." });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Error deleting token:", err);
+    res.status(500).json({ error: "Failed to delete token." });
+  }
+};

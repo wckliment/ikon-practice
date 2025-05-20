@@ -68,10 +68,15 @@ const grouped = answers.reduce((acc, field) => {
           console.warn("⚠️ Signature image failed:", err.message);
           doc.font('Helvetica').text('[Signed]').moveDown(1);
         }
+            } else if (field_type === 'checkbox') {
+        const isChecked = value === '1';
+        doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`, { continued: true });
+        doc.font('Helvetica').text(` ${isChecked ? 'Yes' : 'No'}`).moveDown(1);
       } else {
         doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`, { continued: true });
         doc.font('Helvetica').text(` ${value || ''}`).moveDown(1);
       }
+
     });
 
     doc.moveDown();

@@ -52,28 +52,35 @@ const Forms = () => {
   }, [searchPatientTerm]);
 
 
-  // 📋 Fetch forms for the selected patient
-  const fetchForms = async () => {
-    if (selectedPatient) {
-      try {
-        setIsLoadingForms(true);
-        const res = await axios.get(`/api/forms/patient/${selectedPatient.value}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-        });
+ const fetchForms = async () => {
+  if (!selectedPatient) return;
 
-        setForms(res.data || []);
-        setForms((prev) => ({
-  completed: prev.completed,
-  pending: prev.pending.filter((form) => form.status !== 'completed')
-}));
-      } catch (err) {
-        console.error("❌ Failed to fetch forms:", err);
-        setForms([]);
-      } finally {
-        setIsLoadingForms(false);
-      }
-    }
-  };
+  try {
+    setIsLoadingForms(true);
+
+    const token = localStorage.getItem("token") || "";
+
+    const [completedRes, pendingRes] = await Promise.all([
+      axios.get(`/api/forms/submissions/patient/${selectedPatient.value}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      axios.get(`/api/custom-form-tokens/patient/${selectedPatient.value}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
+
+    setForms({
+      completed: completedRes.data || [],
+      pending: pendingRes.data || [],
+    });
+  } catch (err) {
+    console.error("❌ Failed to fetch forms:", err);
+    setForms({ completed: [], pending: [] });
+  } finally {
+    setIsLoadingForms(false);
+  }
+};
+
 
   // 📋 Automatically fetch forms when patient is selected
   useEffect(() => {
@@ -171,7 +178,7 @@ const Forms = () => {
                 </button>
               </div>
             )}
-          
+
 
           {/* 📋 Forms Tab Layout */}
           <div className="px-6">
@@ -220,24 +227,30 @@ const Forms = () => {
                               <th className="px-4 py-2 text-sm font-semibold text-gray-700">Actions</th>
                             </tr>
                           </thead>
-                          <tbody>
-                            {forms.completed.map((form) => (
-                              <tr key={form.SheetNum} className="border-t">
-                                <td className="px-4 py-2 text-sm">{form.Description}</td>
-                                <td className="px-4 py-2 text-sm">
-                                  {new Date(form.DateTimeSheet).toLocaleString()}
-                                </td>
-                                <td className="px-4 py-2 text-sm">
-                                  <button
-                                    className="text-blue-600 hover:underline"
-                                    onClick={() => alert("TODO: View form logic")}
-                                  >
-                                    View
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
+                              <tbody>
+  {forms.completed.map((form) => (
+    <tr key={form.submission_id} className="border-t">
+      <td className="px-4 py-2 text-sm">{form.form_name}</td>
+      <td className="px-4 py-2 text-sm">
+        {new Date(form.submitted_at).toLocaleString()}
+      </td>
+      <td className="px-4 py-2 text-sm">
+        <button
+          className="text-blue-600 hover:underline"
+          onClick={() =>
+            window.open(
+              `${import.meta.env.VITE_API_BASE_URL}/api/forms/submissions/${form.submission_id}/pdf`,
+              "_blank"
+            )
+          }
+        >
+          View
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
+
                         </table>
                       )}
                     </div>
@@ -259,66 +272,62 @@ const Forms = () => {
                               <th className="px-4 py-2 text-sm font-semibold text-gray-700">Actions</th>
                             </tr>
                           </thead>
-                          <tbody>
-                            {forms.pending.map((form) => (
-                              <tr key={form.id} className="border-t">
-                                <td className="px-4 py-2 text-sm">{form.sheet_def_id}</td>
-                                <td className="px-4 py-2 text-sm">
-                                  {new Date(form.sent_at).toLocaleString()}
-                                </td>
-                                <td className="px-4 py-2 text-sm capitalize">{form.method}</td>
-                                <td className="px-4 py-2 text-sm space-x-2">
-                                  {form.method === "website" && (
-                                    <>
-                                      <a
-                                        href={`/forms/fill/${form.token}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-600 hover:underline"
-                                      >
-                                        Open
-                                      </a>
-                                      <button
-                                        onClick={() => {
-                                          const origin = window.location.origin || "http://localhost:5173";
-                                          const fullUrl = `${origin}/forms/fill/${form.token}`;
-                                          navigator.clipboard.writeText(fullUrl);
-                                          alert(`🔗 Link copied to clipboard:\n${fullUrl}`);
-                                        }}
-                                        className="text-blue-600 hover:underline"
-                                      >
-                                        Copy Link
-                                      </button>
-                                    </>
-                                  )}
-                                  <button
-                                    className="text-red-600 hover:underline"
-                                    onClick={async () => {
-                                      if (!window.confirm("Are you sure you want to cancel this form?")) return;
-                                      try {
-                                        await axios.patch(
-                                          `/api/forms/${form.id}/cancel`,
-                                          {},
-                                          {
-                                            headers: {
-                                              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-                                            },
-                                          }
-                                        );
-                                        alert("❌ Form cancelled.");
-                                        fetchForms();
-                                      } catch (err) {
-                                        console.error("Error cancelling form:", err);
-                                        alert("Something went wrong. Check console.");
-                                      }
-                                    }}
-                                  >
-                                    Cancel
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
+
+<tbody>
+  {forms.pending.map((form) => (
+    <tr key={form.id} className="border-t">
+      <td className="px-4 py-2 text-sm">{form.form_name}</td>
+      <td className="px-4 py-2 text-sm">
+        {new Date(form.issued_at).toLocaleString()}
+      </td>
+      <td className="px-4 py-2 text-sm capitalize">{form.method}</td>
+      <td className="px-4 py-2 text-sm space-x-2">
+        <a
+          href={`/forms/custom/${form.token}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          Open
+        </a>
+        <button
+          onClick={() => {
+            const origin = window.location.origin || "http://localhost:5173";
+            const fullUrl = `${origin}/forms/custom/${form.token}`;
+            navigator.clipboard.writeText(fullUrl);
+            alert(`🔗 Link copied to clipboard:\n${fullUrl}`);
+          }}
+          className="text-blue-600 hover:underline"
+        >
+          Copy Link
+        </button>
+        <button
+    className="text-red-600 hover:underline"
+    onClick={async () => {
+      if (!window.confirm("Are you sure you want to cancel this form?")) return;
+      try {
+        await axios.delete(`/api/custom-form-tokens/${form.id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        });
+        alert("❌ Form cancelled.");
+        fetchForms(); // 🔄 Refresh table
+      } catch (err) {
+        console.error("Error cancelling form:", err);
+        alert("Something went wrong. Check console.");
+      }
+    }}
+  >
+    Cancel
+  </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
+
+
+
                         </table>
                       )}
                     </div>

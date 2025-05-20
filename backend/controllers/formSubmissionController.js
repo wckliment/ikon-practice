@@ -234,3 +234,27 @@ const result = await uploadToImaging({
     res.status(500).json({ error: "Failed to upload to imaging." });
   }
 };
+
+exports.getSubmissionsByPatient = async (req, res) => {
+  const { patNum } = req.params;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT
+         s.id AS submission_id,
+         s.submitted_at,
+         f.name AS form_name,
+         f.description
+       FROM custom_form_submissions s
+       JOIN custom_forms f ON s.form_id = f.id
+       WHERE s.patient_id = ?
+       ORDER BY s.submitted_at DESC`,
+      [patNum]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Error fetching submissions for patient:", err);
+    res.status(500).json({ error: "Failed to fetch submissions." });
+  }
+};
