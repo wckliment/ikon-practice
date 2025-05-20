@@ -68,11 +68,15 @@ const grouped = answers.reduce((acc, field) => {
           console.warn("⚠️ Signature image failed:", err.message);
           doc.font('Helvetica').text('[Signed]').moveDown(1);
         }
-            } else if (field_type === 'checkbox') {
-        const isChecked = value === '1';
-        doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`, { continued: true });
-        doc.font('Helvetica').text(` ${isChecked ? 'Yes' : 'No'}`).moveDown(1);
-      } else {
+          } else if ((field_type === 'checkbox' || field_type === 'radio') && field.options?.length) {
+  doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`);
+  const values = typeof value === 'string' ? value.split(",").map(v => v.trim()) : [];
+  field.options.forEach(opt => {
+    const isSelected = values.includes(opt);
+    doc.font('Helvetica').text(`  [${isSelected ? 'X' : ' '}] ${opt}`);
+  });
+  doc.moveDown();
+}   else {
         doc.font('Helvetica-Bold').fontSize(12).text(`${label}:`, { continued: true });
         doc.font('Helvetica').text(` ${value || ''}`).moveDown(1);
       }

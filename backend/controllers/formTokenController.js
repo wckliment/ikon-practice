@@ -29,6 +29,7 @@ exports.generateCustomFormToken = async (req, res) => {
   }
 };
 
+
 // ✅ 2. Fetch the form via token (now using Open Dental)
 exports.getCustomFormByToken = async (req, res) => {
   try {
@@ -56,15 +57,22 @@ exports.getCustomFormByToken = async (req, res) => {
       options: field.options ? JSON.parse(field.options) : null,
     }));
 
-    // ✅ Use Open Dental API to get patient data
-    let patient = null;
-    if (row.patient_id && req.openDentalService) {
-      try {
-        patient = await req.openDentalService.getPatient(row.patient_id);
-      } catch (err) {
-        console.warn("⚠️ Failed to fetch patient from Open Dental:", err.message);
-      }
-    }
+  // ✅ Use Open Dental API to get patient data
+let patient = null;
+console.log("🔍 Loaded token row:", row);
+
+if (row.patient_id && req.openDentalService) {
+  console.log("🔍 Attempting to fetch patient from Open Dental using ID:", row.patient_id);
+
+  try {
+    patient = await req.openDentalService.getPatient(row.patient_id);
+    console.log("✅ Patient fetched from Open Dental:", patient);
+  } catch (err) {
+    console.warn("⚠️ Failed to fetch patient from Open Dental:", err.message);
+  }
+} else {
+  console.warn("⚠️ No patient_id or req.openDentalService present");
+}
 
     res.json({
       form: {

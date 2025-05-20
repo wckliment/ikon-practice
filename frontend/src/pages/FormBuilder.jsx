@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 export default function FormBuilder() {
   const [formName, setFormName] = useState("");
@@ -12,51 +13,60 @@ export default function FormBuilder() {
     { sectionTitle: "Untitled Section 1", fields: [] }
   ]);
   const [selectedSection, setSelectedSection] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const currentUser = useSelector((state) => state.auth.user);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const editFormId = searchParams.get("id");
+  const [optionsText, setOptionsText] = useState("");
 
-  const handleAddField = () => {
-    if (!label.trim()) {
-      toast.error("Label is required.");
-      return;
-    }
 
-    const newField = {
-      label,
-      fieldType,
-      required: fieldType !== "static_text" ? required : false,
-      options:
-        fieldType === "radio" || fieldType === "checkbox"
-          ? ["Yes", "No"]
-          : null,
-    };
+ const handleAddField = () => {
+  if (!label.trim()) {
+    toast.error("Label is required.");
+    return;
+  }
 
-    const updatedSections = [...sections];
-
-    if (
-      selectedSection === null ||
-      isNaN(selectedSection) ||
-      !updatedSections[selectedSection]
-    ) {
-      toast.error("Please select a valid section.");
-      return;
-    }
-
-    const updatedFields = [
-      ...updatedSections[selectedSection].fields,
-      newField,
-    ];
-
-    updatedSections[selectedSection] = {
-      ...updatedSections[selectedSection],
-      fields: updatedFields,
-    };
-
-    setSections(updatedSections);
-
-    setLabel("");
-    setFieldType("text");
-    setRequired(false);
+  const newField = {
+    label,
+    fieldType,
+    required: fieldType !== "static_text" ? required : false,
+    options:
+      fieldType === "radio" || fieldType === "checkbox"
+        ? optionsText.split(",").map((o) => o.trim())
+        : null,
   };
+
+  const updatedSections = [...sections];
+
+  if (
+    selectedSection === null ||
+    isNaN(selectedSection) ||
+    !updatedSections[selectedSection]
+  ) {
+    toast.error("Please select a valid section.");
+    return;
+  }
+
+  const updatedFields = [
+    ...updatedSections[selectedSection].fields,
+    newField,
+  ];
+
+  updatedSections[selectedSection] = {
+    ...updatedSections[selectedSection],
+    fields: updatedFields,
+  };
+
+  setSections(updatedSections);
+
+  // ✅ Clear input states after adding field
+  setLabel("");
+  setFieldType("text");
+  setRequired(false);
+  setOptionsText(""); // <--- Clear the options input
+};
+
 
   const handleAddSection = () => {
     setSections([
@@ -67,38 +77,48 @@ export default function FormBuilder() {
   };
 
   const handleSaveForm = async () => {
-    if (!formName.trim() || sections.every(sec => sec.fields.length === 0)) {
-      toast.error("Form name and at least one field are required.");
-      return;
-    }
+  if (!formName.trim() || sections.every(sec => sec.fields.length === 0)) {
+    toast.error("Form name and at least one field are required.");
+    return;
+  }
 
-    try {
-      const userId = currentUser?.id;
-      const payload = {
-        name: formName,
-        description: "",
-        created_by: userId || 1,
-        fields: sections.flatMap((section, sectionIdx) =>
-          section.fields.map((f, fieldIdx) => ({
-            label: f.label,
-            field_type: f.fieldType,
-            is_required: f.required,
-            field_order: fieldIdx + 1,
-            section_title: section.sectionTitle,
-            options: f.options || null,
-          }))
-        ),
-      };
+  try {
+    const userId = currentUser?.id;
+    const payload = {
+      name: formName,
+      description: "",
+      created_by: userId || 1,
+      fields: sections.flatMap((section, sectionIdx) =>
+        section.fields.map((f, fieldIdx) => ({
+          label: f.label,
+          field_type: f.fieldType,
+          is_required: f.required,
+          field_order: fieldIdx + 1,
+          section_title: section.sectionTitle,
+          options: f.options || null,
+        }))
+      ),
+    };
 
-      await axios.post("/api/forms", payload);
-      toast.success("✅ Form saved!");
-      setFormName("");
-      setSections([{ sectionTitle: "Untitled Section 1", fields: [] }]);
-    } catch (err) {
-      console.error("❌ Save failed:", err);
-      toast.error("Failed to save form.");
-    }
-  };
+    const endpoint = editFormId ? `/api/forms/${editFormId}` : "/api/forms";
+    const method = editFormId ? "put" : "post";
+
+    await axios[method](endpoint, payload, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+
+    toast.success(editFormId ? "✅ Form updated!" : "✅ Form saved!");
+    setFormName("");
+    setSections([{ sectionTitle: "Untitled Section 1", fields: [] }]);
+    navigate("/forms/manage");
+  } catch (err) {
+    console.error("❌ Save failed:", err);
+    toast.error("Failed to save form.");
+  }
+};
+
 
 const moveFieldUp = (sectionIdx, fieldIdx) => {
   const updated = [...sections];
@@ -118,9 +138,83 @@ const moveFieldDown = (sectionIdx, fieldIdx) => {
   }
 };
 
+  useEffect(() => {
+  const loadForm = async () => {
+    if (!editFormId) return;
+
+    try {
+      setIsLoading(true);
+      const res = await axios.get(`/api/forms/${editFormId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
+
+      const { form, fields } = res.data;
+      setFormName(form.name || "");
+
+      // Convert flat field list back into grouped sections
+      const grouped = [];
+      fields.forEach(field => {
+        const sec = field.section_title || "Untitled Section";
+        let section = grouped.find(s => s.sectionTitle === sec);
+        if (!section) {
+          section = { sectionTitle: sec, fields: [] };
+          grouped.push(section);
+        }
+
+        section.fields.push({
+          label: field.label,
+          fieldType: field.field_type,
+          required: field.is_required === 1,
+          options: field.options || null,
+        });
+      });
+
+      setSections(grouped);
+    } catch (err) {
+      console.error("❌ Failed to load form:", err);
+      toast.error("Failed to load form for editing.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  loadForm();
+}, [editFormId]);
+
+
 
 
   return (
+    <>
+  <div className="grid grid-cols-3 items-center mb-6 px-6 mt-12">
+    <div>
+      <button
+        onClick={() => navigate("/forms/manage")}
+        className="text-blue-600 hover:underline text-sm"
+      >
+        ← Go Back to Form Management
+      </button>
+    </div>
+
+    <div className="text-center">
+      <h1 className="text-3xl font-bold text-gray-800">Form Builder</h1>
+    </div>
+
+    <div></div>
+  </div>
+
+  {isLoading && (
+    <p className="text-center text-sm text-gray-500 mb-4">Loading form...</p>
+  )}
+
+  {editFormId && (
+    <div className="text-center text-yellow-700 font-semibold mb-4">
+      🛠️ Editing Form: {formName || `ID ${editFormId}`}
+    </div>
+  )}
+
     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="border p-4 rounded shadow bg-white">
         <h2 className="text-lg font-semibold mb-4">Add New Field</h2>
@@ -170,17 +264,33 @@ const moveFieldDown = (sectionIdx, fieldIdx) => {
           ))}
         </select>
 
-        {fieldType !== "static_text" && (
-          <div className="flex items-center mb-3">
-            <input
-              type="checkbox"
-              checked={required}
-              onChange={(e) => setRequired(e.target.checked)}
-              className="mr-2"
-            />
-            <label>Required</label>
-          </div>
-        )}
+    {fieldType !== "static_text" && (
+  <>
+    <div className="flex items-center mb-3">
+      <input
+        type="checkbox"
+        checked={required}
+        onChange={(e) => setRequired(e.target.checked)}
+        className="mr-2"
+      />
+      <label>Required</label>
+    </div>
+
+    {(fieldType === "checkbox" || fieldType === "radio") && (
+      <div className="mb-3">
+        <label className="block font-medium mb-1">Options (comma separated):</label>
+        <input
+          type="text"
+          value={optionsText}
+          onChange={(e) => setOptionsText(e.target.value)}
+          className="w-full px-3 py-2 border rounded"
+          placeholder="e.g. Email and Text, Email Only, Text Only, None"
+        />
+      </div>
+    )}
+  </>
+)}
+
 
         <button
           onClick={handleAddField}
@@ -327,14 +437,16 @@ const moveFieldDown = (sectionIdx, fieldIdx) => {
           <button className="bg-gray-300 text-gray-700 px-4 py-2 rounded">
             Preview Form
           </button>
-          <button
-            onClick={handleSaveForm}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Save Form
-          </button>
+            <button
+  onClick={handleSaveForm}
+  className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+  disabled={isLoading}
+>
+  {isLoading ? "Saving..." : "Save Form"}
+</button>
         </div>
       </div>
-    </div>
+      </div>
+      </>
   );
 }

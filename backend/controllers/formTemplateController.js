@@ -93,3 +93,75 @@ exports.getFormTemplateById = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.deleteFormTemplate = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await db.query(`DELETE FROM custom_forms WHERE id = ?`, [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Form not found." });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting form template:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.updateFormTemplate = async (req, res) => {
+  const { id } = req.params;
+  const { name, description, fields } = req.body;
+
+  if (!name || !Array.isArray(fields)) {
+    return res.status(400).json({ error: "Form name and fields are required." });
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // 1. Update the form metadata
+    await connection.query(
+      `UPDATE custom_forms SET name = ?, description = ? WHERE id = ?`,
+      [name, description || null, id]
+    );
+
+    // 2. Remove old fields
+    await connection.query(`DELETE FROM custom_form_fields WHERE form_id = ?`, [id]);
+
+    // 3. Re-insert updated fields
+    const fieldPromises = fields.map(field => {
+      const { label, field_type, is_required, field_order, options, section_title } = field;
+
+      return connection.query(
+        `INSERT INTO custom_form_fields
+         (form_id, label, field_type, is_required, field_order, options, section_title)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          label,
+          field_type,
+          is_required ? 1 : 0,
+          field_order || 0,
+          options ? JSON.stringify(options) : null,
+          section_title || null
+        ]
+      );
+    });
+
+    await Promise.all(fieldPromises);
+    await connection.commit();
+
+    res.json({ success: true });
+  } catch (err) {
+    await connection.rollback();
+    console.error("❌ Error updating form template:", err);
+    res.status(500).json({ error: "Internal server error" });
+  } finally {
+    connection.release();
+  }
+};

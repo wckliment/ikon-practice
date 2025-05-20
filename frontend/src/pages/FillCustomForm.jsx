@@ -73,10 +73,15 @@ const handleSubmit = async () => {
           const f = form.fields.find((f) => f.id === parseInt(fieldId));
           return f?.field_type !== "static_text";
         })
-        .map(([fieldId, value]) => ({
-          field_id: parseInt(fieldId),
-          value,
-        })),
+       .map(([fieldId, value]) => {
+  const field = form.fields.find((f) => f.id === parseInt(fieldId));
+  return {
+    field_id: parseInt(fieldId),
+    value: Array.isArray(value) && (field?.field_type === "checkbox" || field?.field_type === "radio")
+      ? value.join(", ")
+      : value,
+  };
+}),
     };
 
     // 4. Submit form answers
@@ -113,7 +118,7 @@ const handleSubmit = async () => {
       <h1 className="text-3xl font-bold mb-4">{form.name}</h1>
       {patient && (
         <p className="mb-4 text-gray-600">
-          Linked to: {patient.first_name} {patient.last_name}
+          Linked to: {patient.FName} {patient.LName}
         </p>
       )}
 
@@ -176,14 +181,26 @@ const handleSubmit = async () => {
                       </div>
                     )}
 
-                    {field.field_type === "checkbox" && (
-                      <input
-                        type="checkbox"
-                        checked={answers[field.id] || false}
-                        onChange={(e) => handleInputChange(field.id, e.target.checked)}
-                        className="mr-2"
-                      />
-                    )}
+                   {field.field_type === "checkbox" && Array.isArray(field.options) && (
+  <div className="flex flex-col gap-1">
+    {field.options.map((opt) => (
+      <label key={opt} className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={answers[field.id]?.includes(opt) || false}
+          onChange={(e) => {
+            const prev = answers[field.id] || [];
+            const next = e.target.checked
+              ? [...prev, opt]
+              : prev.filter((o) => o !== opt);
+            handleInputChange(field.id, next);
+          }}
+        />
+        <span>{opt}</span>
+      </label>
+    ))}
+  </div>
+)}
 
                     {field.field_type === "date" && (
                       <input
