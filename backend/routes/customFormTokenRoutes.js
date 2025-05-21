@@ -12,6 +12,8 @@ const ensureOpenDentalByToken = require("../middleware/ensureOpenDentalByToken")
 
 // Public route: patient opens form by token
 router.get("/:token", ensureOpenDentalByToken, getCustomFormByToken);
+// Add this for public (ikonConnect)
+router.post("/public-generate", generateCustomFormToken);
 
 // Protected routes: staff interactions
 router.post("/generate", authenticateUser, generateCustomFormToken);

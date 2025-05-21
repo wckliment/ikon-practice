@@ -102,7 +102,13 @@ const handleSubmit = async () => {
 
     // 6. Show confirmation and redirect
     alert("✅ Form submitted and uploaded to Open Dental!");
+
+    if (form?.name) {
+  localStorage.setItem(`formCompleted_${form.name}`, "true");
+}
     window.location.href = "/forms/thank-you"; // 🔁 optional redirect
+
+
 
   } catch (err) {
     console.error("❌ Submission or imaging upload failed:", err);
