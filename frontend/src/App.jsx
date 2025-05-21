@@ -10,7 +10,7 @@ import Appointments from "./pages/Appointments";
 import Settings from "./pages/Settings";
 import TabletCheckIn from './pages/TabletCheckIn';
 import TabletLoginScreen from './routes/TabletLoginScreen.jsx';
-import IkonConnect from "./pages/IkonConnect";
+import NotificationsHub from "./pages/NotificationsHub";
 import Forms from "./pages/Forms";
 import PracticeAnalytics from "./pages/PracticeAnalytics";
 import PublicForm from "./pages/PublicForm";
@@ -33,7 +33,8 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/tablet-checkin/:locationCode" element={<TabletCheckIn />} />
         <Route path="/tablet/login" element={<TabletLoginScreen />} />
-        <Route path="/ikonconnect" element={<IkonConnect />} />
+        <Route path="/notifications" element={<NotificationsHub />} />
+        <Route path="/ikonconnect" element={<Navigate to="/notifications" replace />} />
         <Route path="/forms" element={<Forms />} />
         <Route path="/analytics" element={<PracticeAnalytics />} />
         <Route path="/forms/fill/:token" element={<PublicForm />} />
