@@ -69,7 +69,7 @@ const Sidebar = () => {
           <NavIcon to="/analytics" icon={BarChart2} tooltipText="Practice Analytics" />
           <NavIcon to="/forms" icon={Edit} tooltipText="Forms" />
           <NavIcon to="/appointments" icon={Clipboard} tooltipText="Appointments" />
-          <NavIcon to="/ikonconnect" icon={Calendar} tooltipText="ikonConnect" />
+          <NavIcon to="/notifications" icon={Calendar} tooltipText="Notifications Hub" />
         </div>
 </div>
 

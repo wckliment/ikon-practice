@@ -27,14 +27,14 @@ const AppointmentRequest = {
     return rows;
   },
 
-  updateStatus: async (id, status, handled_by = null, staff_notes = null) => {
-    await db.execute(
-      `UPDATE appointment_requests
-       SET status = ?, handled_by = ?, staff_notes = ?
-       WHERE id = ?`,
-      [status, handled_by, staff_notes, id]
-    );
-  },
+updateStatus: async (id, status, handled_by = null) => {
+  await db.execute(
+    `UPDATE appointment_requests
+     SET status = ?, handled_by = ?
+     WHERE id = ?`,
+    [status, handled_by, id]
+  );
+},
 };
 
 module.exports = AppointmentRequest;
