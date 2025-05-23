@@ -40,13 +40,20 @@ app.use("/api/poll", require("./routes/pollRoutes"));
 app.use("/api/messages/hidden", require("./routes/hiddenMessagesRoutes"));
 app.use("/api/appointment-requests", appointmentRequestRoutes);
 app.use("/api/notes", notesRoutes);
-// app.use("/api/forms", formsRoutes); //Legacy route — now deprecated
+// 👇 Handles /api/forms (form template management like GET /api/forms/:id)
 app.use("/api/forms", formTemplatesRoutes);
+// 👇 Handles /api/forms/:formId/submissions (staff submission routes
 app.use("/api/forms/:formId/submissions", formSubmissionRoutes);
+// 👇 Handles /api/custom-form-submissions/linked, /unlinked, etc.
+app.use("/api/custom-form-submissions", formSubmissionRoutes);
+// 👇 Handles /api/forms/submissions (public submission via token)
+app.use("/api/form-submissions", formSubmissionRoutes); 
 app.use("/api/public-forms", publicFormsRoutes);
 app.use("/api/reconcilliation", require("./routes/reconcilliationRoutes"));
 app.use("/api/custom-form-tokens", require("./routes/customFormTokenRoutes"));
-app.use("/api/forms/submissions", customFormSubmissionRoutes);
+
+
+
 
 
 

@@ -82,6 +82,7 @@ if (row.patient_id && req.openDentalService) {
       },
       fields: parsedFields,
       patient,
+      method: row.method,
     });
   } catch (err) {
     console.error("❌ Error in getCustomFormByToken:", err);

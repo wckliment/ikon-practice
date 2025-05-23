@@ -7,6 +7,7 @@ import ReactSelect from "react-select";
 import procedureOptions from "../constants/procedureOptions";
 import appointmentService from "../services/appointmentService";
 import { socket, connectSocket } from "../socket";
+import FormsTab from "../components/Forms/FormsTab";
 
 const NotificationsHub = () => {
 const [scheduledDate, setScheduledDate] = useState("");
@@ -254,6 +255,7 @@ const handleUpdateRequest = async () => {
                           {req.has_staff_notes && (
                             <span title="Staff Notes Present" className="text-gray-400 text-lg ml-1">📝</span>
                           )}
+
                           <span className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${req.status === "pending" ? "bg-yellow-100 text-yellow-800" : req.status === "scheduled" ? "bg-green-100 text-green-800" : req.status === "contacted" ? "bg-blue-100 text-blue-800" : "bg-gray-200 text-gray-700"}`}>{req.status || "Unknown"}</span>
                         </div>
                         <div className="flex items-center mt-1">
@@ -263,9 +265,7 @@ const handleUpdateRequest = async () => {
                         <p className="text-sm text-gray-600 mt-1">📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}</p>
                         {req.notes && <p className="text-sm text-gray-400 mt-1 italic">{req.notes}</p>}
                       </div>
-                      {/* <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
-                        <button onClick={() => { setSelectedRequest(req); }} className="text-sm px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">View Details</button>
-                      </div> */}
+
                       <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
   <button
     onClick={() => {
@@ -305,6 +305,8 @@ const handleUpdateRequest = async () => {
               </div>
             )
           )}
+
+          {activeTab === "forms" && <FormsTab />}
         </div>
 
         {/* View Details Modal */}

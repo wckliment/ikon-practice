@@ -12,36 +12,39 @@ export default function FillCustomForm() {
   const [groupedSections, setGroupedSections] = useState([]);
   const signaturePads = useRef({});
 
-  useEffect(() => {
-    const fetchFormByToken = async () => {
-      try {
-        const res = await axios.get(`/api/custom-form-tokens/${token}`);
-        const { form, fields, patient } = res.data;
-        setForm({ ...form, fields });
-        setPatient(patient);
+useEffect(() => {
+  const fetchFormByToken = async () => {
+    try {
+      const res = await axios.get(`/api/custom-form-tokens/${token}`);
+      console.log("📦 Token Load Response:", res.data); // 👈 Debug line
 
-        const bySection = {};
-        fields.forEach((field) => {
-          const title = field.section_title || "General";
-          if (!bySection[title]) bySection[title] = [];
-          bySection[title].push(field);
-        });
+      const { form, fields, patient, method } = res.data;
+      setForm({ ...form, fields, method }); // ✅ Preserve method for use later
+      setPatient(patient);
 
-        const grouped = Object.entries(bySection).map(([sectionTitle, fields]) => ({
-          sectionTitle,
-          fields,
-        }));
+      const bySection = {};
+      fields.forEach((field) => {
+        const title = field.section_title || "General";
+        if (!bySection[title]) bySection[title] = [];
+        bySection[title].push(field);
+      });
 
-        setGroupedSections(grouped);
-        setLoading(false);
-      } catch (err) {
-        console.error("Failed to load form by token:", err);
-        setLoading(false);
-      }
-    };
+      const grouped = Object.entries(bySection).map(([sectionTitle, fields]) => ({
+        sectionTitle,
+        fields,
+      }));
 
-    fetchFormByToken();
-  }, [token]);
+      setGroupedSections(grouped);
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to load form by token:", err);
+      setLoading(false);
+    }
+  };
+
+  fetchFormByToken();
+}, [token]);
+
 
   const handleInputChange = (fieldId, value) => {
     setAnswers((prev) => ({ ...prev, [fieldId]: value }));
@@ -49,6 +52,9 @@ export default function FillCustomForm() {
 
 const handleSubmit = async () => {
   try {
+    // ✅ Put this at the start of the function
+    const isPublic = form?.method === "website";
+
     // 1. Extract signature data
     const signatureData = {};
     Object.keys(signaturePads.current).forEach((fieldId) => {
@@ -65,54 +71,62 @@ const handleSubmit = async () => {
     };
 
     // 3. Build payload
+    const answerArray = Object.entries(combinedAnswers)
+      .filter(([fieldId]) => {
+        const f = form.fields.find((f) => f.id === parseInt(fieldId));
+        return f?.field_type !== "static_text";
+      })
+      .map(([fieldId, value]) => {
+        const field = form.fields.find((f) => f.id === parseInt(fieldId));
+        return {
+          field_id: parseInt(fieldId),
+          value: Array.isArray(value) &&
+            (field?.field_type === "checkbox" || field?.field_type === "radio")
+            ? value.join(", ")
+            : value,
+        };
+      });
+
     const payload = {
       patient_id: patient?.id || null,
-      submitted_by_ip: "192.168.1.55", // You can make this dynamic later
-      answers: Object.entries(combinedAnswers)
-        .filter(([fieldId]) => {
-          const f = form.fields.find((f) => f.id === parseInt(fieldId));
-          return f?.field_type !== "static_text";
-        })
-       .map(([fieldId, value]) => {
-  const field = form.fields.find((f) => f.id === parseInt(fieldId));
-  return {
-    field_id: parseInt(fieldId),
-    value: Array.isArray(value) && (field?.field_type === "checkbox" || field?.field_type === "radio")
-      ? value.join(", ")
-      : value,
-  };
-}),
+      submitted_by_ip: "192.168.1.55",
+      answers: answerArray,
     };
 
-    // 4. Submit form answers
-    const res = await axios.post(`/api/forms/${form.id}/submissions`, payload, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-      },
+    // 4. Decide which endpoint to hit
+    const submissionUrl = isPublic
+  ? `/api/form-submissions/public` // ✅ matches updated backend route
+  : `/api/forms/${form.id}/submissions`;
+
+    const res = await axios.post(submissionUrl, payload, {
+      headers: isPublic
+        ? {}
+        : { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
 
     const submissionId = res.data.submission_id;
 
-    // 5. Upload PDF to Open Dental Imaging
-    await axios.post(`/api/forms/${form.id}/submissions/${submissionId}/upload`, {}, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-      },
-    });
+    // 5. Upload PDF if internal
+    if (!isPublic) {
+      await axios.post(`/api/forms/${form.id}/submissions/${submissionId}/upload`, {}, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
+    }
 
-    // 6. Show confirmation and redirect
-    alert("✅ Form submitted and uploaded to Open Dental!");
+    // 6. Confirmation
+    alert("✅ Form submitted" + (isPublic ? "" : " and uploaded to Open Dental!"));
 
     if (form?.name) {
-  localStorage.setItem(`formCompleted_${form.name}`, "true");
-}
-    window.location.href = "/forms/thank-you"; // 🔁 optional redirect
+      localStorage.setItem(`formCompleted_${form.name}`, "true");
+    }
 
-
+    window.location.href = "/forms/thank-you";
 
   } catch (err) {
-    console.error("❌ Submission or imaging upload failed:", err);
-    alert("Failed to submit or upload form. Please try again.");
+    console.error("❌ Submission failed:", err);
+    alert("Failed to submit form. Please try again.");
   }
 };
 

@@ -258,3 +258,99 @@ exports.getSubmissionsByPatient = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch submissions." });
   }
 };
+
+exports.getUnlinkedSubmissions = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT
+         s.id AS submission_id,
+         s.form_id,
+         s.submitted_at,
+         s.location_id,
+         s.patient_id,
+         f.name AS form_name
+       FROM custom_form_submissions s
+       JOIN custom_forms f ON s.form_id = f.id
+       WHERE s.patient_id IS NULL
+       ORDER BY s.submitted_at DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Error fetching unlinked submissions:", err);
+    res.status(500).json({ error: "Failed to fetch unlinked submissions." });
+  }
+};
+
+exports.getLinkedSubmissions = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT
+         s.id AS submission_id,
+         s.form_id,
+         s.submitted_at,
+         s.location_id,
+         s.patient_id,
+         f.name AS form_name
+       FROM custom_form_submissions s
+       JOIN custom_forms f ON s.form_id = f.id
+       WHERE s.patient_id IS NOT NULL
+       ORDER BY s.submitted_at DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Error fetching linked submissions:", err);
+    res.status(500).json({ error: "Failed to fetch linked submissions." });
+  }
+};
+
+exports.submitFormPublic = async (req, res) => {
+  let { answers, submitted_by_ip } = req.body;
+
+  if (!Array.isArray(answers) || answers.length === 0) {
+    return res.status(400).json({ error: "Answers are required." });
+  }
+
+  // Infer form_id from the first field's form_id (assuming fields always belong to the same form)
+  const firstFieldId = answers[0]?.field_id;
+  if (!firstFieldId) {
+    return res.status(400).json({ error: "Missing field_id in answers." });
+  }
+
+  try {
+    const [[fieldRow]] = await db.query(
+      `SELECT form_id FROM custom_form_fields WHERE id = ?`,
+      [firstFieldId]
+    );
+
+    if (!fieldRow) {
+      return res.status(400).json({ error: "Invalid field_id: cannot resolve form_id." });
+    }
+
+    const formId = fieldRow.form_id;
+
+    // Insert submission
+    const [submissionResult] = await db.query(
+      `INSERT INTO custom_form_submissions (form_id, patient_id, submitted_by_ip)
+       VALUES (?, NULL, ?)`,
+      [formId, submitted_by_ip || null]
+    );
+
+    const submissionId = submissionResult.insertId;
+
+    // Insert answers
+    const answerPromises = answers.map(({ field_id, value }) => {
+      return db.query(
+        `INSERT INTO custom_form_answers (submission_id, field_id, value)
+         VALUES (?, ?, ?)`,
+        [submissionId, field_id, value]
+      );
+    });
+
+    await Promise.all(answerPromises);
+
+    res.status(201).json({ success: true, submission_id: submissionId });
+  } catch (err) {
+    console.error("❌ Error in submitFormPublic:", err);
+    res.status(500).json({ error: "Failed to submit public form." });
+  }
+};
