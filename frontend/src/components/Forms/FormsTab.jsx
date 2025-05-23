@@ -78,20 +78,6 @@ useEffect(() => {
     View
   </button>
 
-  <button
-    onClick={() => {
-      setFormPatientInfo({
-        firstName: form.patient_first_name || "",
-        lastName: form.patient_last_name || "",
-        phone: form.patient_phone || "",
-        email: form.patient_email || "",
-      });
-      setShowCreateModal(true);
-    }}
-    className="text-sm text-green-700 underline hover:text-green-900"
-  >
-    + Create Patient
-  </button>
 </div>
 
 
@@ -153,6 +139,29 @@ useEffect(() => {
 )}
             </div>
           ))}
+
+                 <button
+      onClick={() => {
+        const getValue = (label) => {
+          const match = submissionDetails.answers.find((a) =>
+            a.label.toLowerCase().includes(label.toLowerCase())
+          );
+          return match?.value || "";
+        };
+
+        setFormPatientInfo({
+          firstName: getValue("first name"),
+          lastName: getValue("last name"),
+          phone: getValue("phone"),
+          email: getValue("email"),
+        });
+
+        setShowCreateModal(true);
+      }}
+      className="mt-4 text-sm text-green-700 underline hover:text-green-900"
+    >
+      + Create Patient
+    </button>
         </div>
       ) : (
         <p className="text-sm text-red-500">Failed to load form data.</p>
