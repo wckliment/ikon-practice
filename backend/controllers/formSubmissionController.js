@@ -2,6 +2,8 @@ const db = require('../config/db');
 const { generateFormPdf } = require('../utils/generateFormPdf');
 const { uploadToImaging } = require('../utils/openDentalUploader');
 
+
+
 exports.submitForm = async (req, res) => {
   const formId = req.params.formId;
   let { patient_id, answers, submitted_by_ip } = req.body;
@@ -183,24 +185,29 @@ exports.uploadToImaging = async (req, res) => {
       return res.status(404).json({ error: "Submission not found" });
     }
 
+    console.log("🧪 submission.patient_id:", submission.patient_id);
+console.log("🧪 submission.location_id:", submission.location_id);
+    if (!submission.patient_id || !submission.location_id) {
+      return res.status(400).json({ error: "Submission is missing required linkage fields." });
+    }
+
     // 2. Lookup answers with metadata
     const [answers] = await db.query(
-  `SELECT
-  f.id AS field_id,
-  f.label,
-  f.field_type,
-  f.options,
-  f.section_title,
-  COALESCE(a.value, '') AS value
-FROM custom_form_fields f
-LEFT JOIN custom_form_answers a ON a.field_id = f.id AND a.submission_id = ?
-WHERE f.form_id = (
-  SELECT form_id FROM custom_form_submissions WHERE id = ?
-)
-ORDER BY f.field_order
-`,
-  [submissionId, submissionId]
-);
+      `SELECT
+        f.id AS field_id,
+        f.label,
+        f.field_type,
+        f.options,
+        f.section_title,
+        COALESCE(a.value, '') AS value
+       FROM custom_form_fields f
+       LEFT JOIN custom_form_answers a ON a.field_id = f.id AND a.submission_id = ?
+       WHERE f.form_id = (
+         SELECT form_id FROM custom_form_submissions WHERE id = ?
+       )
+       ORDER BY f.field_order`,
+      [submissionId, submissionId]
+    );
 
     const parsedAnswers = answers.map(a => ({
       ...a,
@@ -209,24 +216,34 @@ ORDER BY f.field_order
 
     // 3. Generate PDF
     const [[formMeta]] = await db.query(
-  `SELECT name FROM custom_forms WHERE id = ?`,
-  [submission.form_id]
+      `SELECT name FROM custom_forms WHERE id = ?`,
+      [submission.form_id]
+    );
+
+    const pdfBuffer = await generateFormPdf(submission, parsedAnswers, formMeta?.name || "Submitted Form");
+
+    // 4. Debug logging before upload
+    const description = `${formMeta?.name || "Submitted Form"} - ${new Date(submission.submitted_at).toLocaleDateString()}`;
+    console.log("🧪 Preparing to upload PDF to Imaging:", {
+      patNum: submission.patient_id,
+      locationId: submission.location_id,
+      hasBuffer: !!pdfBuffer,
+      bufferLength: pdfBuffer?.length,
+      description
+    });
+
+    // 5. Upload to Open Dental Imaging
+    const result = await uploadToImaging({
+      patNum: submission.patient_id,
+      locationId: submission.location_id,
+      buffer: pdfBuffer,
+      description
+    });
+
+    await db.query(
+  `UPDATE custom_form_submissions SET uploaded_at = NOW() WHERE id = ?`,
+  [submissionId]
 );
-
-const pdfBuffer = await generateFormPdf(submission, parsedAnswers, formMeta?.name || "Submitted Form");
-
-
-    // 4. Upload to Open Dental Imaging
-   if (!submission.patient_id) {
-  throw new Error("Cannot upload to imaging: no patient_id on submission.");
-}
-
-const result = await uploadToImaging({
-  patNum: submission.patient_id,
-  locationId: submission.location_id,
-  buffer: pdfBuffer,
-  description: "Custom Form Submission"
-});
 
     res.status(200).json({ success: true, upload: result });
   } catch (err) {
@@ -261,20 +278,41 @@ exports.getSubmissionsByPatient = async (req, res) => {
 
 exports.getUnlinkedSubmissions = async (req, res) => {
   try {
-    const [rows] = await db.query(
-      `SELECT
-         s.id AS submission_id,
-         s.form_id,
-         s.submitted_at,
-         s.location_id,
-         s.patient_id,
-         f.name AS form_name
-       FROM custom_form_submissions s
-       JOIN custom_forms f ON s.form_id = f.id
-       WHERE s.patient_id IS NULL
-       ORDER BY s.submitted_at DESC`
-    );
-    res.json(rows);
+    const [rows] = await db.query(`
+      SELECT
+        s.id AS submission_id,
+        s.form_id,
+        s.submitted_at,
+        s.location_id,
+        f.name AS form_name,
+        -- 🔍 Subqueries to extract first and last name from answers
+        (
+          SELECT a.value FROM custom_form_answers a
+          JOIN custom_form_fields fld ON a.field_id = fld.id
+          WHERE a.submission_id = s.id
+            AND LOWER(fld.label) LIKE '%first name%'
+          LIMIT 1
+        ) AS first_name,
+        (
+          SELECT a.value FROM custom_form_answers a
+          JOIN custom_form_fields fld ON a.field_id = fld.id
+          WHERE a.submission_id = s.id
+            AND LOWER(fld.label) LIKE '%last name%'
+          LIMIT 1
+        ) AS last_name
+      FROM custom_form_submissions s
+      JOIN custom_forms f ON s.form_id = f.id
+      WHERE s.patient_id IS NULL
+      ORDER BY s.submitted_at DESC
+    `);
+
+    // Add full name field
+    const enhanced = rows.map((row) => ({
+      ...row,
+      patient_name: [row.first_name, row.last_name].filter(Boolean).join(" "),
+    }));
+
+    res.json(enhanced);
   } catch (err) {
     console.error("❌ Error fetching unlinked submissions:", err);
     res.status(500).json({ error: "Failed to fetch unlinked submissions." });
@@ -317,6 +355,7 @@ exports.submitFormPublic = async (req, res) => {
   }
 
   try {
+    // Step 1: Get the form_id from the field
     const [[fieldRow]] = await db.query(
       `SELECT form_id FROM custom_form_fields WHERE id = ?`,
       [firstFieldId]
@@ -328,16 +367,39 @@ exports.submitFormPublic = async (req, res) => {
 
     const formId = fieldRow.form_id;
 
-    // Insert submission
-    const [submissionResult] = await db.query(
-      `INSERT INTO custom_form_submissions (form_id, patient_id, submitted_by_ip)
-       VALUES (?, NULL, ?)`,
-      [formId, submitted_by_ip || null]
-    );
+    // ✅ Step 2: Lookup latest token for this form to extract patient_id
+   const [[tokenRow]] = await db.query(
+  `SELECT patient_id, location_id FROM custom_form_tokens
+   WHERE form_id = ?
+   ORDER BY issued_at DESC
+   LIMIT 1`,
+  [formId]
+   );
+
+    if (!tokenRow) {
+  console.warn("⚠️ No token found for form ID:", formId);
+}
+
+    const patientId = tokenRow?.patient_id || null;
+    const locationId = tokenRow?.location_id || null;
+
+    console.log("📥 Submitting form with:", {
+  formId,
+  patientId,
+  locationId,
+  submitted_by_ip
+});
+
+    // Step 3: Insert submission with resolved patient_id
+   const [submissionResult] = await db.query(
+  `INSERT INTO custom_form_submissions (form_id, patient_id, location_id, submitted_by_ip)
+   VALUES (?, ?, ?, ?)`,
+  [formId, patientId, locationId, submitted_by_ip || null]
+);
 
     const submissionId = submissionResult.insertId;
 
-    // Insert answers
+    // Step 4: Insert answers
     const answerPromises = answers.map(({ field_id, value }) => {
       return db.query(
         `INSERT INTO custom_form_answers (submission_id, field_id, value)
@@ -352,5 +414,106 @@ exports.submitFormPublic = async (req, res) => {
   } catch (err) {
     console.error("❌ Error in submitFormPublic:", err);
     res.status(500).json({ error: "Failed to submit public form." });
+  }
+};
+
+exports.linkSubmissionToPatient = async (req, res) => {
+  const { submissionId } = req.params;
+  const { patNum } = req.body;
+  const locationId = req.user?.location_id;
+
+  if (!submissionId || !patNum || !locationId) {
+    return res.status(400).json({ error: "Missing required fields." });
+  }
+
+  try {
+    await db.query(
+      `UPDATE custom_form_submissions
+       SET patient_id = ?, location_id = ?
+       WHERE id = ?`,
+      [patNum, locationId, submissionId]
+    );
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("❌ Error linking submission:", err);
+    res.status(500).json({ error: "Failed to link submission." });
+  }
+};
+
+exports.getReturningPatientSubmissions = async (req, res) => {
+  console.log("🔥 getReturningPatientSubmissions was called");
+
+  const userId = req.user?.userId;
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    const [submissions] = await db.query(`
+      SELECT
+        cfs.*,
+        cf.name AS form_name
+      FROM custom_form_submissions cfs
+      JOIN custom_forms cf ON cfs.form_id = cf.id
+      WHERE cfs.patient_id IS NOT NULL
+        AND cfs.id NOT IN (
+          SELECT submission_id
+          FROM user_cleared_uploaded_forms
+          WHERE user_id = ?
+        )
+      ORDER BY cfs.submitted_at DESC
+    `, [userId]);
+
+    const submissionsWithPatient = await Promise.all(
+      submissions.map(async (submission) => {
+        try {
+          const patient = await req.openDentalService.getPatient(submission.patient_id);
+          return {
+            ...submission,
+            patientName: `${patient.FName} ${patient.LName}`,
+            birthdate: patient.Birthdate,
+            phone: patient.HmPhone || patient.WkPhone || patient.WirelessPhone || null,
+          };
+        } catch (err) {
+          console.warn(`⚠️ Failed to fetch patient ${submission.patient_id}:`, err.response?.data || err.message || err);
+          return {
+            ...submission,
+            patientName: "Unknown",
+            birthdate: null,
+            phone: null,
+          };
+        }
+      })
+    );
+
+    res.json(submissionsWithPatient);
+  } catch (error) {
+    console.error("❌ Error fetching returning patient submissions:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+// ✅ Clear uploaded form from user view
+exports.clearUploadedForm = async (req, res) => {
+  const { submissionId } = req.params;
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    await db.query(
+      `INSERT INTO user_cleared_uploaded_forms (user_id, submission_id)
+       VALUES (?, ?)`,
+      [userId, submissionId]
+    );
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("❌ Error clearing uploaded form:", err);
+    res.status(500).json({ error: "Failed to clear uploaded form." });
   }
 };

@@ -22,8 +22,9 @@ export default function CreatePatientModal({
         LName,
         Phone,
         Email,
-        Birthdate,
         Gender: genderMap[(Gender || "U").toUpperCase()],
+        ...(Birthdate ? { Birthdate } : {}),
+
       }, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });

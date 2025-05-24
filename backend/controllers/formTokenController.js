@@ -12,11 +12,12 @@ exports.generateCustomFormToken = async (req, res) => {
 
     const token = crypto.randomUUID();
     const issued_at = new Date();
+    const location_id = req.user?.location_id;
 
     await db.query(
-      `INSERT INTO custom_form_tokens (token, form_id, patient_id, issued_at)
-       VALUES (?, ?, ?, ?)`,
-      [token, form_id, patient_id || null, issued_at]
+      `INSERT INTO custom_form_tokens (token, form_id, patient_id, location_id, issued_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [token, form_id, patient_id || null, location_id, issued_at]
     );
 
     const origin = req.headers.origin || process.env.APP_BASE_URL || "http://localhost:5173";

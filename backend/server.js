@@ -1,4 +1,5 @@
 const express = require("express");
+const db = require("./config/db");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
@@ -13,6 +14,8 @@ const publicFormsRoutes = require("./routes/publicFormsRoutes");
 const formTemplatesRoutes = require("./routes/formTemplatesRoutes");
 const formSubmissionRoutes = require("./routes/formSubmissionRoutes");
 const customFormSubmissionRoutes = require("./routes/customFormSubmissionRoutes");
+const formAdminRoutes = require("./routes/formAdminRoutes");
+const OpenDentalService = require("./services/openDentalService");
 
 
 const app = express();
@@ -26,6 +29,29 @@ app.use(cors({
 }));
 app.use(helmet());
 app.use(morgan("dev"));
+
+app.use(async (req, res, next) => {
+  const locationId = req.user?.location_id || 6;
+
+  try {
+    const [[location]] = await db.query(
+      `SELECT developer_key, customer_key FROM locations WHERE id = ?`,
+      [locationId]
+    );
+
+    if (!location || !location.developer_key || !location.customer_key) {
+      console.warn(`⚠️ Missing Open Dental API keys for location ${locationId}`);
+      req.openDentalService = null;
+    } else {
+      req.openDentalService = new OpenDentalService(location.developer_key, location.customer_key);
+    }
+  } catch (err) {
+    console.error("❌ Failed to initialize OpenDentalService:", err);
+    req.openDentalService = null;
+  }
+
+  next();
+});
 
 // Routes
 app.use("/api/auth", require("./routes/authRoutes"));
@@ -47,10 +73,11 @@ app.use("/api/forms/:formId/submissions", formSubmissionRoutes);
 // 👇 Handles /api/custom-form-submissions/linked, /unlinked, etc.
 app.use("/api/custom-form-submissions", formSubmissionRoutes);
 // 👇 Handles /api/forms/submissions (public submission via token)
-app.use("/api/form-submissions", formSubmissionRoutes); 
+app.use("/api/form-submissions", formSubmissionRoutes);
 app.use("/api/public-forms", publicFormsRoutes);
 app.use("/api/reconcilliation", require("./routes/reconcilliationRoutes"));
 app.use("/api/custom-form-tokens", require("./routes/customFormTokenRoutes"));
+app.use("/api/form-admin", formAdminRoutes);
 
 
 
