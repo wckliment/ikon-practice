@@ -12,10 +12,14 @@ export default function FormsTab() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formPatientInfo, setFormPatientInfo] = useState(null);
+  const [loadingLinkedForms, setLoadingLinkedForms] = useState(true);
 
- useEffect(() => {
+useEffect(() => {
   const fetchForms = async () => {
     try {
+      setLoading(true);             // Overall loading state
+      setLoadingLinkedForms(true);  // Specifically for returning patient forms
+
       const token = localStorage.getItem("token");
 
       const [unlinkedRes, linkedRes] = await Promise.all([
@@ -28,16 +32,17 @@ export default function FormsTab() {
       ]);
 
       setUnlinkedForms(unlinkedRes.data);
-      setLinkedForms(linkedRes.data); // now includes patientName and birthdate!
+      setLinkedForms(linkedRes.data);
     } catch (err) {
       console.error("❌ Error fetching form submissions", err);
     } finally {
       setLoading(false);
+      setLoadingLinkedForms(false);  // Make sure this is set even if error occurs
     }
   };
 
   fetchForms();
- }, []);
+}, []);
 
 
 
@@ -65,10 +70,10 @@ const handleClear = async (form) => {
       axios.get("/api/custom-form-submissions/unlinked", {
         headers: { Authorization: `Bearer ${token}` },
       }),
-      axios.get("/api/custom-form-submissions/linked", {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-    ]);
+       axios.get("/api/form-admin/returning-forms", {
+    headers: { Authorization: `Bearer ${token}` },
+  }),
+]);
     setUnlinkedForms(unlinkedRes.data);
     setLinkedForms(linkedRes.data);
   } catch (err) {
@@ -134,6 +139,35 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
                 🔍 View Details
               </button>
             </div>
+            <button
+  className="text-sm text-red-600 underline hover:text-red-800"
+  onClick={async () => {
+    const confirm = window.confirm("Permanently delete this form?");
+    if (!confirm) return;
+    try {
+      await axios.delete(`/api/custom-form-submissions/${form.submission_id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      toast.success("🗑 Form deleted.");
+      const token = localStorage.getItem("token");
+      const [unlinkedRes, linkedRes] = await Promise.all([
+        axios.get("/api/custom-form-submissions/unlinked", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get("/api/form-admin/returning-forms", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      setUnlinkedForms(unlinkedRes.data);
+      setLinkedForms(linkedRes.data);
+    } catch (err) {
+      console.error("❌ Error deleting form:", err);
+      toast.error("Failed to delete form.");
+    }
+  }}
+>
+  🗑 Delete
+</button>
           </div>
         ))
       )}
@@ -142,92 +176,127 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
       <p className="text-sm text-gray-500 mb-4">
   These forms are already linked to an existing Open Dental patient. You can review and upload them to Imaging if needed.
 </p>
-      {linkedForms.length === 0 ? (
-        <p className="text-sm text-gray-500">No returning patient forms found.</p>
-      ) : (
+{loadingLinkedForms ? (
+  <p className="text-sm text-gray-500">Loading returning patient forms...</p>
+) : visibleLinkedForms.length === 0 ? (
+  <p className="text-sm text-gray-500">No returning patient forms found.</p>
+) : (
+  visibleLinkedForms.map((form) => (
+    <div
+      key={form.submission_id}
+      className="bg-white p-4 rounded shadow border mb-3"
+    >
+      <div className="font-semibold">
+        {form.form_name || `Form ID: ${form.form_id}`}
+      </div>
 
+      {form.uploaded_at && (
+        <div className="text-xs inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium mb-2">
+          ✅ Uploaded
+        </div>
+      )}
 
-        visibleLinkedForms.map((form) => (
-          <div
-            key={form.submission_id}
-            className="bg-white p-4 rounded shadow border mb-3"
-          >
-            <div className="font-semibold">{form.form_name || `Form ID: ${form.form_id}`}</div>
-            {form.uploaded_at && (
-  <div className="text-xs inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium mb-2">
-    ✅ Uploaded
-  </div>
-)}
-            <div className="text-xs inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium mb-2">
-  ✅ Linked
-</div>
-<div className="text-sm text-gray-700">Patient Name: {form.patientName || "Unknown"}</div>
-<div className="text-sm text-gray-500">
-  DOB: {form.birthdate ? new Date(form.birthdate).toLocaleDateString() : "—"}
-</div>
-            <div className="text-sm text-gray-500">
-              Submitted: {new Date(form.submitted_at).toLocaleString()}
-            </div>
-            <button
-  className="text-sm text-blue-600 underline hover:text-blue-800 mt-2"
+      <div className="text-xs inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-medium mb-2">
+        ✅ Linked
+      </div>
+
+      <div className="text-sm text-gray-700">
+        Patient Name: {form.patientName || "Unknown"}
+      </div>
+      <div className="text-sm text-gray-500">
+        DOB: {form.birthdate ? new Date(form.birthdate).toLocaleDateString() : "—"}
+      </div>
+      <div className="text-sm text-gray-500">
+        Submitted: {new Date(form.submitted_at).toLocaleString()}
+      </div>
+
+      <button
+  className="text-sm text-red-600 underline hover:text-red-800 mt-2"
   onClick={async () => {
-    setSelectedSubmission(form);
-    setLoadingDetails(true);
+    const confirm = window.confirm("Permanently delete this form?");
+    if (!confirm) return;
     try {
-      const res = await axios.get(
-        `/api/custom-form-submissions/${form.id}`
-      );
-      setSubmissionDetails(res.data);
+      await axios.delete(`/api/custom-form-submissions/${form.submission_id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      toast.success("🗑 Form deleted.");
+      const token = localStorage.getItem("token");
+      const [unlinkedRes, linkedRes] = await Promise.all([
+        axios.get("/api/custom-form-submissions/unlinked", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get("/api/form-admin/returning-forms", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      setUnlinkedForms(unlinkedRes.data);
+      setLinkedForms(linkedRes.data);
     } catch (err) {
-      console.error("❌ Failed to fetch submission details:", err);
-    } finally {
-      setLoadingDetails(false);
+      console.error("❌ Error deleting form:", err);
+      toast.error("Failed to delete form.");
     }
   }}
 >
-🔍 View Details
-            </button>
-{!form.uploaded_at && (
-  <button
-    className="text-sm text-green-600 underline hover:text-green-800 ml-4"
-    onClick={async () => {
-      try {
-        await axios.post(
-          `/api/custom-form-submissions/${form.id}/upload`,
-          null,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+  🗑 Delete
+</button>
+
+      <button
+        className="text-sm text-blue-600 underline hover:text-blue-800 mt-2"
+        onClick={async () => {
+          setSelectedSubmission(form);
+          setLoadingDetails(true);
+          try {
+            const res = await axios.get(
+              `/api/custom-form-submissions/${form.id}`
+            );
+            setSubmissionDetails(res.data);
+          } catch (err) {
+            console.error("❌ Failed to fetch submission details:", err);
+          } finally {
+            setLoadingDetails(false);
           }
-        );
-        toast.success("📤 Form uploaded to Open Dental Imaging.");
-        // Optional: refresh data here to show uploaded badge
-      } catch (err) {
-        console.error("❌ Upload failed:", err);
-        toast.error("Upload failed. Please try again.");
-      }
-    }}
-  >
-    📤 Upload to Imaging
-              </button>
-            )}
+        }}
+      >
+        🔍 View Details
+      </button>
 
-
-{form.uploaded_at && (() => {
-  console.log("🧪 Rendering Clear Upload for form:", form);
-  return (
-    <button
-      className="text-sm text-red-600 underline hover:text-red-800 ml-4"
-      onClick={() => handleClear(form)}
-    >
-      ❌ Clear Upload
-    </button>
-  );
-})()}
-          </div>
-        ))
+      {!form.uploaded_at && (
+        <button
+          className="text-sm text-green-600 underline hover:text-green-800 ml-4"
+          onClick={async () => {
+            try {
+              await axios.post(
+                `/api/custom-form-submissions/${form.id}/upload`,
+                null,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              );
+              toast.success("📤 Form uploaded to Open Dental Imaging.");
+            } catch (err) {
+              console.error("❌ Upload failed:", err);
+              toast.error("Upload failed. Please try again.");
+            }
+          }}
+        >
+          📤 Upload to Imaging
+        </button>
       )}
+
+      {form.uploaded_at && (
+        <button
+          className="text-sm text-red-600 underline hover:text-red-800 ml-4"
+          onClick={() => handleClear(form)}
+        >
+          ❌ Clear Upload
+        </button>
+      )}
+    </div>
+  ))
+)}
+
 
       {selectedSubmission && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -342,7 +411,7 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
                 axios.get("/api/custom-form-submissions/unlinked", {
                   headers: { Authorization: `Bearer ${token}` },
                 }),
-                axios.get("/api/custom-form-submissions/linked", {
+                axios.get("/api/form-admin/returning-forms", {
                   headers: { Authorization: `Bearer ${token}` },
                 }),
               ]);

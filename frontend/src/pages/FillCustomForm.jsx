@@ -54,6 +54,8 @@ const handleSubmit = async () => {
   try {
     // ✅ Put this at the start of the function
     const isPublic = form?.method === "website";
+    console.log("🌐 isPublic form submission?", isPublic, "| method:", form?.method);
+
 
     // 1. Extract signature data
     const signatureData = {};
@@ -122,12 +124,23 @@ const handleSubmit = async () => {
       localStorage.setItem(`formCompleted_${form.name}`, "true");
     }
 
-    window.location.href = "/forms/thank-you";
+    // ✅ Cross-tab sync to ikonConnect
+try {
+  if (window.opener && form?.name) {
+    const key = `formCompleted_${form.name}`;
+    window.opener.postMessage({ type: "formCompleted", key }, "*");
+    console.log("📤 Sent completion message to opener:", key);
+  }
+} catch (err) {
+  console.warn("⚠️ Could not send postMessage to opener:", err);
+}
+
+    // window.location.href = "/forms/thank-you";
 
   } catch (err) {
-    console.error("❌ Submission failed:", err);
-    alert("Failed to submit form. Please try again.");
-  }
+  console.error("❌ Submission failed:", err.message, err);
+  alert("Failed to submit form. Please try again.");
+}
 };
 
   if (loading) return <div className="p-6">Loading form...</div>;

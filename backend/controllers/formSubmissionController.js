@@ -450,33 +450,41 @@ exports.getReturningPatientSubmissions = async (req, res) => {
   }
 
   try {
+    // 1. Get all linked submissions, excluding those hidden by this user
     const [submissions] = await db.query(`
       SELECT
         cfs.*,
         cf.name AS form_name
       FROM custom_form_submissions cfs
       JOIN custom_forms cf ON cfs.form_id = cf.id
+      LEFT JOIN user_cleared_uploaded_forms ucf
+        ON ucf.submission_id = cfs.id AND ucf.user_id = ?
       WHERE cfs.patient_id IS NOT NULL
-        AND cfs.id NOT IN (
-          SELECT submission_id
-          FROM user_cleared_uploaded_forms
-          WHERE user_id = ?
-        )
+        AND ucf.submission_id IS NULL
       ORDER BY cfs.submitted_at DESC
     `, [userId]);
 
+    // 2. Fetch Open Dental patient data
     const submissionsWithPatient = await Promise.all(
       submissions.map(async (submission) => {
         try {
           const patient = await req.openDentalService.getPatient(submission.patient_id);
+
+          const patientName = [patient.FName, patient.LName].filter(Boolean).join(" ") || "Unknown";
+          const birthdate = patient.Birthdate || null;
+          const phone = patient.HmPhone || patient.WkPhone || patient.WirelessPhone || null;
+
+          console.log(`✅ Fetched patient ${submission.patient_id}: ${patientName}`);
+
           return {
             ...submission,
-            patientName: `${patient.FName} ${patient.LName}`,
-            birthdate: patient.Birthdate,
-            phone: patient.HmPhone || patient.WkPhone || patient.WirelessPhone || null,
+            patientName,
+            birthdate,
+            phone,
           };
         } catch (err) {
           console.warn(`⚠️ Failed to fetch patient ${submission.patient_id}:`, err.response?.data || err.message || err);
+
           return {
             ...submission,
             patientName: "Unknown",
@@ -515,5 +523,19 @@ exports.clearUploadedForm = async (req, res) => {
   } catch (err) {
     console.error("❌ Error clearing uploaded form:", err);
     res.status(500).json({ error: "Failed to clear uploaded form." });
+  }
+};
+
+exports.deleteSubmission = async (req, res) => {
+  const { submissionId } = req.params;
+
+  try {
+    await db.query(`DELETE FROM custom_form_answers WHERE submission_id = ?`, [submissionId]);
+    await db.query(`DELETE FROM custom_form_submissions WHERE id = ?`, [submissionId]);
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("❌ Failed to delete submission:", err);
+    res.status(500).json({ error: "Failed to delete submission." });
   }
 };
