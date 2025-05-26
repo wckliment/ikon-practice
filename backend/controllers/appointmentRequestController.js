@@ -30,7 +30,17 @@ exports.createAppointmentRequest = async (req, res) => {
 
 exports.getAllRequests = async (req, res) => {
   try {
-    const requests = await AppointmentRequest.getAll();
+    const { patient_type } = req.query;
+
+    let sql = "SELECT * FROM appointment_requests";
+    const params = [];
+
+    if (patient_type) {
+      sql += " WHERE patient_type = ?";
+      params.push(patient_type);
+    }
+
+    const [requests] = await db.execute(sql, params);
     res.json(requests);
   } catch (err) {
     console.error('Error fetching appointment requests:', err);

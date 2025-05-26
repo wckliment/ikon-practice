@@ -17,10 +17,14 @@ module.exports = {
         socket.emit("test", { message: "Test message" });
       }, 2000);
 
-      socket.on("joinRoom", (room) => {
-        socket.join(room);
-        console.log(`📦 Socket ${socket.id} joined room: ${room}`);
-      });
+      socket.on("join-room", (room, ack) => {
+  socket.join(room);
+  console.log(`📦 Socket ${socket.id} joined room: ${room}`);
+
+  if (typeof ack === "function") {
+    ack({ success: true, room });
+  }
+});
 
       socket.on("disconnect", () => {
         console.log(`🔥 Client disconnected: ${socket.id}`);

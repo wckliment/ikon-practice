@@ -3,7 +3,6 @@ import Sidebar from "../components/Sidebar";
 import TopBar from "../components/TopBar";
 import axios from "axios";
 import ReactSelect from "react-select";
-import { formTemplates } from "../data/formTemplates";
 import ReconcilliationTab from "../components/ReconcilliationTab";
 import { useSelector } from "react-redux";
 
@@ -107,46 +106,23 @@ useEffect(() => {
   fetchAvailableForms();
 }, [showSendModal]);
 
-  // const handleSendForm = async () => {
-  //   try {
-  //     if (!selectedFormId || !selectedPatient) return;
-
-  //     const res = await axios.post(
-  //       "/api/forms/send",
-  //       {
-  //         patNum: selectedPatient.value,
-  //         sheetDefId: selectedFormId,
-  //         method: method,
-  //       },
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-  //         },
-  //       }
-  //     );
-
-  //     alert(`✅ Form sent! Link: ${res.data.link}`);
-
-
-  //     setShowSendModal(false);
-  //     setSelectedFormId("");
-  //     setMethod("website");
-  //   } catch (err) {
-  //     console.error("❌ Failed to send form:", err);
-  //     alert("Error sending form. Check console.");
-  //   }
-  // };
 
 const handleSendForm = async () => {
   try {
     if (!selectedFormId || !selectedPatient) return;
 
+    const endpoint =
+      method === "tablet"
+        ? "/api/custom-form-tokens/tablet"
+        : "/api/custom-form-tokens/generate";
+
+    console.log("📤 Sending form via", method, "to", endpoint);
+
     const res = await axios.post(
-      "/api/custom-form-tokens/generate",
+      endpoint,
       {
-        form_id: selectedFormId, // 👈 snake_case
-        patient_id: selectedPatient.value, // 👈 snake_case
-        method: method,
+        form_id: selectedFormId,
+        patient_id: selectedPatient.value,
       },
       {
         headers: {
@@ -197,24 +173,6 @@ const handleSendForm = async () => {
     />
   </div>
 
-  {/* <div className="flex items-end gap-2">
-    <a
-      href="/forms/builder"
-      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded whitespace-nowrap"
-    >
-      ➕ Create New Form
-    </a>
-
-    {selectedPatient && (
-      <button
-        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded whitespace-nowrap"
-        onClick={() => setShowSendModal(true)}
-      >
-        + Send Form
-      </button>
-    )}
-  </div>
-</div> */}
 
             <div className="flex items-end gap-2">
 

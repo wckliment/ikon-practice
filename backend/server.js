@@ -76,7 +76,6 @@ app.use("/api/custom-form-submissions", formSubmissionRoutes);
 app.use("/api/form-submissions", formSubmissionRoutes);
 app.use("/api/public-forms", publicFormsRoutes);
 app.use("/api/reconcilliation", require("./routes/reconcilliationRoutes"));
-app.use("/api/custom-form-tokens", require("./routes/customFormTokenRoutes"));
 app.use("/api/form-admin", formAdminRoutes);
 
 
@@ -91,6 +90,10 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = socketManager.init(server);
 app.set("io", io);
+
+// ✅ Add this AFTER io is initialized
+const customFormTokenRoutes = require("./routes/customFormTokenRoutes")(io);
+app.use("/api/custom-form-tokens", customFormTokenRoutes);
 
 // Tablet routes with socket
 app.use("/api/tablet", require("./routes/tabletRoutes")(io));

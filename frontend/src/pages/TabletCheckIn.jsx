@@ -1,25 +1,60 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import PatientLookupForm from "../components/Tablet/PatientLookupForm";
 import ConfirmAppointment from "../components/Tablet/ConfirmAppointment";
 import CheckInChecklist from "../components/Tablet/CheckInChecklist";
 import CompletionScreen from "../components/Tablet/CompletionScreen";
 import TabletLogin from "../components/Tablet/TabletLogin";
-import PendingForms from "../components/Tablet/PendingForms"; // ✅ Import
+import PendingForms from "../components/Tablet/PendingForms";
+import { socket, connectSocket } from "../socket";
 
 const TabletCheckIn = () => {
   const { locationCode } = useParams();
+  const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
   const [step, setStep] = useState(1);
   const [patientData, setPatientData] = useState(null);
   const [appointment, setAppointment] = useState(null);
 
-  // ✅ Try to restore user from localStorage
   useEffect(() => {
     const token = localStorage.getItem("tabletToken");
-    if (token) {
+    const location = JSON.parse(localStorage.getItem("location"));
+
+    if (token && location) {
       setUser({ token });
+      connectSocket(token);
+
+      const room = `location-${location.id}`;
+
+      socket.on("connect", () => {
+        socket.emit("join-room", room, (ack) => {
+          console.log("✅ Server acknowledged room join:", ack);
+        });
+        console.log("📡 Joined socket room:", room);
+      });
+
+      console.log("👂 Setting up listener for tablet-form...");
+
+      socket.on("tablet-form", ({ token, formName, patientName }) => {
+        console.log("📥 Tablet form received:", { formName, patientName });
+
+        const queue = JSON.parse(localStorage.getItem("pendingTabletForms")) || [];
+
+        const alreadyQueued = queue.some((f) => f.token === token);
+        if (!alreadyQueued) {
+          queue.push({ token, formName, patientName });
+          localStorage.setItem("pendingTabletForms", JSON.stringify(queue));
+          console.log("💾 Queued tablet form in localStorage:", queue);
+        } else {
+          console.log("⚠️ Form already in queue. Skipping duplicate.");
+        }
+      });
+
+      return () => {
+        socket.off("tablet-form");
+        socket.off("connect");
+      };
     }
   }, []);
 

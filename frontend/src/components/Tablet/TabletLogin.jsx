@@ -29,24 +29,38 @@ const TabletLogin = ({ onLogin }) => {
   const navigate = useNavigate();
 
   // 🔐 Step 2: Login as tablet user
-  const handleLogin = async (e) => {
+const handleLogin = async (e) => {
   e.preventDefault();
   setError("");
 
   try {
     const res = await axios.post("/api/tablet/login", { email, password });
 
-    // ✅ Store token
+    console.log("✅ Login success:", res.data);
+
     localStorage.setItem("tabletToken", res.data.token);
 
-    // ✅ Redirect to tablet check-in page
-    const locationCode = res.data.user.location_code;
-    navigate(`/tablet-checkin/${locationCode}`);
+    const user = res.data.user;
+
+    if (!user?.location_code) {
+      console.error("❌ Login response missing location_code");
+      setError("Missing location code.");
+      return;
+    }
+
+    // ✅ Pass user back to TabletLoginScreen
+    if (onLogin) {
+      onLogin(user);
+    }
   } catch (err) {
     console.error("❌ Tablet login failed:", err);
     setError("Invalid credentials. Please try again.");
   }
 };
+
+
+   // 🔍 Add debug log here:
+  console.log("🧪 Current step:", step);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">

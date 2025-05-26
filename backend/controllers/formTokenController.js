@@ -31,7 +31,7 @@ exports.generateCustomFormToken = async (req, res) => {
 };
 
 
-// ✅ 2. Fetch the form via token (now using Open Dental)
+
 exports.getCustomFormByToken = async (req, res) => {
   try {
     const { token } = req.params;
@@ -43,6 +43,8 @@ exports.getCustomFormByToken = async (req, res) => {
        WHERE t.token = ?`,
       [token]
     );
+
+    console.log("🔍 Lookup result for token", token, "=>", row);
 
     if (!row) {
       return res.status(404).json({ error: "Invalid or expired form token." });
@@ -138,5 +140,56 @@ exports.deleteTokenById = async (req, res) => {
   } catch (err) {
     console.error("❌ Error deleting token:", err);
     res.status(500).json({ error: "Failed to delete token." });
+  }
+};
+
+exports.sendTabletFormToken = async (req, res, io) => {
+  try {
+    const { form_id, patient_id } = req.body;
+    const location_id = req.user?.location_id;
+
+    if (!form_id || !patient_id || !location_id) {
+      return res.status(400).json({ error: "Missing form_id, patient_id, or location_id" });
+    }
+
+    const token = require("crypto").randomUUID();
+    const issued_at = new Date();
+
+    await db.query(
+      `INSERT INTO custom_form_tokens (token, form_id, patient_id, location_id, issued_at, method)
+       VALUES (?, ?, ?, ?, ?, 'tablet')`,
+      [token, form_id, patient_id, location_id, issued_at]
+    );
+
+    // Fetch names for socket payload
+  let patientName = "Unknown Patient";
+try {
+  const patient = await req.openDentalService.getPatient(patient_id);
+  patientName = `${patient.FName || ""} ${patient.LName || ""}`.trim();
+} catch (err) {
+  console.warn("⚠️ Failed to fetch patient from Open Dental:", err.message);
+}
+
+    const [[formRow]] = await db.query(
+      `SELECT name, description FROM custom_forms WHERE id = ?`,
+      [form_id]
+    );
+
+    const payload = {
+  token,
+  formName: formRow?.name || "Form",
+  description: formRow?.description || null,
+  patientName,
+  issuedAt: issued_at.toISOString(),
+};
+
+    const room = `location-${location_id}`;
+    console.log("📡 Emitting tablet-form to", room, "with payload:", payload);
+    io.to(room).emit("tablet-form", payload);
+
+    res.json({ token, message: "Form sent to tablet" });
+  } catch (err) {
+    console.error("❌ Error sending tablet form:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

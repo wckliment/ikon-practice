@@ -8,6 +8,8 @@ import procedureOptions from "../constants/procedureOptions";
 import appointmentService from "../services/appointmentService";
 import { socket, connectSocket } from "../socket";
 import FormsTab from "../components/Forms/FormsTab";
+import AppointmentsTab from "../components/Appointments/AppointmentsTab";
+import PatientTypeIndicator from "../components/PatientTypeIndicator";
 
 const NotificationsHub = () => {
 const [scheduledDate, setScheduledDate] = useState("");
@@ -239,7 +241,7 @@ const handleUpdateRequest = async () => {
               <div className="flex items-center justify-center h-[300px]">
                 <p className="text-gray-500 text-lg">Loading requests...</p>
               </div>
-            ) : requests.length === 0 ? (
+            ) : requests.filter(req => req.patient_type === "new").length === 0 ? (
               <div className="flex items-center justify-center mt-32">
                 <p className="text-gray-500 text-lg">No new requests yet.</p>
               </div>
@@ -247,19 +249,19 @@ const handleUpdateRequest = async () => {
               <div className="mt-6 ml-40 max-w-4xl">
                 <h2 className="text-2xl font-bold text-gray-800 mb-12 mt-4">New Requests</h2>
                 <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-                  {requests.map((req) => (
+                  {requests.filter(req => req.patient_type === "new").map((req) => (
                     <div key={req.id} className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg">
                       <div className="flex-1">
                         <div className="flex items-center">
                           <p className="text-xl font-bold text-gray-800 mr-2">{req.name}</p>
-                          {req.has_staff_notes && (
-                            <span title="Staff Notes Present" className="text-gray-400 text-lg ml-1">📝</span>
-                          )}
+                         {!!req.has_staff_notes && (
+  <span title="Staff Notes Present" className="text-gray-400 text-lg ml-1">📝</span>
+)}
 
                           <span className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${req.status === "pending" ? "bg-yellow-100 text-yellow-800" : req.status === "scheduled" ? "bg-green-100 text-green-800" : req.status === "contacted" ? "bg-blue-100 text-blue-800" : "bg-gray-200 text-gray-700"}`}>{req.status || "Unknown"}</span>
                         </div>
                         <div className="flex items-center mt-1">
-                          <span className="text-sm font-medium text-indigo-600">{req.patient_type === "new" ? "🆕 New Patient" : "🔁 Returning Patient"}</span>
+                          <PatientTypeIndicator type={req.patient_type} showLabel={true} />
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{req.preferred_time ? new Date(req.preferred_time).toLocaleDateString(undefined, { dateStyle: "long" }) : "No preferred date"} • {req.appointment_type}</p>
                         <p className="text-sm text-gray-600 mt-1">📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}</p>
@@ -307,6 +309,16 @@ const handleUpdateRequest = async () => {
           )}
 
           {activeTab === "forms" && <FormsTab />}
+
+          {activeTab === "appointments" && (
+  <AppointmentsTab
+    requests={requests.filter(r => r.patient_type === "returning")}
+    setOpenScheduleModal={setOpenScheduleModal}
+    setAppointmentType={setAppointmentType}
+    setSelectedRequest={setSelectedRequest}
+    setStaffNotes={setStaffNotes}
+  />
+)}
         </div>
 
         {/* View Details Modal */}
