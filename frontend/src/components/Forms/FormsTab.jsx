@@ -52,7 +52,7 @@ const handleClear = async (form) => {
 
   try {
     await axios.put(
-      `/api/custom-form-submissions/${form.id}/clear-upload`,
+  `/api/custom-form-submissions/${form.submission_id}/clear-upload`,
       null,
       {
         headers: {
@@ -247,8 +247,8 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
           setLoadingDetails(true);
           try {
             const res = await axios.get(
-              `/api/custom-form-submissions/${form.id}`
-            );
+  `/api/custom-form-submissions/${form.submission_id}`
+);
             setSubmissionDetails(res.data);
           } catch (err) {
             console.error("❌ Failed to fetch submission details:", err);
@@ -266,7 +266,7 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
           onClick={async () => {
             try {
               await axios.post(
-                `/api/custom-form-submissions/${form.id}/upload`,
+  `/api/custom-form-submissions/${form.submission_id}/upload`,
                 null,
                 {
                   headers: {

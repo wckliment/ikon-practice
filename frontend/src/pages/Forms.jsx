@@ -8,7 +8,6 @@ import { useSelector } from "react-redux";
 
 const Forms = () => {
   const currentUser = useSelector((state) => state.auth.user);
-  console.log("Current User:", currentUser);
   const [searchPatientTerm, setSearchPatientTerm] = useState("");
   const [patientOptions, setPatientOptions] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -54,12 +53,11 @@ const Forms = () => {
   }, [searchPatientTerm]);
 
 
- const fetchForms = async () => {
+const fetchForms = async () => {
   if (!selectedPatient) return;
 
   try {
     setIsLoadingForms(true);
-
     const token = localStorage.getItem("token") || "";
 
     const [completedRes, pendingRes] = await Promise.all([
@@ -70,6 +68,9 @@ const Forms = () => {
         headers: { Authorization: `Bearer ${token}` },
       }),
     ]);
+
+    console.log("✅ Completed Forms Response:", completedRes.data);
+    console.log("✅ Pending Forms Response:", pendingRes.data);
 
     setForms({
       completed: completedRes.data || [],

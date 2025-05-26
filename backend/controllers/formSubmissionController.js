@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const { generateFormPdf } = require('../utils/generateFormPdf');
 const { uploadToImaging } = require('../utils/openDentalUploader');
+const { logReconciliationIfNeeded } = require("../utils/reconcilliationLogger");
+
 
 
 
@@ -58,6 +60,50 @@ exports.submitForm = async (req, res) => {
     });
 
     await Promise.all(answerPromises);
+
+    // 3. Reconciliation Logic (if patient + OpenDental available)
+try {
+  const [[formMeta]] = await connection.query(
+    `SELECT name FROM custom_forms WHERE id = ?`,
+    [formId]
+  );
+
+  const [formFields] = await connection.query(
+    `SELECT id, label FROM custom_form_fields WHERE form_id = ?`,
+    [formId]
+  );
+
+  if (patient_id && req.openDentalService) {
+    const patient = await req.openDentalService.getPatient(patient_id);
+
+    for (const { field_id, value } of answers) {
+      const fieldMeta = formFields.find(f => f.id === field_id);
+      if (!fieldMeta) continue;
+
+      const fieldLabel = fieldMeta.label.toLowerCase();
+      let openDentalValue;
+
+      if (fieldLabel.includes("first name")) openDentalValue = patient.FName;
+      else if (fieldLabel.includes("last name")) openDentalValue = patient.LName;
+      else if (fieldLabel.includes("email")) openDentalValue = patient.Email;
+      else if (fieldLabel.includes("phone"))
+        openDentalValue = patient.WirelessPhone || patient.HmPhone || patient.WkPhone;
+      else if (fieldLabel.includes("birthdate")) openDentalValue = patient.Birthdate;
+
+      await logReconciliationIfNeeded(
+        patient_id,
+        fieldMeta.label,
+        value,
+        openDentalValue,
+        formMeta.name,
+        fieldMeta.field_type
+      );
+    }
+  }
+} catch (err) {
+  console.warn("⚠️ Reconciliation skipped (submitForm):", err.message);
+}
+
 
     await connection.commit();
     res.status(201).json({ success: true, submission_id: submissionId });
@@ -410,6 +456,48 @@ exports.submitFormPublic = async (req, res) => {
 
     await Promise.all(answerPromises);
 
+    try {
+  const [[formMeta]] = await db.query(
+    `SELECT name FROM custom_forms WHERE id = ?`,
+    [formId]
+  );
+
+  const [formFields] = await db.query(
+    `SELECT id, label FROM custom_form_fields WHERE form_id = ?`,
+    [formId]
+  );
+
+  if (patientId && req.openDentalService) {
+    const patient = await req.openDentalService.getPatient(patientId);
+
+    for (const { field_id, value } of answers) {
+      const fieldMeta = formFields.find(f => f.id === field_id);
+      if (!fieldMeta) continue;
+
+      const fieldLabel = fieldMeta.label.toLowerCase();
+      let openDentalValue;
+
+      if (fieldLabel.includes("first name")) openDentalValue = patient.FName;
+      else if (fieldLabel.includes("last name")) openDentalValue = patient.LName;
+      else if (fieldLabel.includes("email")) openDentalValue = patient.Email;
+      else if (fieldLabel.includes("phone"))
+        openDentalValue = patient.WirelessPhone || patient.HmPhone || patient.WkPhone;
+      else if (fieldLabel.includes("birthdate")) openDentalValue = patient.Birthdate;
+
+      await logReconciliationIfNeeded(
+        patientId,
+        fieldMeta.label,
+        value,
+        openDentalValue,
+        formMeta.name,
+        fieldMeta.field_type
+      );
+    }
+  }
+} catch (err) {
+  console.warn("⚠️ Reconciliation skipped (submitFormPublic):", err.message);
+}
+
     res.status(201).json({ success: true, submission_id: submissionId });
   } catch (err) {
     console.error("❌ Error in submitFormPublic:", err);
@@ -451,18 +539,23 @@ exports.getReturningPatientSubmissions = async (req, res) => {
 
   try {
     // 1. Get all linked submissions, excluding those hidden by this user
-    const [submissions] = await db.query(`
-      SELECT
-        cfs.*,
-        cf.name AS form_name
-      FROM custom_form_submissions cfs
-      JOIN custom_forms cf ON cfs.form_id = cf.id
-      LEFT JOIN user_cleared_uploaded_forms ucf
-        ON ucf.submission_id = cfs.id AND ucf.user_id = ?
-      WHERE cfs.patient_id IS NOT NULL
-        AND ucf.submission_id IS NULL
-      ORDER BY cfs.submitted_at DESC
-    `, [userId]);
+   const [submissions] = await db.query(`
+  SELECT
+    cfs.id AS submission_id,
+    cfs.form_id,
+    cfs.patient_id,
+    cfs.location_id,
+    cfs.submitted_at,
+    cfs.uploaded_at,
+    cf.name AS form_name
+  FROM custom_form_submissions cfs
+  JOIN custom_forms cf ON cfs.form_id = cf.id
+  LEFT JOIN user_cleared_uploaded_forms ucf
+    ON ucf.submission_id = cfs.id AND ucf.user_id = ?
+  WHERE cfs.patient_id IS NOT NULL
+    AND ucf.submission_id IS NULL
+  ORDER BY cfs.submitted_at DESC
+`, [userId]);
 
     // 2. Fetch Open Dental patient data
     const submissionsWithPatient = await Promise.all(

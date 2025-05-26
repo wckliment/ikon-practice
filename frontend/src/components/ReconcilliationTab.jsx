@@ -28,6 +28,13 @@ const ReconcilliationTab = ({ patientId }) => {
     fetchEntries();
   }, [patientId]);
 
+
+  const truncateValue = (value) => {
+  if (!value) return "(empty)";
+  if (value.startsWith("data:image")) return "[Signature Image]";
+  return value.length > 100 ? value.slice(0, 100) + "..." : value;
+};
+
   const handleResolve = async (entryId) => {
     const confirm = window.confirm("Are you sure you want to accept this updated value?");
     if (!confirm) return;
@@ -101,23 +108,11 @@ const ReconcilliationTab = ({ patientId }) => {
                 }`}
               >
                 <td className="px-4 py-2 font-medium">{entry.field_name}</td>
-                <td className="px-4 py-2 text-blue-700">{entry.submitted_value}</td>
-                <td className="px-4 py-2 text-gray-500">
-                  {entry.original_value || "(empty)"}
-                </td>
+               <td className="px-4 py-2 text-blue-700">{truncateValue(entry.submitted_value)}</td>
+<td className="px-4 py-2 text-gray-500">{truncateValue(entry.original_value)}</td>
                 <td className="px-4 py-2">{entry.form_name}</td>
                 <td className="px-4 py-2">
-                  {/* {entry.resolved ? (
-                    <span className="text-green-600 font-semibold">Accepted</span>
-                  ) : (
-                    <button
-                      disabled={resolvingId === entry.id}
-                      onClick={() => handleResolve(entry.id)}
-                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50"
-                    >
-                      {resolvingId === entry.id ? "Updating..." : "Accept"}
-                    </button>
-                  )} */}
+
                         {entry.resolved ? (
   <span className="text-green-600 font-semibold">Accepted</span>
 ) : (

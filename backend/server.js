@@ -74,6 +74,7 @@ app.use("/api/forms/:formId/submissions", formSubmissionRoutes);
 app.use("/api/custom-form-submissions", formSubmissionRoutes);
 // 👇 Handles /api/forms/submissions (public submission via token)
 app.use("/api/form-submissions", formSubmissionRoutes);
+app.use("/api/forms/submissions", formSubmissionRoutes);
 app.use("/api/public-forms", publicFormsRoutes);
 app.use("/api/reconcilliation", require("./routes/reconcilliationRoutes"));
 app.use("/api/form-admin", formAdminRoutes);
