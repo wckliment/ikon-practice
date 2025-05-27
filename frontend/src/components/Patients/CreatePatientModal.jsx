@@ -4,12 +4,16 @@ import axios from "axios";
 export default function CreatePatientModal({
   onClose,
   onPatientCreated,
-  prefill = {},
+  prefill,
+  isLinkMode
 }) {
-  const [FName, setFName] = React.useState(prefill.firstName || "");
-  const [LName, setLName] = React.useState(prefill.lastName || "");
-  const [Phone, setPhone] = React.useState(prefill.phone || "");
-  const [Email, setEmail] = React.useState(prefill.email || "");
+
+  const safePrefill = prefill || {};
+
+   const [FName, setFName] = React.useState(safePrefill.firstName || "");
+  const [LName, setLName] = React.useState(safePrefill.lastName || "");
+  const [Phone, setPhone] = React.useState(safePrefill.phone || "");
+  const [Email, setEmail] = React.useState(safePrefill.email || "");
   const [Birthdate, setBirthdate] = React.useState("");
   const [Gender, setGender] = React.useState("");
 
@@ -45,7 +49,9 @@ export default function CreatePatientModal({
           className="absolute top-4 right-4 text-gray-500 hover:text-black"
         >✕</button>
 
-        <h2 className="text-2xl font-bold mb-4">New Patient</h2>
+        <h2 className="text-2xl font-bold mb-4">
+  {isLinkMode ? "Link to Existing Patient" : "Create New Patient"}
+</h2>
 
         <div className="grid grid-cols-1 gap-4">
           <input type="text" placeholder="First Name" value={FName} onChange={(e) => setFName(e.target.value)} className="border rounded px-4 py-2" />

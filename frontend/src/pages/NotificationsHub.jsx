@@ -76,16 +76,28 @@ useEffect(() => {
     }
   };
 
-  const fetchOperatories = async () => {
-    try {
-      const res = await axios.get("/api/operatories", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setOperatories(res.data.data || []);
-    } catch (err) {
-      console.error("❌ Failed to fetch operatories", err);
+const fetchOperatories = async () => {
+  try {
+    const locationCode = user?.location_code;
+
+    if (!locationCode) {
+      console.warn("⚠️ location_code missing from user object");
+      return;
     }
-  };
+
+    console.log("📡 Fetching operatories for location:", locationCode);
+
+    const res = await axios.get(`/api/operatories?locationCode=${locationCode}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+
+    console.log("✅ Operatories response:", res.data); // <-- log this
+
+    setOperatories(res.data || []);
+  } catch (err) {
+    console.error("❌ Failed to fetch operatories", err);
+  }
+};
 
   fetchRequests();
   fetchProviders();
@@ -98,7 +110,8 @@ useEffect(() => {
   return () => {
     socket.off("newAppointmentRequest");
   };
-}, []);
+}, []); // ✅ <<< This closes the useEffect
+
 
 
 // 🔍 Debounced patient search
@@ -140,6 +153,7 @@ const handleUpdateRequest = async () => {
       {
         status: selectedRequest.status,
         handled_by: user.id,
+        staff_notes: newStaffNote, // ✅ You can pass this directly now
       },
       {
         headers: {
@@ -148,32 +162,20 @@ const handleUpdateRequest = async () => {
       }
     );
 
-    // 2️⃣ Create new note if present
-    if (newStaffNote.trim() !== "") {
-      await axios.post(
-        `/api/appointment-requests/${selectedRequest.id}/notes`,
-        {
-          note_text: newStaffNote,
-          user_id: user.id,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+    // 2️⃣ Update local requests state to reflect new status + staff notes
+    setRequests((prev) =>
+      prev.map((req) =>
+        req.id === selectedRequest.id
+          ? {
+              ...req,
+              status: selectedRequest.status,
+              has_staff_notes: newStaffNote.trim() !== "" || req.has_staff_notes,
+            }
+          : req
+      )
+    );
 
-      // 📝 Optimistically mark the request as having staff notes
-      setRequests((prev) =>
-        prev.map((req) =>
-          req.id === selectedRequest.id
-            ? { ...req, has_staff_notes: true }
-            : req
-        )
-      );
-    }
-
-    // 3️⃣ Re-fetch notes
+    // 3️⃣ Re-fetch staff notes
     const res = await axios.get(
       `/api/appointment-requests/${selectedRequest.id}/notes?_=${Date.now()}`,
       {
@@ -186,7 +188,6 @@ const handleUpdateRequest = async () => {
 
     setStaffNotes(res.data);
     setNewStaffNote("");
-
   } catch (err) {
     console.error("❌ Failed to update request or fetch notes:", err);
   }
@@ -195,15 +196,23 @@ const handleUpdateRequest = async () => {
 
   const handleSaveAppointment = async () => {
   try {
-    const appointmentData = {
-      patNum: selectedPatient.value,
-      aptDateTime: `${scheduledDate}T${scheduledTime}`,
-      op: selectedOperatory,
-      provNum: selectedProvider,
-      note: scheduleNotes,
-      pattern: "/".repeat(appointmentDuration / 5),
-      procedures: [{ description: appointmentType }]
-    };
+ const appointmentData = {
+  patientId: selectedPatient.value,
+  aptDateTime: `${scheduledDate}T${scheduledTime}`,
+  operatoryId: selectedOperatory,
+  providerId: selectedProvider,
+  notes: scheduleNotes,
+  duration: appointmentDuration,
+  description: appointmentType, // 👈 REQUIRED so it passes the internal check
+  procedures: [{ description: appointmentType }]
+};
+
+
+console.log("📦 Sending appointment with:", {
+  appointmentType,
+  procedures: [{ description: appointmentType }]
+});
+
 
     await appointmentService.createAppointment(appointmentData);
 
@@ -249,7 +258,11 @@ const handleUpdateRequest = async () => {
               <div className="mt-6 ml-40 max-w-4xl">
                 <h2 className="text-2xl font-bold text-gray-800 mb-12 mt-4">New Requests</h2>
                 <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-                  {requests.filter(req => req.patient_type === "new").map((req) => (
+                      {requests
+  .filter(req => req.patient_type === "new")
+  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)) // newest first
+  .map((req) => (
+
                     <div key={req.id} className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg">
                       <div className="flex-1">
                         <div className="flex items-center">
@@ -269,15 +282,24 @@ const handleUpdateRequest = async () => {
                       </div>
 
                       <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
+{req.status === "scheduled" ? (
+  <button
+    disabled
+    className="text-sm px-5 py-2 rounded-lg bg-gray-300 text-gray-500 cursor-not-allowed"
+  >
+    Scheduled
+  </button>
+) : (
   <button
     onClick={() => {
-      setOpenScheduleModal(req); // 👈 opens the schedule modal
-      setAppointmentType(req.appointment_type || ""); // pre-fill type
+      setOpenScheduleModal(req);
+      setAppointmentType(req.appointment_type || "");
     }}
     className="text-sm px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
   >
     Schedule
   </button>
+)}
 
 <button
   onClick={async () => {
@@ -312,7 +334,9 @@ const handleUpdateRequest = async () => {
 
           {activeTab === "appointments" && (
   <AppointmentsTab
-    requests={requests.filter(r => r.patient_type === "returning")}
+    requests={requests
+      .filter(r => r.patient_type === "returning")
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))} // Newest first
     setOpenScheduleModal={setOpenScheduleModal}
     setAppointmentType={setAppointmentType}
     setSelectedRequest={setSelectedRequest}

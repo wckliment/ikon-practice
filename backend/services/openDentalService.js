@@ -617,6 +617,20 @@ async getSheetDefs() {
   }
 }
 
+  async getPatients() {
+    try {
+      console.log("📥 Fetching all patients from Open Dental");
+      const response = await axios.get(`${this.baseUrl}/patients`, {
+        headers: this.headers
+      });
+      console.log(`✅ Retrieved ${response.data.length} patients`);
+      return response.data;
+    } catch (error) {
+      this._handleError("getPatients", error);
+      throw new Error(`Failed to fetch patients: ${error.message}`);
+    }
+  }
+
 
 async getSheetFieldsByDefId(sheetDefNum) {
   try {
@@ -669,6 +683,7 @@ async createSheet(sheetData) {
     throw new Error(`Failed to create sheet: ${error.message}`);
   }
 }
+
 
 
 async getSheetFieldsBySheetNum(sheetNum) {

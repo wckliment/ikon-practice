@@ -16,6 +16,7 @@ const formSubmissionRoutes = require("./routes/formSubmissionRoutes");
 const customFormSubmissionRoutes = require("./routes/customFormSubmissionRoutes");
 const formAdminRoutes = require("./routes/formAdminRoutes");
 const OpenDentalService = require("./services/openDentalService");
+const patientMatchRoutes = require("./routes/patientMatchRoutes");
 
 
 const app = express();
@@ -62,6 +63,7 @@ app.use("/api/practice", require("./routes/practiceRoutes"));
 app.use("/api/appointments", require("./routes/appointmentRoutes"));
 app.use("/api/providers", require("./routes/providerRoutes"));
 app.use("/api/patients", require("./routes/patientRoutes"));
+app.use("/api/patient-match", patientMatchRoutes);
 app.use("/api/poll", require("./routes/pollRoutes"));
 app.use("/api/messages/hidden", require("./routes/hiddenMessagesRoutes"));
 app.use("/api/appointment-requests", appointmentRequestRoutes);

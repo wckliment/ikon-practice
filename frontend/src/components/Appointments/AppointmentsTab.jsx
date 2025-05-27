@@ -37,14 +37,15 @@ export default function AppointmentsTab({
                 <p className="text-xl font-bold text-gray-800 mr-2">
                   {req.name}
                 </p>
-                {req.has_staff_notes && (
-                  <span
-                    title="Staff Notes Present"
-                    className="text-gray-400 text-lg ml-1"
-                  >
-                    📝
-                  </span>
-                )}
+                {!!req.has_staff_notes && (
+  <span
+    title="Staff Notes Present"
+    className="text-gray-400 text-lg ml-1"
+  >
+    📝
+  </span>
+)}
+
                 <span
                   className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${
                     req.status === "pending"
@@ -83,15 +84,22 @@ export default function AppointmentsTab({
             </div>
 
             <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
-              <button
-                onClick={() => {
-                  setOpenScheduleModal(req);
-                  setAppointmentType(req.appointment_type || "");
-                }}
-                className="text-sm px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
-              >
-                Schedule
-              </button>
+           <button
+  onClick={() => {
+    if (req.status !== "scheduled") {
+      setOpenScheduleModal(req);
+      setAppointmentType(req.appointment_type || "");
+    }
+  }}
+  disabled={req.status === "scheduled"}
+  className={`text-sm px-5 py-2 rounded-lg transition ${
+    req.status === "scheduled"
+      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+      : "bg-green-600 text-white hover:bg-green-700"
+  }`}
+>
+  {req.status === "scheduled" ? "Scheduled" : "Schedule"}
+</button>
 
               <button
                 onClick={async () => {

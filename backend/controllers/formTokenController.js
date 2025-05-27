@@ -4,15 +4,14 @@ const db = require("../config/db");
 // ✅ 1. Generate a form token
 exports.generateCustomFormToken = async (req, res) => {
   try {
-    const { form_id, patient_id } = req.body;
+    const { form_id, patient_id, location_id } = req.body;
 
-    if (!form_id) {
-      return res.status(400).json({ error: "form_id is required" });
+    if (!form_id || !location_id) {
+      return res.status(400).json({ error: "form_id and location_id are required." });
     }
 
     const token = crypto.randomUUID();
     const issued_at = new Date();
-    const location_id = req.user?.location_id;
 
     await db.query(
       `INSERT INTO custom_form_tokens (token, form_id, patient_id, location_id, issued_at)

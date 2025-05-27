@@ -11,6 +11,7 @@ export default function FormsTab() {
   const [submissionDetails, setSubmissionDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isLinkMode, setIsLinkMode] = useState(false);
   const [formPatientInfo, setFormPatientInfo] = useState(null);
   const [loadingLinkedForms, setLoadingLinkedForms] = useState(true);
 
@@ -167,7 +168,20 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
   }}
 >
   🗑 Delete
+            </button>
+{!form.patient_id && (
+<button
+  onClick={() => {
+    setSelectedSubmission(form);
+    setFormPatientInfo(null);
+    setIsLinkMode(true); // <—
+    setShowCreateModal(true);
+  }}
+  className="text-sm text-indigo-600 underline hover:text-indigo-800 mt-1"
+>
+  🔗 Link to Patient
 </button>
+)}
           </div>
         ))
       )}
@@ -357,6 +371,7 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
         email: getValue("email"),
       });
 
+      setIsLinkMode(false);
       setShowCreateModal(true);
     }}
     className="mt-4 text-sm text-green-700 underline hover:text-green-900"
@@ -374,6 +389,7 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
 
       {showCreateModal && (
         <CreatePatientModal
+          isLinkMode={isLinkMode}
           onClose={() => setShowCreateModal(false)}
           prefill={formPatientInfo}
           onPatientCreated={async (newPatient) => {
