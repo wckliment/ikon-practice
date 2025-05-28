@@ -40,6 +40,7 @@ export default function App() {
         <Route path="/forms/fill/:token" element={<FillCustomForm />} />
         <Route path="/tablet-checkin/:locationCode/forms" element={<PendingForms />} />
         <Route path="/tablet-checkin/:locationCode/form/:token" element={<FillCustomForm />} />
+        <Route path="/forms/custom/:token" element={<FillCustomForm />} />
         <Route path="/forms/builder" element={<FormBuilder />} />
         <Route path="/forms/thank-you" element={<ThankYou />} />
         <Route path="/forms/manage" element={<FormManagement />} />
