@@ -120,7 +120,7 @@ const fetchOperatories = async () => {
       if (searchPatientTerm) {
         try {
           setLoadingPatients(true);
-          const res = await axios.get(`/api/patients?search=${encodeURIComponent(searchPatientTerm)}`, {
+          const res = await axios.get(`/api/patients/search?search=${encodeURIComponent(searchPatientTerm)}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
           });
 
