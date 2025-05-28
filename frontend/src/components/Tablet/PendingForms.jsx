@@ -9,8 +9,8 @@ const PendingForms = ({ patient, locationCode, onComplete }) => {
   const navigate = useNavigate();
 
 
-  const handleFormStart = (token) => {
-  navigate(`/tablet-checkin/${locationCode}/form/${token}`);
+const handleFormStart = (token) => {
+  navigate(`/forms/fill/${token}?tablet=true&locationCode=${locationCode}`);
 };
 
 useEffect(() => {

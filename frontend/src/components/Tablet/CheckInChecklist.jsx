@@ -8,6 +8,13 @@ const CheckInChecklist = ({ patient, appointment, locationCode, onComplete }) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+useEffect(() => {
+  const completed = localStorage.getItem("formCompleted") === "true";
+  if (completed) {
+    setFormsCompleted(true);
+  }
+}, []);
+
   const isReady = formsCompleted && paymentCollected && contactVerified;
 
   const handleCompleteCheckIn = async () => {
@@ -17,27 +24,31 @@ const CheckInChecklist = ({ patient, appointment, locationCode, onComplete }) =>
   try {
     const token = localStorage.getItem("tabletToken");
 
-
-    // 🧾 Helpful log to verify what's being sent
     console.log("📦 Submitting check-in for:", {
       patient,
       appointment,
       locationCode,
     });
 
-   await axios.post(
-  "/api/tablet/tablet-checkin",
-  {
-    patient,
-    appointment, // ✅ send full original object from patientLookup
-    locationCode,
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
+    await axios.post(
+      "/api/tablet/tablet-checkin",
+      {
+        patient,
+        appointment,
+        locationCode,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    // ✅ Clean up after check-in
+    localStorage.removeItem("tabletPatientData");
+    localStorage.removeItem("tabletAppointment");
+    localStorage.removeItem("pendingTabletForms");
+    localStorage.removeItem("formCompleted");
 
     onComplete(); // Proceed to the final screen
   } catch (err) {

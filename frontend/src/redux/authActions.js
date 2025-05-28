@@ -11,7 +11,7 @@ export const handleLogin = (email, password) => async (dispatch) => {
     // Store both tokens in localStorage
     localStorage.setItem("token", data.token);
     localStorage.setItem("refreshToken", data.refreshToken);
-    localStorage.setItem("userId", data.user.id); 
+    localStorage.setItem("userId", data.user.id);
   } catch (error) {
     console.error("Login failed:", error.message);
   }
@@ -19,12 +19,15 @@ export const handleLogin = (email, password) => async (dispatch) => {
 
 // Add refresh token function
 export const refreshToken = async () => {
-  try {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (!refreshToken) {
-      throw new Error("No refresh token available");
-    }
+  const refreshToken = localStorage.getItem("refreshToken");
 
+  // ✅ Exit early without throwing if no refresh token — safe for tablet
+  if (!refreshToken) {
+    console.warn("No refresh token available — skipping refresh.");
+    return null;
+  }
+
+  try {
     const response = await fetch('/api/auth/refresh', {
       method: 'POST',
       headers: {
@@ -43,7 +46,6 @@ export const refreshToken = async () => {
     return data.token;
   } catch (error) {
     console.error("Token refresh failed:", error);
-    // Clear tokens on error
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     throw error;

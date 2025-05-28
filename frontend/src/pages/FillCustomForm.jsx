@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import SignaturePad from "react-signature-canvas";
+import { toast } from "react-toastify";
 
 export default function FillCustomForm() {
   const { token } = useParams();
@@ -11,6 +12,10 @@ export default function FillCustomForm() {
   const [loading, setLoading] = useState(true);
   const [groupedSections, setGroupedSections] = useState([]);
   const signaturePads = useRef({});
+  const [searchParams] = useSearchParams();
+  const isTablet = searchParams.get("tablet") === "true";
+  const locationCode = searchParams.get("locationCode");
+  const navigate = useNavigate();
 
 useEffect(() => {
   const fetchFormByToken = async () => {
@@ -95,34 +100,56 @@ const handleSubmit = async () => {
       answers: answerArray,
     };
 
-    // 4. Decide which endpoint to hit
-    const submissionUrl = isPublic
+// 4. Decide which endpoint to hit
+const submissionUrl = isPublic
   ? `/api/form-submissions/public` // ✅ matches updated backend route
   : `/api/forms/${form.id}/submissions`;
 
-    const res = await axios.post(submissionUrl, payload, {
-      headers: isPublic
-        ? {}
-        : { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+// ✅ Get correct token before sending the request
+const token = isTablet
+  ? localStorage.getItem("tabletToken")
+  : localStorage.getItem("token");
 
-    const submissionId = res.data.submission_id;
+// ✅ Send the submission request with or without auth
+const res = await axios.post(submissionUrl, payload, {
+  headers: isPublic ? {} : { Authorization: `Bearer ${token}` },
+  skipRefresh: isTablet, // ✅ This prevents redirect during tablet usage
+});
 
-    // 5. Upload PDF if internal
-    if (!isPublic) {
-      await axios.post(`/api/forms/${form.id}/submissions/${submissionId}/upload`, {}, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      });
+const submissionId = res.data.submission_id;
+
+ // 5. Upload PDF if internal
+if (!isPublic) {
+  const uploadToken = isTablet
+    ? localStorage.getItem("tabletToken")
+    : localStorage.getItem("token");
+
+  await axios.post(
+    `/api/forms/${form.id}/submissions/${submissionId}/upload`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${uploadToken || ""}`,
+      },
     }
+  );
+}
 
     // 6. Confirmation
-    alert("✅ Form submitted" + (isPublic ? "" : " and uploaded to Open Dental!"));
+if (!isTablet) {
+  toast.success(`✅ Form submitted${isPublic ? "" : " and uploaded to Open Dental!"}`);
+}
 
-    if (form?.name) {
-      localStorage.setItem(`formCompleted_${form.name}`, "true");
-    }
+
+   if (isTablet) {
+  localStorage.setItem("formCompleted", "true");
+}
+
+
+if (isTablet && locationCode) {
+  navigate(`/tablet-checkin/${locationCode}?step=4`);
+  return;
+}
 
     // ✅ Cross-tab sync to ikonConnect
 try {

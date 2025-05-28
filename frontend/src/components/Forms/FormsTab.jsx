@@ -392,6 +392,7 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
           isLinkMode={isLinkMode}
           onClose={() => setShowCreateModal(false)}
           prefill={formPatientInfo}
+
           onPatientCreated={async (newPatient) => {
             setShowCreateModal(false);
 
@@ -433,6 +434,11 @@ const visibleLinkedForms = linkedForms.filter(f => !f.hidden_by_user);
               ]);
               setUnlinkedForms(unlinkedRes.data);
               setLinkedForms(linkedRes.data);
+
+              // ✅ FIX: clear stale selected form data
+    setSelectedSubmission(null);
+              setSubmissionDetails(null);
+
             } catch (err) {
               console.error("❌ Error during form upload or linking:", err);
               alert("Something went wrong while uploading the form to Open Dental.");

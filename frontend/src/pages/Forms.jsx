@@ -28,9 +28,9 @@ const Forms = () => {
       if (searchPatientTerm) {
         try {
           setLoadingPatients(true);
-          const res = await axios.get(`/api/patients?search=${encodeURIComponent(searchPatientTerm)}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
-          });
+          const res = await axios.get(`/api/patients/search?search=${encodeURIComponent(searchPatientTerm)}`, {
+  headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+});
 
           const options = res.data.map((pat) => ({
             label: `${pat.FName} ${pat.LName}`,
@@ -117,7 +117,12 @@ const handleSendForm = async () => {
         ? "/api/custom-form-tokens/tablet"
         : "/api/custom-form-tokens/generate";
 
-    console.log("📤 Sending form via", method, "to", endpoint);
+
+
+      console.log("📦 Sending payload:", {
+      form_id: selectedFormId,
+      patient_id: selectedPatient.value,
+    });
 
     const res = await axios.post(
       endpoint,
@@ -164,14 +169,18 @@ const handleSendForm = async () => {
     <label className="block text-sm font-medium text-gray-700 mb-1">
       Search Patient
     </label>
-    <ReactSelect
-      placeholder="Start typing to search patients..."
-      isLoading={loadingPatients}
-      options={patientOptions}
-      onInputChange={(input) => setSearchPatientTerm(input)}
-      onChange={(selected) => setSelectedPatient(selected)}
-      value={selectedPatient}
-    />
+<ReactSelect
+  placeholder="Start typing to search patients..."
+  isLoading={loadingPatients}
+  options={patientOptions}
+  onInputChange={(inputValue) => {
+    setSearchPatientTerm(inputValue); // ✅ update state
+    return inputValue;                // ✅ allow ReactSelect to update its UI
+  }}
+  inputValue={searchPatientTerm}      // ✅ control the input
+  onChange={(selected) => setSelectedPatient(selected)}
+  value={selectedPatient}
+/>
   </div>
 
 

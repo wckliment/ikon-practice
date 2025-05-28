@@ -4,9 +4,10 @@ const formSubmissionController = require('../controllers/formSubmissionControlle
 const authenticateUser = require('../middleware/authMiddleware');
 const db = require('../config/db');
 const { generateFormPdf } = require('../utils/generateFormPdf');
+const authenticateFlexible = require('../middleware/authenticateFlexible');
 
-// ✅ Staff form submission (requires auth)
-router.post("/", authenticateUser, formSubmissionController.submitForm);
+// ✅ Staff or Tablet form submission
+router.post("/", authenticateFlexible, formSubmissionController.submitForm);
 
 // ✅ Public form submission (no auth)
 router.post("/public", formSubmissionController.submitFormPublic);

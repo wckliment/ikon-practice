@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PatientLookupForm from "../components/Tablet/PatientLookupForm";
 import ConfirmAppointment from "../components/Tablet/ConfirmAppointment";
 import CheckInChecklist from "../components/Tablet/CheckInChecklist";
@@ -13,9 +13,21 @@ const TabletCheckIn = () => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
-  const [step, setStep] = useState(1);
+  const [searchParams] = useSearchParams();
+  const initialStep = parseInt(searchParams.get("step") || "1", 10);
+  const [step, setStep] = useState(initialStep);
   const [patientData, setPatientData] = useState(null);
   const [appointment, setAppointment] = useState(null);
+
+  useEffect(() => {
+  if (initialStep >= 3) {
+    const storedPatient = localStorage.getItem("tabletPatientData");
+    const storedApt = localStorage.getItem("tabletAppointment");
+
+    if (storedPatient) setPatientData(JSON.parse(storedPatient));
+    if (storedApt) setAppointment(JSON.parse(storedApt));
+  }
+}, []);
 
   useEffect(() => {
     const token = localStorage.getItem("tabletToken");
@@ -70,10 +82,15 @@ const TabletCheckIn = () => {
         <PatientLookupForm
           locationCode={locationCode}
           onSuccess={(patient, apt) => {
-            setPatientData(patient);
-            setAppointment(apt);
-            goToNext();
-          }}
+  setPatientData(patient);
+  setAppointment(apt);
+
+  // 💾 Store for post-form resume (step 3+)
+  localStorage.setItem("tabletPatientData", JSON.stringify(patient));
+  localStorage.setItem("tabletAppointment", JSON.stringify(apt));
+
+  goToNext();
+}}
         />
       )}
 

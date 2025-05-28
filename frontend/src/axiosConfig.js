@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { refreshToken } from './redux/authActions';
 
-// Flag to prevent multiple refresh attempts
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -16,24 +15,25 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Add response interceptor
 axios.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config;
 
-    // If error is 403 and we haven't tried to refresh yet
-    if (error.response?.status === 403 &&
-        error.response?.data?.error === "Invalid or expired token." &&
-        !originalRequest._retry) {
-
+    // ✅ Respect skipRefresh flag
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.error === "Invalid or expired token." &&
+      !originalRequest._retry &&
+      !originalRequest.skipRefresh
+    ) {
       if (isRefreshing) {
-        // If refresh already in progress, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then(token => {
             originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            originalRequest.skipRefresh = true;
             return axios(originalRequest);
           })
           .catch(err => Promise.reject(err));
@@ -43,21 +43,13 @@ axios.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Attempt to refresh token
         const newToken = await refreshToken();
-
-        // Update authorization header
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-
-        // Process any requests in the queue
+        originalRequest.skipRefresh = true;
         processQueue(null, newToken);
-
         return axios(originalRequest);
       } catch (refreshError) {
-        // Process queue with error
         processQueue(refreshError, null);
-
-        // Redirect to login
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {

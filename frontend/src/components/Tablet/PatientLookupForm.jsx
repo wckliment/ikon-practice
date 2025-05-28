@@ -9,47 +9,56 @@ const PatientLookupForm = ({ locationCode, onSuccess }) => {
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      const token = localStorage.getItem("tabletToken");
+  try {
+    const token = localStorage.getItem("tabletToken");
 
-      const res = await axios.post(
-        "/api/tablet/patient-lookup",
-        {
-          firstName,
-          lastName,
-          dob,
-          locationCode,
+    // 🧪 Add this before the request
+    console.log("📤 Submitting patient lookup:", {
+      firstName,
+      lastName,
+      dob,
+      locationCode,
+      token,
+    });
+
+    const res = await axios.post(
+      "/api/tablet/patient-lookup",
+      {
+        firstName,
+        lastName,
+        dob,
+        locationCode,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const { patient, appointment } = res.data;
-
-      console.log("✅ Lookup Result:");
-      console.log("Patient:", patient);
-      console.log("Appointment:", appointment);
-      console.log("👉 appointment.startTime:", appointment.startTime);
-
-      if (patient && appointment) {
-        onSuccess(patient, appointment);
-      } else {
-        setError("Patient not found for today’s appointments.");
       }
-    } catch (err) {
-      console.error("❌ Lookup error:", err);
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+    );
+
+    const { patient, appointment } = res.data;
+
+    console.log("✅ Lookup Result:");
+    console.log("Patient:", patient);
+    console.log("Appointment:", appointment);
+    console.log("👉 appointment.startTime:", appointment.startTime);
+
+    if (patient && appointment) {
+      onSuccess(patient, appointment);
+    } else {
+      setError("Patient not found for today’s appointments.");
     }
-  };
+  } catch (err) {
+    console.error("❌ Lookup error:", err.response?.data || err.message || err);
+    setError("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">

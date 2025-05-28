@@ -11,8 +11,7 @@ router.use(authenticateUser);
 // ✅ Then initialize OpenDentalService using req.user.location_id
 router.use(initializeOpenDental);
 
-// ✅ Handle the route for searching patients
-router.get('/', searchPatients); // ✅ Search patients by query parameter
+router.get('/search', searchPatients);
 
 // ✅ Handle the route for fetching a single patient by ID
 router.get('/:id', getPatientById);

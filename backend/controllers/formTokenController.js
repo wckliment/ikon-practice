@@ -4,7 +4,10 @@ const db = require("../config/db");
 // ✅ 1. Generate a form token
 exports.generateCustomFormToken = async (req, res) => {
   try {
-    const { form_id, patient_id, location_id } = req.body;
+    const { form_id, patient_id, location_id: bodyLocationId } = req.body;
+
+    // 🧠 Fallback: use logged-in user's location if not explicitly passed
+    const location_id = bodyLocationId || req.user?.location_id;
 
     if (!form_id || !location_id) {
       return res.status(400).json({ error: "form_id and location_id are required." });

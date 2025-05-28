@@ -48,7 +48,13 @@ const handleLogin = async (e) => {
       return;
     }
 
-    // ✅ Pass user back to TabletLoginScreen
+    // ✅ Save for use in FillCustomForm and check-in steps
+    localStorage.setItem("tabletLocationCode", user.location_code);
+
+    // ✅ Navigate to tablet check-in screen
+    navigate(`/tablet-checkin/${user.location_code}`);
+
+    // Optional callback
     if (onLogin) {
       onLogin(user);
     }
@@ -57,6 +63,7 @@ const handleLogin = async (e) => {
     setError("Invalid credentials. Please try again.");
   }
 };
+
 
 
    // 🔍 Add debug log here:

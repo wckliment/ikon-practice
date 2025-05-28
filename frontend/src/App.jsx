@@ -37,11 +37,10 @@ export default function App() {
         <Route path="/ikonconnect" element={<Navigate to="/notifications" replace />} />
         <Route path="/forms" element={<Forms />} />
         <Route path="/analytics" element={<PracticeAnalytics />} />
-        <Route path="/forms/fill/:token" element={<PublicForm />} />
+        <Route path="/forms/fill/:token" element={<FillCustomForm />} />
         <Route path="/tablet-checkin/:locationCode/forms" element={<PendingForms />} />
         <Route path="/tablet-checkin/:locationCode/form/:token" element={<FillCustomForm />} />
         <Route path="/forms/builder" element={<FormBuilder />} />
-        <Route path="/forms/custom/:token" element={<FillCustomForm />} />
         <Route path="/forms/thank-you" element={<ThankYou />} />
         <Route path="/forms/manage" element={<FormManagement />} />
       </Routes>

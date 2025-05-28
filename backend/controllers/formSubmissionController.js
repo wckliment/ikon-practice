@@ -19,7 +19,7 @@ exports.submitForm = async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    const locationId = req.user?.location_id;
+   const locationId = req.user?.location_id || req.auth?.location_id;
     if (!locationId) {
       return res.status(400).json({ error: "Missing location_id for submission." });
     }
@@ -28,10 +28,10 @@ exports.submitForm = async (req, res) => {
     if (!patient_id) {
       const [[tokenRow]] = await connection.query(
         `SELECT patient_id FROM custom_form_tokens
-         WHERE form_id = ?
+         WHERE form_id = ? AND location_id = ?
          ORDER BY issued_at DESC
          LIMIT 1`,
-        [formId]
+        [formId, locationId]
       );
 
       if (!tokenRow || !tokenRow.patient_id) {
