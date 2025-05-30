@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import ReconcilliationTab from "../ReconcilliationTab";
 
-const FormsSidePanel = ({ patientId, patientName, matchedForm, onClose }) => {
+const FormsSidePanel = ({ patientId, patientName, selectedRequest, matchedForm, onClose }) => {
   const [forms, setForms] = useState({ completed: [], pending: [] });
   const [availableForms, setAvailableForms] = useState([]);
   const [selectedFormId, setSelectedFormId] = useState("");
@@ -9,6 +10,7 @@ const FormsSidePanel = ({ patientId, patientName, matchedForm, onClose }) => {
   const [showSendModal, setShowSendModal] = useState(false);
   const [activeTab, setActiveTab] = useState("completed");
   const [isLoadingForms, setIsLoadingForms] = useState(false);
+  const [unlinkedForms, setUnlinkedForms] = useState([]);
 
   // Fetch completed + pending forms
 useEffect(() => {
@@ -61,6 +63,30 @@ useEffect(() => {
 
     if (showSendModal) fetchAvailableForms();
   }, [showSendModal]);
+
+  // ✅ Fetch unlinked forms for new patients based on selectedRequest
+useEffect(() => {
+  const fetchUnlinked = async () => {
+    try {
+      if (patientId || !selectedRequest?.id) return;
+
+      const res = await axios.get(
+        `/api/custom-form-submissions/unlinked/match?requestId=${selectedRequest.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        }
+      );
+
+      setUnlinkedForms(res.data || []);
+    } catch (err) {
+      console.error("❌ Failed to fetch unlinked forms:", err);
+    }
+  };
+
+  fetchUnlinked();
+}, [patientId, selectedRequest]);
 
   const handleSendForm = async () => {
     try {
@@ -210,7 +236,101 @@ useEffect(() => {
 ) : (
   <>
     {activeTab === "completed" ? (
-      <div className="space-y-10">
+            <div className="space-y-10">
+
+
+
+
+{/* 🔗 Unlinked Forms */}
+{!patientId && unlinkedForms.length > 0 && (
+  <div>
+    <h2 className="text-xl font-semibold mb-2 text-red-600">Unlinked Forms</h2>
+    <table className="w-full bg-white rounded shadow overflow-hidden text-sm mb-10">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="px-4 py-2 text-left">Info</th>
+          <th className="px-4 py-2 text-left">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {unlinkedForms.map((form) => (
+          <tr key={form.form_id} className="border-t">
+            <td className="px-4 py-2 text-sm">
+              <div>{form.email}</div>
+              <div>{form.phone}</div>
+              <div>{form.dob}</div>
+            </td>
+            <td className="px-4 py-2 space-x-3">
+              <button
+                className="text-blue-600 hover:underline"
+                onClick={() =>
+                  window.open(
+                    `${import.meta.env.VITE_API_BASE_URL}/api/forms/submissions/${form.form_id}/pdf`,
+                    "_blank"
+                  )
+                }
+              >
+                View
+              </button>
+
+              <button
+                className="text-green-600 hover:underline"
+                onClick={async () => {
+                  const confirmLink = window.confirm("Link this form to this patient?");
+                  if (!confirmLink) return;
+
+                  try {
+                    await axios.post(
+                      `/api/forms/submissions/${form.form_id}/link`,
+                      { patient_id: selectedRequest.patient_id },
+                      {
+                        headers: {
+                          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+                        },
+                      }
+                    );
+                    alert("✅ Form linked!");
+                    onClose(); // optionally refetch or refresh here
+                  } catch (err) {
+                    console.error("Link failed:", err);
+                    alert("Something went wrong.");
+                  }
+                }}
+              >
+                Link to Patient
+              </button>
+
+              <button
+                className="text-red-600 hover:underline"
+                onClick={async () => {
+                  const confirmDelete = window.confirm("Delete this form?");
+                  if (!confirmDelete) return;
+
+                  try {
+                    await axios.delete(`/api/forms/submissions/${form.form_id}`, {
+                      headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+                      },
+                    });
+                    alert("🗑️ Form deleted.");
+                    onClose(); // optionally refetch or refresh here
+                  } catch (err) {
+                    console.error("Delete failed:", err);
+                    alert("Failed to delete.");
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
+
 
         {/* ✅ Completed Forms */}
         <div>
@@ -332,7 +452,14 @@ useEffect(() => {
               </tbody>
             </table>
           )}
+              </div>
+
+      {/* 🧩 Reconciliation Section */}
+        <div className="mt-10 border-t pt-6">
+          <h2 className="text-xl font-semibold mb-4">Reconciliation</h2>
+          <ReconcilliationTab patientId={patientId} />
         </div>
+
       </div>
     ) : (
       <p className="text-center text-gray-400 mt-10">

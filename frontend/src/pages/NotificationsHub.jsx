@@ -11,6 +11,7 @@ import FormsTab from "../components/Forms/FormsTab";
 import AppointmentsTab from "../components/Appointments/AppointmentsTab";
 import PatientTypeIndicator from "../components/PatientTypeIndicator";
 import FormsSidePanel from "../components/Forms/FormsSidePanel";
+import AllRequestsTab from "../components/AllRequestsTab";
 
 const NotificationsHub = () => {
 const [scheduledDate, setScheduledDate] = useState("");
@@ -277,14 +278,50 @@ const handleSaveAppointment = async () => {
         <TopBar />
         <div className="px-6 py-4">
           <div className="px-4 pt-0 pb-2 ml-6">
-            <h1 className="text-5xl font-bold text-gray-800 -mt-5">Notifications Hub</h1>
-            <div className="mt-6 flex space-x-4">
-              <button onClick={() => setActiveTab("new-patients")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === "new-patients" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}>New Patients</button>
-              <button onClick={() => setActiveTab("forms")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === "forms" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}>Forms</button>
-              <button onClick={() => setActiveTab("appointments")} className={`px-4 py-2 rounded-lg text-sm font-semibold ${activeTab === "appointments" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}>Appointments</button>
-            </div>
-          </div>
-
+<h1 className="text-5xl font-bold text-gray-800 -mt-5">Notifications Hub</h1>
+<div className="mt-6 flex space-x-4">
+  <button
+    onClick={() => setActiveTab("all")}
+    className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+      activeTab === "all"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-200 text-gray-700"
+    }`}
+  >
+    All
+  </button>
+  <button
+    onClick={() => setActiveTab("new-patients")}
+    className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+      activeTab === "new-patients"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-200 text-gray-700"
+    }`}
+  >
+    New Patients
+  </button>
+  <button
+    onClick={() => setActiveTab("forms")}
+    className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+      activeTab === "forms"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-200 text-gray-700"
+    }`}
+  >
+    Forms
+  </button>
+  <button
+    onClick={() => setActiveTab("appointments")}
+    className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+      activeTab === "appointments"
+        ? "bg-blue-600 text-white"
+        : "bg-gray-200 text-gray-700"
+    }`}
+  >
+    Appointments
+  </button>
+</div>
+ </div>
           {activeTab === "new-patients" && (
             isLoading ? (
               <div className="flex items-center justify-center h-[300px]">
@@ -362,12 +399,13 @@ const handleSaveAppointment = async () => {
   View Details
         </button>
 
-{req.patient_id ? (
+{req.patient_id || req.matchedForm ? (
   <button
     onClick={() =>
       setOpenFormsPanelPatient({
         id: req.patient_id,
         name: req.name,
+        request: req, // pass the full request so FormsSidePanel has access to matchedForm
       })
     }
     className="text-sm px-5 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition"
@@ -377,7 +415,7 @@ const handleSaveAppointment = async () => {
 ) : (
   <button
     disabled
-    title="Patient not linked yet"
+    title="No patient or form found"
     className="text-sm px-5 py-2 rounded-lg bg-gray-300 text-gray-500 cursor-not-allowed"
   >
     Forms
@@ -404,6 +442,20 @@ const handleSaveAppointment = async () => {
     setSelectedRequest={setSelectedRequest}
                 setStaffNotes={setStaffNotes}
        setOpenFormsPanelPatient={setOpenFormsPanelPatient}
+  />
+            )}
+
+            {activeTab === "all" && (
+  <AllRequestsTab
+    requests={[
+      ...requests.filter((r) => !r.patient_id),
+      ...requests.filter((r) => r.patient_id),
+    ]}
+    setOpenScheduleModal={setOpenScheduleModal}
+    setAppointmentType={setAppointmentType}
+    setSelectedRequest={setSelectedRequest}
+    setStaffNotes={setStaffNotes}
+    setOpenFormsPanelPatient={setOpenFormsPanelPatient}
   />
 )}
         </div>
@@ -734,25 +786,33 @@ const handleSaveAppointment = async () => {
         </div>
         </div>
 
-{openFormsPanelPatient && (
-  <div className="fixed inset-0 z-50 flex justify-end">
-    {/* Backdrop */}
-    <div
-      className="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"
-      onClick={() => setOpenFormsPanelPatient(null)}
-    />
+{openFormsPanelPatient && (() => {
+  const matchedRequest = requests.find(
+    (r) => r.patient_id === openFormsPanelPatient.id
+  );
 
-    {/* Panel */}
-    <div className="relative w-[550px] h-full bg-white shadow-2xl border-l border-gray-200 overflow-y-auto">
-      <FormsSidePanel
-        patientId={openFormsPanelPatient.id}
-              patientName={openFormsPanelPatient.name}
-               matchedForm={selectedRequest?.matchedForm}
-        onClose={() => setOpenFormsPanelPatient(null)}
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"
+        onClick={() => setOpenFormsPanelPatient(null)}
       />
+
+      {/* Panel */}
+      <div className="relative w-[550px] h-full bg-white shadow-2xl border-l border-gray-200 overflow-y-auto">
+        <FormsSidePanel
+          patientId={openFormsPanelPatient.id}
+          patientName={openFormsPanelPatient.name}
+          selectedRequest={matchedRequest}
+          matchedForm={matchedRequest?.matchedForm}
+          onClose={() => setOpenFormsPanelPatient(null)}
+        />
+      </div>
     </div>
-  </div>
-)}
+  );
+})()}
+
 
 
         </>
