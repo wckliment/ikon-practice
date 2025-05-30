@@ -8,6 +8,7 @@ export default function AppointmentsTab({
   setAppointmentType,
   setSelectedRequest,
   setStaffNotes,
+  setOpenFormsPanelPatient,
 }) {
   const returningRequests = requests.filter(
     (req) => req.patient_type === "returning"
@@ -21,115 +22,124 @@ export default function AppointmentsTab({
     );
   }
 
-  return (
-    <div className="mt-6 ml-40 max-w-4xl">
-      <h2 className="text-2xl font-bold text-gray-800 mb-12 mt-4">
-        Returning Patient Appointments
-      </h2>
-      <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-        {returningRequests.map((req) => (
-          <div
-            key={req.id}
-            className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg"
-          >
-            <div className="flex-1">
-              <div className="flex items-center">
-                <p className="text-xl font-bold text-gray-800 mr-2">
-                  {req.name}
-                </p>
-                {!!req.has_staff_notes && (
-  <span
-    title="Staff Notes Present"
-    className="text-gray-400 text-lg ml-1"
-  >
-    📝
-  </span>
-)}
-
+ return (
+  <div className="mt-6 ml-40 max-w-4xl">
+    <h2 className="text-2xl font-bold text-gray-800 mb-12 mt-4">
+      Returning Patient Appointments
+    </h2>
+    <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+      {returningRequests.map((req) => (
+        <div
+          key={req.id}
+          className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg"
+        >
+          <div className="flex-1">
+            <div className="flex items-center">
+              <p className="text-xl font-bold text-gray-800 mr-2">
+                {req.name}
+              </p>
+              {!!req.has_staff_notes && (
                 <span
-                  className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${
-                    req.status === "pending"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : req.status === "scheduled"
-                      ? "bg-green-100 text-green-800"
-                      : req.status === "contacted"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-200 text-gray-700"
-                  }`}
+                  title="Staff Notes Present"
+                  className="text-gray-400 text-lg ml-1"
                 >
-                  {req.status || "Unknown"}
+                  📝
                 </span>
-              </div>
-
-              <div className="flex items-center mt-1">
-                <PatientTypeIndicator type="returning" showLabel={true} />
-              </div>
-
-              <p className="text-sm text-gray-500 mt-1">
-                {req.preferred_time
-                  ? new Date(req.preferred_time).toLocaleDateString(undefined, {
-                      dateStyle: "long",
-                    })
-                  : "No preferred date"}{" "}
-                • {req.appointment_type}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}
-              </p>
-              {req.notes && (
-                <p className="text-sm text-gray-400 mt-1 italic">
-                  {req.notes}
-                </p>
               )}
+
+              <span
+                className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${
+                  req.status === "pending"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : req.status === "scheduled"
+                    ? "bg-green-100 text-green-800"
+                    : req.status === "contacted"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {req.status || "Unknown"}
+              </span>
             </div>
 
-            <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
+            <div className="flex items-center mt-1">
+              <PatientTypeIndicator type="returning" showLabel={true} />
+            </div>
+
+            <p className="text-sm text-gray-500 mt-1">
+              {req.preferred_time
+                ? new Date(req.preferred_time).toLocaleDateString(undefined, {
+                    dateStyle: "long",
+                  })
+                : "No preferred date"}{" "}
+              • {req.appointment_type}
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}
+            </p>
+            {req.notes && (
+              <p className="text-sm text-gray-400 mt-1 italic">{req.notes}</p>
+            )}
+          </div>
+
+          <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                if (req.status !== "scheduled") {
+                  setOpenScheduleModal(req);
+                  setAppointmentType(req.appointment_type || "");
+                }
+              }}
+              disabled={req.status === "scheduled"}
+              className={`text-sm px-5 py-2 rounded-lg transition ${
+                req.status === "scheduled"
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-green-600 text-white hover:bg-green-700"
+              }`}
+            >
+              {req.status === "scheduled" ? "Scheduled" : "Schedule"}
+            </button>
+
+            <button
+              onClick={async () => {
+                setSelectedRequest(req);
+                try {
+                  const res = await axios.get(
+                    `/api/appointment-requests/${req.id}/notes?_=${Date.now()}`,
+                    {
+                      headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        "Cache-Control": "no-cache",
+                      },
+                    }
+                  );
+                  setStaffNotes(res.data);
+                } catch (err) {
+                  console.error("❌ Failed to fetch staff notes:", err);
+                  setStaffNotes([]);
+                }
+              }}
+              className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+            >
+              View Details
+            </button>
+
+            {/* 📄 Forms Button */}
            <button
   onClick={() => {
-    if (req.status !== "scheduled") {
-      setOpenScheduleModal(req);
-      setAppointmentType(req.appointment_type || "");
-    }
+    setOpenFormsPanelPatient({
+      id: req.patient_id,
+      name: req.name,
+    });
   }}
-  disabled={req.status === "scheduled"}
-  className={`text-sm px-5 py-2 rounded-lg transition ${
-    req.status === "scheduled"
-      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-      : "bg-green-600 text-white hover:bg-green-700"
-  }`}
+  className="text-sm px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
 >
-  {req.status === "scheduled" ? "Scheduled" : "Schedule"}
+  Forms
 </button>
-
-              <button
-                onClick={async () => {
-                  setSelectedRequest(req);
-                  try {
-                    const res = await axios.get(
-                      `/api/appointment-requests/${req.id}/notes?_=${Date.now()}`,
-                      {
-                        headers: {
-                          Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                          )}`,
-                          "Cache-Control": "no-cache",
-                        },
-                      }
-                    );
-                    setStaffNotes(res.data);
-                  } catch (err) {
-                    console.error("❌ Failed to fetch staff notes:", err);
-                    setStaffNotes([]);
-                  }
-                }}
-                className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
-              >
-                View Details
-              </button>
-            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
-  );
+  </div>
+);
 }

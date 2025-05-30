@@ -10,6 +10,7 @@ import { socket, connectSocket } from "../socket";
 import FormsTab from "../components/Forms/FormsTab";
 import AppointmentsTab from "../components/Appointments/AppointmentsTab";
 import PatientTypeIndicator from "../components/PatientTypeIndicator";
+import FormsSidePanel from "../components/Forms/FormsSidePanel";
 
 const NotificationsHub = () => {
 const [scheduledDate, setScheduledDate] = useState("");
@@ -47,23 +48,39 @@ const [newPatientPhone, setNewPatientPhone] = useState("");
 const [newPatientEmail, setNewPatientEmail] = useState("");
 const [newPatientBirthdate, setNewPatientBirthdate] = useState("");
 const [newPatientGender, setNewPatientGender] = useState("");
+const [openFormsPanelPatient, setOpenFormsPanelPatient] = useState(null);
 
+const fetchRequests = async () => {
+  try {
+    const [requestsRes, matchedFormsRes] = await Promise.all([
+      axios.get("/api/appointment-requests", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }),
+      axios.get("/api/form-submissions/unlinked/match"),
+    ]);
+
+    const mergedRequests = requestsRes.data.map((request) => {
+      const matchedForm = matchedFormsRes.data.find(
+        (form) => form.request_id === request.id
+      );
+      return {
+        ...request,
+        matchedForm: matchedForm || null,
+      };
+    });
+
+    setRequests(mergedRequests);
+  } catch (err) {
+    console.error("❌ Failed to fetch appointment requests or matched forms", err);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 useEffect(() => {
   connectSocket(localStorage.getItem("token") || "");
 
-  const fetchRequests = async () => {
-    try {
-      const response = await axios.get("/api/appointment-requests", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setRequests(response.data);
-    } catch (err) {
-      console.error("❌ Failed to fetch appointment requests", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  fetchRequests();
 
   const fetchProviders = async () => {
     try {
@@ -194,28 +211,47 @@ const handleUpdateRequest = async () => {
 };
 
 
-  const handleSaveAppointment = async () => {
+const handleSaveAppointment = async () => {
   try {
- const appointmentData = {
-  patientId: selectedPatient.value,
-  aptDateTime: `${scheduledDate}T${scheduledTime}`,
-  operatoryId: selectedOperatory,
-  providerId: selectedProvider,
-  notes: scheduleNotes,
-  duration: appointmentDuration,
-  description: appointmentType, // 👈 REQUIRED so it passes the internal check
-  procedures: [{ description: appointmentType }]
-};
+    const appointmentData = {
+      patientId: selectedPatient.value,
+      aptDateTime: `${scheduledDate}T${scheduledTime}`,
+      operatoryId: selectedOperatory,
+      providerId: selectedProvider,
+      notes: scheduleNotes,
+      duration: appointmentDuration,
+      description: appointmentType,
+      procedures: [{ description: appointmentType }],
+    };
 
-
-console.log("📦 Sending appointment with:", {
-  appointmentType,
-  procedures: [{ description: appointmentType }]
-});
-
+    console.log("📦 Sending appointment with:", {
+      appointmentType,
+      procedures: [{ description: appointmentType }],
+    });
 
     await appointmentService.createAppointment(appointmentData);
 
+    // ✅ Step 1: Link this patient to the appointment request
+    if (openScheduleModal?.id && selectedPatient?.value) {
+      try {
+        await axios.put(
+          `/api/appointment-requests/${openScheduleModal.id}/link-patient`,
+          {
+            patient_id: selectedPatient.value,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+            },
+          }
+        );
+        console.log("🔗 Successfully linked patient to appointment request");
+      } catch (err) {
+        console.error("❌ Failed to link patient to request:", err);
+      }
+    }
+
+    // ✅ Step 2: Reset modal state
     setOpenScheduleModal(null);
     setScheduledDate("");
     setScheduledTime("");
@@ -224,16 +260,20 @@ console.log("📦 Sending appointment with:", {
     setSelectedProvider("");
     setSelectedPatient(null);
     setScheduleNotes("");
+    await fetchRequests();
   } catch (err) {
     console.error("❌ Failed to save appointment:", err);
   }
 };
 
 
+
+
   return (
+    <>
     <div className="flex h-screen bg-[#EBEAE6]">
       <Sidebar />
-      <div className="ml-20 w-full">
+      <div className="ml-20 w-full relative">
         <TopBar />
         <div className="px-6 py-4">
           <div className="px-4 pt-0 pb-2 ml-6">
@@ -255,7 +295,7 @@ console.log("📦 Sending appointment with:", {
                 <p className="text-gray-500 text-lg">No new requests yet.</p>
               </div>
             ) : (
-              <div className="mt-6 ml-40 max-w-4xl">
+              <div className="mt-6 ml-20 mr-[500px] max-w-3xl">
                 <h2 className="text-2xl font-bold text-gray-800 mb-12 mt-4">New Requests</h2>
                 <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
                       {requests
@@ -320,7 +360,29 @@ console.log("📦 Sending appointment with:", {
   className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
 >
   View Details
-</button>
+        </button>
+
+{req.patient_id ? (
+  <button
+    onClick={() =>
+      setOpenFormsPanelPatient({
+        id: req.patient_id,
+        name: req.name,
+      })
+    }
+    className="text-sm px-5 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition"
+  >
+    Forms
+  </button>
+) : (
+  <button
+    disabled
+    title="Patient not linked yet"
+    className="text-sm px-5 py-2 rounded-lg bg-gray-300 text-gray-500 cursor-not-allowed"
+  >
+    Forms
+  </button>
+)}
 
 </div>
                     </div>
@@ -340,7 +402,8 @@ console.log("📦 Sending appointment with:", {
     setOpenScheduleModal={setOpenScheduleModal}
     setAppointmentType={setAppointmentType}
     setSelectedRequest={setSelectedRequest}
-    setStaffNotes={setStaffNotes}
+                setStaffNotes={setStaffNotes}
+       setOpenFormsPanelPatient={setOpenFormsPanelPatient}
   />
 )}
         </div>
@@ -668,8 +731,31 @@ console.log("📦 Sending appointment with:", {
           </div>
 
         )}
-      </div>
+        </div>
+        </div>
+
+{openFormsPanelPatient && (
+  <div className="fixed inset-0 z-50 flex justify-end">
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"
+      onClick={() => setOpenFormsPanelPatient(null)}
+    />
+
+    {/* Panel */}
+    <div className="relative w-[550px] h-full bg-white shadow-2xl border-l border-gray-200 overflow-y-auto">
+      <FormsSidePanel
+        patientId={openFormsPanelPatient.id}
+              patientName={openFormsPanelPatient.name}
+               matchedForm={selectedRequest?.matchedForm}
+        onClose={() => setOpenFormsPanelPatient(null)}
+      />
     </div>
+  </div>
+)}
+
+
+        </>
   );
 };
 

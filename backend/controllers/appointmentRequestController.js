@@ -119,3 +119,24 @@ exports.getRequestNotes = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch notes" });
   }
 };
+
+exports.linkPatientToRequest = async (req, res) => {
+  const { id } = req.params;
+  const { patient_id } = req.body;
+
+  if (!patient_id) {
+    return res.status(400).json({ error: "Missing patient_id" });
+  }
+
+  try {
+    await db.execute(
+      'UPDATE appointment_requests SET patient_id = ? WHERE id = ?',
+      [patient_id, id]
+    );
+
+    res.status(200).json({ message: 'Successfully linked appointment request to patient' });
+  } catch (err) {
+    console.error("❌ Failed to link patient_id:", err);
+    res.status(500).json({ error: "Failed to link patient_id" });
+  }
+};

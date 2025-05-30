@@ -92,6 +92,10 @@ router.post("/generate-pdf", authenticateUser, async (req, res) => {
 // ✅ Link a submission to a patient after patient creation
 router.put("/:submissionId/link", authenticateUser, formSubmissionController.linkSubmissionToPatient);
 
+// routes/formSubmissionRoutes.js
+router.get('/unlinked/match', formSubmissionController.getUnlinkedFormSubmissionsMatchedToRequests);
+
+
 router.delete('/:submissionId', authenticateUser, formSubmissionController.deleteSubmission);
 
 

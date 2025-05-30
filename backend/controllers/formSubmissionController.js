@@ -632,3 +632,49 @@ exports.deleteSubmission = async (req, res) => {
     res.status(500).json({ error: "Failed to delete submission." });
   }
 };
+
+exports.getUnlinkedFormSubmissionsMatchedToRequests = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT
+        fs.id AS form_id,
+        email_answer.value AS email,
+        phone_answer.value AS phone,
+        dob_answer.value AS dob,
+        ar.id AS request_id
+      FROM custom_form_submissions fs
+      LEFT JOIN (
+        SELECT a.submission_id, a.value
+        FROM custom_form_answers a
+        JOIN custom_form_fields f ON a.field_id = f.id
+        WHERE f.label = 'Email Address'
+      ) AS email_answer ON email_answer.submission_id = fs.id
+      LEFT JOIN (
+        SELECT a.submission_id, a.value
+        FROM custom_form_answers a
+        JOIN custom_form_fields f ON a.field_id = f.id
+        WHERE f.label = 'Phone Number'
+      ) AS phone_answer ON phone_answer.submission_id = fs.id
+      LEFT JOIN (
+        SELECT a.submission_id, a.value
+        FROM custom_form_answers a
+        JOIN custom_form_fields f ON a.field_id = f.id
+        WHERE f.label = 'Birthdate'
+      ) AS dob_answer ON dob_answer.submission_id = fs.id
+      LEFT JOIN appointment_requests ar
+        ON ar.email = email_answer.value
+        AND ar.phone = phone_answer.value
+        AND ar.dob = STR_TO_DATE(dob_answer.value, '%m/%d/%Y')
+        AND ar.patient_type = 'new'
+      WHERE fs.patient_id IS NULL
+        AND email_answer.value IS NOT NULL
+        AND phone_answer.value IS NOT NULL
+        AND dob_answer.value IS NOT NULL;
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Failed to match unlinked form submissions:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
