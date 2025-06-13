@@ -29,10 +29,11 @@ export default function AppointmentsTab({
     </h2>
     <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
       {returningRequests.map((req) => (
-        <div
-          key={req.id}
-          className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg"
-        >
+       <div
+  key={req.id}
+  onClick={() => setSelectedRequest(req)}
+  className="cursor-pointer bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg"
+>
           <div className="flex-1">
             <div className="flex items-center">
               <p className="text-xl font-bold text-gray-800 mr-2">
@@ -101,38 +102,16 @@ export default function AppointmentsTab({
             </button>
 
             <button
-              onClick={async () => {
-                setSelectedRequest(req);
-                try {
-                  const res = await axios.get(
-                    `/api/appointment-requests/${req.id}/notes?_=${Date.now()}`,
-                    {
-                      headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                        "Cache-Control": "no-cache",
-                      },
-                    }
-                  );
-                  setStaffNotes(res.data);
-                } catch (err) {
-                  console.error("❌ Failed to fetch staff notes:", err);
-                  setStaffNotes([]);
-                }
-              }}
-              className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
-            >
-              View Details
-            </button>
+  disabled
+  className="text-sm px-5 py-2 rounded-lg border border-gray-200 text-gray-400 bg-gray-100 cursor-default"
+>
+  View Details
+</button>
 
             {/* 📄 Forms Button */}
-           <button
-  onClick={() => {
-    setOpenFormsPanelPatient({
-      id: req.patient_id,
-      name: req.name,
-    });
-  }}
-  className="text-sm px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+<button
+  disabled
+  className="text-sm px-5 py-2 rounded-lg bg-purple-200 text-purple-700 cursor-default"
 >
   Forms
 </button>

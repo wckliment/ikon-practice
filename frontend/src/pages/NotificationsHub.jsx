@@ -12,6 +12,7 @@ import AppointmentsTab from "../components/Appointments/AppointmentsTab";
 import PatientTypeIndicator from "../components/PatientTypeIndicator";
 import FormsSidePanel from "../components/Forms/FormsSidePanel";
 import AllRequestsTab from "../components/AllRequestsTab";
+import PatientDetailPanel from "../components/Notifications/PatientDetailPanel";
 
 const NotificationsHub = () => {
 const [scheduledDate, setScheduledDate] = useState("");
@@ -332,83 +333,85 @@ const handleSaveAppointment = async () => {
                 <p className="text-gray-500 text-lg">No new requests yet.</p>
               </div>
             ) : (
-              <div className="mt-6 ml-20 mr-[500px] max-w-3xl">
-                <h2 className="text-2xl font-bold text-gray-800 mb-12 mt-4">New Requests</h2>
-                <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-                      {requests
-  .filter(req => req.patient_type === "new")
-  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)) // newest first
-  .map((req) => (
 
-                    <div key={req.id} className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <p className="text-xl font-bold text-gray-800 mr-2">{req.name}</p>
-                         {!!req.has_staff_notes && (
-  <span title="Staff Notes Present" className="text-gray-400 text-lg ml-1">📝</span>
-)}
 
-                          <span className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${req.status === "pending" ? "bg-yellow-100 text-yellow-800" : req.status === "scheduled" ? "bg-green-100 text-green-800" : req.status === "contacted" ? "bg-blue-100 text-blue-800" : "bg-gray-200 text-gray-700"}`}>{req.status || "Unknown"}</span>
-                        </div>
-                        <div className="flex items-center mt-1">
-                          <PatientTypeIndicator type={req.patient_type} showLabel={true} />
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">{req.preferred_time ? new Date(req.preferred_time).toLocaleDateString(undefined, { dateStyle: "long" }) : "No preferred date"} • {req.appointment_type}</p>
-                        <p className="text-sm text-gray-600 mt-1">📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}</p>
-                        {req.notes && <p className="text-sm text-gray-400 mt-1 italic">{req.notes}</p>}
-                      </div>
 
-                      <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
-{req.status === "scheduled" ? (
-  <button
-    disabled
-    className="text-sm px-5 py-2 rounded-lg bg-gray-300 text-gray-500 cursor-not-allowed"
-  >
-    Scheduled
-  </button>
-) : (
-  <button
-    onClick={() => {
-      setOpenScheduleModal(req);
-      setAppointmentType(req.appointment_type || "");
-    }}
-    className="text-sm px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
-  >
-    Schedule
-  </button>
-)}
 
-<button
-  onClick={async () => {
-    setSelectedRequest(req);
-    try {
-      const res = await axios.get(`/api/appointment-requests/${req.id}/notes?_=${Date.now()}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Cache-Control": "no-cache",
-        },
-      });
-      setStaffNotes(res.data);
-    } catch (err) {
-      console.error("❌ Failed to fetch staff notes:", err);
-      setStaffNotes([]);
-    }
-  }}
-  className="text-sm px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+
+                       <div className="flex w-full h-[calc(100vh-200px)]">
+      {/* Left side: request cards */}
+      <div className="w-1/2 pl-12 pr-6 overflow-y-auto">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 mt-6">New Requests</h2>
+        <div className="space-y-4">
+          {requests
+            .filter(req => req.patient_type === "new")
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .map((req) => (
+              <div
+  key={req.id}
+  onClick={() => setSelectedRequest(req)}
+  className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg cursor-pointer"
 >
-  View Details
-        </button>
+                <div className="flex-1">
+                  <div className="flex items-center">
+                    <p className="text-xl font-bold text-gray-800 mr-2">{req.name}</p>
+                    {!!req.has_staff_notes && (
+                      <span title="Staff Notes Present" className="text-gray-400 text-lg ml-1">📝</span>
+                    )}
+                    <span className={`ml-4 px-3 py-1 rounded-full text-xs font-semibold ${req.status === "pending"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : req.status === "scheduled"
+                        ? "bg-green-100 text-green-800"
+                        : req.status === "contacted"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-200 text-gray-700"
+                      }`}>
+                      {req.status || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex items-center mt-1">
+                    <PatientTypeIndicator type={req.patient_type} showLabel={true} />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {req.preferred_time
+                      ? new Date(req.preferred_time).toLocaleDateString(undefined, { dateStyle: "long" })
+                      : "No preferred date"} • {req.appointment_type}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    📞 {req.phone || "N/A"} | ✉️ {req.email || "N/A"}
+                  </p>
+                  {req.notes && (
+                    <p className="text-sm text-gray-400 mt-1 italic">{req.notes}</p>
+                  )}
+                </div>
+
+                <div className="mt-4 sm:mt-0 sm:ml-4 flex flex-col gap-2">
+                  {req.status === "scheduled" ? (
+                    <button
+                      disabled
+                      className="text-sm px-5 py-2 rounded-lg bg-gray-300 text-gray-500 cursor-not-allowed"
+                    >
+                      Scheduled
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setOpenScheduleModal(req);
+                        setAppointmentType(req.appointment_type || "");
+                      }}
+                      className="text-sm px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
+                    >
+                      Schedule
+                    </button>
+                  )}
+
+{/* Forms */}
+
 
 {req.patient_id || req.matchedForm ? (
   <button
-    onClick={() =>
-      setOpenFormsPanelPatient({
-        id: req.patient_id,
-        name: req.name,
-        request: req, // pass the full request so FormsSidePanel has access to matchedForm
-      })
-    }
-    className="text-sm px-5 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition"
+    className="text-sm px-5 py-2 rounded-lg bg-purple-200 text-purple-700 cursor-default"
+    disabled
   >
     Forms
   </button>
@@ -421,29 +424,64 @@ const handleSaveAppointment = async () => {
     Forms
   </button>
 )}
-
-</div>
-                    </div>
-                  ))}
                 </div>
               </div>
-            )
-          )}
+            ))}
+        </div>
+      </div>
 
+      {/* Right side: patient detail */}
+      <div className="w-1/2 border-l border-gray-300 bg-white overflow-y-auto">
+        {selectedRequest ? (
+          <PatientDetailPanel
+            selectedRequest={selectedRequest}
+            onClose={() => setSelectedRequest(null)}
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-400 italic">
+            Select a request to view details
+          </div>
+        )}
+      </div>
+    </div>
+  )
+)}
+
+      {/* Forms Tab */}
           {activeTab === "forms" && <FormsTab />}
 
           {activeTab === "appointments" && (
-  <AppointmentsTab
-    requests={requests
-      .filter(r => r.patient_type === "returning")
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))} // Newest first
-    setOpenScheduleModal={setOpenScheduleModal}
-    setAppointmentType={setAppointmentType}
-    setSelectedRequest={setSelectedRequest}
-                setStaffNotes={setStaffNotes}
-       setOpenFormsPanelPatient={setOpenFormsPanelPatient}
-  />
-            )}
+  <div className="flex w-full h-[calc(100vh-200px)]">
+    {/* Left Side: Cards */}
+    <div className="w-1/2 overflow-y-auto pr-4">
+      <AppointmentsTab
+        requests={requests
+          .filter(r => r.patient_type === "returning")
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))}
+        setOpenScheduleModal={setOpenScheduleModal}
+        setAppointmentType={setAppointmentType}
+        setSelectedRequest={setSelectedRequest}
+        setStaffNotes={setStaffNotes}
+        setOpenFormsPanelPatient={setOpenFormsPanelPatient}
+      />
+    </div>
+
+    {/* Right Side: Patient Detail */}
+    <div className="w-1/2 border-l border-gray-300 bg-white overflow-y-auto">
+      {selectedRequest ? (
+        <PatientDetailPanel
+          selectedRequest={selectedRequest}
+          onClose={() => setSelectedRequest(null)}
+        />
+      ) : (
+        <div className="h-full flex items-center justify-center text-gray-400 italic">
+          Select a request to view details
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
 
             {activeTab === "all" && (
   <AllRequestsTab
@@ -452,6 +490,7 @@ const handleSaveAppointment = async () => {
       ...requests.filter((r) => r.patient_id),
     ]}
     setOpenScheduleModal={setOpenScheduleModal}
+    selectedRequest={selectedRequest}
     setAppointmentType={setAppointmentType}
     setSelectedRequest={setSelectedRequest}
     setStaffNotes={setStaffNotes}
@@ -460,71 +499,7 @@ const handleSaveAppointment = async () => {
 )}
         </div>
 
-        {/* View Details Modal */}
-        {selectedRequest && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-xl shadow-lg relative">
-              <button
-                onClick={() => {
-                  setSelectedRequest(null);
-                  setStaffNotes([]);
-                  setNewStaffNote("");
-                }}
-                className="absolute top-4 right-4 text-gray-500 hover:text-black"
-              >
-                ✕
-              </button>
-
-              <h2 className="text-2xl font-bold mb-4">{selectedRequest.name}</h2>
-              <p className="text-sm text-gray-600 mb-2">📅 {new Date(selectedRequest.preferred_time).toLocaleString()}</p>
-              <p className="text-sm text-gray-600 mb-2">🦷 {selectedRequest.appointment_type}</p>
-              <p className="text-sm text-gray-600 mb-2">📞 {selectedRequest.phone} | ✉️ {selectedRequest.email}</p>
-
-              {staffNotes.length > 0 && (
-                <div className="mt-4">
-                  <label className="block text-sm font-semibold mb-2">Past Staff Notes</label>
-                  <div className="space-y-3 max-h-40 overflow-y-auto">
-                    {staffNotes.map((note) => (
-                      <div key={note.id} className="p-2 bg-gray-100 rounded-md">
-                        <div className="text-xs text-gray-500 mb-1">
-                          {note.user_name} • {new Date(note.created_at).toLocaleString()}
-                        </div>
-                        <div className="text-sm text-gray-700">{note.note_text}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <label className="block mt-4 text-sm font-semibold">Add New Staff Note</label>
-              <textarea
-                rows="3"
-                value={newStaffNote}
-                onChange={(e) => setNewStaffNote(e.target.value)}
-                placeholder="Type a new staff note here..."
-                className="w-full mt-1 border border-gray-300 rounded-lg p-2"
-              />
-
-              <label className="block mt-4 text-sm font-semibold">Status</label>
-              <select
-                value={selectedRequest.status}
-                onChange={(e) => setSelectedRequest({ ...selectedRequest, status: e.target.value })}
-                className="w-full mt-1 border border-gray-300 rounded-lg p-2"
-              >
-                <option value="pending">Pending</option>
-                <option value="contacted">Contacted</option>
-                <option value="scheduled">Scheduled</option>
-              </select>
-
-              <button
-                onClick={handleUpdateRequest}
-                className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                Update Request
-              </button>
-            </div>
-          </div>
-        )}
+   {/* View Details Modal disabled in favor of Master–Detail panel */}
 
         {/* Schedule Modal */}
         {openScheduleModal && (
