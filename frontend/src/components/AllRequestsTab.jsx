@@ -5,9 +5,15 @@ import PatientTypeIndicator from "./PatientTypeIndicator";
 export default function AllRequestsTab({
   requests,
   selectedRequest,
-  setSelectedRequest,
+  handleSelectRequest,
   setOpenScheduleModal,
   setAppointmentType,
+  staffNotes,
+  setStaffNotes,
+  newStaffNote,
+  setNewStaffNote,
+  setSelectedRequest,
+  handleUpdateRequest,
 })
 {
     console.log("📦 Currently selectedRequest:", selectedRequest);
@@ -21,8 +27,8 @@ export default function AllRequestsTab({
             <div
               key={req.id}
               onClick={() => {
-  console.log("🖱️ Card clicked, setting selectedRequest to:", req);
-  setSelectedRequest(req);
+  console.log("🖱️ Card clicked, calling handleSelectRequest with:", req);
+  handleSelectRequest(req);
 }}
               className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg cursor-pointer"
             >
@@ -93,10 +99,15 @@ export default function AllRequestsTab({
       {/* Right side: Patient Detail */}
       <div className="w-1/2 border-l border-gray-300 bg-white overflow-y-auto">
         {selectedRequest ? (
-          <PatientDetailPanel
-            selectedRequest={selectedRequest}
-            onClose={() => setSelectedRequest(null)}
-          />
+        <PatientDetailPanel
+  selectedRequest={selectedRequest}
+  onClose={() => setSelectedRequest(null)}
+  staffNotes={staffNotes}
+  setStaffNotes={setStaffNotes}
+  newStaffNote={newStaffNote}
+  setNewStaffNote={setNewStaffNote}
+  handleUpdateRequest={handleUpdateRequest}
+/>
         ) : (
           <div className="h-full flex items-center justify-center text-gray-400 italic">
             Select a request to view details

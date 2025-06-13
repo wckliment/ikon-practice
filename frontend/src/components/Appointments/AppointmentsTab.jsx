@@ -9,6 +9,7 @@ export default function AppointmentsTab({
   setSelectedRequest,
   setStaffNotes,
   setOpenFormsPanelPatient,
+  handleSelectRequest,
 }) {
   const returningRequests = requests.filter(
     (req) => req.patient_type === "returning"
@@ -31,7 +32,7 @@ export default function AppointmentsTab({
       {returningRequests.map((req) => (
        <div
   key={req.id}
-  onClick={() => setSelectedRequest(req)}
+  onClick={() => handleSelectRequest(req)}
   className="cursor-pointer bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg"
 >
           <div className="flex-1">

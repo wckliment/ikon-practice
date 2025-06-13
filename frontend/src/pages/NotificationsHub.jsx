@@ -95,6 +95,8 @@ useEffect(() => {
     }
   };
 
+
+
 const fetchOperatories = async () => {
   try {
     const locationCode = user?.location_code;
@@ -129,7 +131,21 @@ const fetchOperatories = async () => {
   return () => {
     socket.off("newAppointmentRequest");
   };
-}, []); // ✅ <<< This closes the useEffect
+}, []);
+
+useEffect(() => {
+  if (activeTab === "all" && selectedRequest?.id) {
+    const fetchNotes = async () => {
+      try {
+        const response = await axios.get(`/api/staff-notes/${selectedRequest.id}`);
+        setStaffNotes(response.data);
+      } catch (err) {
+        console.error("Failed to fetch staff notes:", err);
+      }
+    };
+    fetchNotes();
+  }
+}, [activeTab, selectedRequest]);
 
 
 
@@ -164,39 +180,59 @@ const fetchOperatories = async () => {
   }, [searchPatientTerm]);
 
 
-const handleUpdateRequest = async () => {
+const handleUpdateRequest = async (id = selectedRequest.id, updates = {}) => {
   try {
-    // 1️⃣ Update the status
-    await axios.put(
-      `/api/appointment-requests/${selectedRequest.id}/status`,
-      {
-        status: selectedRequest.status,
-        handled_by: user.id,
-        staff_notes: newStaffNote, // ✅ You can pass this directly now
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    const payload = {
+      status: updates.status || selectedRequest.status,
+      handled_by: user.id,
+      staff_notes: newStaffNote.trim() !== "" ? newStaffNote : undefined,
+    };
 
-    // 2️⃣ Update local requests state to reflect new status + staff notes
+    // 1️⃣ Update the status or staff note
+    await axios.put(`/api/appointment-requests/${id}/status`, payload, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    // 2️⃣ Update local requests array
     setRequests((prev) =>
       prev.map((req) =>
-        req.id === selectedRequest.id
+        req.id === id
           ? {
               ...req,
-              status: selectedRequest.status,
-              has_staff_notes: newStaffNote.trim() !== "" || req.has_staff_notes,
+              status: updates.status || req.status,
+              has_staff_notes:
+                newStaffNote.trim() !== "" || req.has_staff_notes,
             }
           : req
       )
     );
 
-    // 3️⃣ Re-fetch staff notes
+    // 3️⃣ Only re-fetch notes if one was submitted
+    if (newStaffNote.trim() !== "") {
+      const res = await axios.get(`/api/appointment-requests/${id}/notes`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Cache-Control": "no-cache",
+        },
+      });
+      setStaffNotes(res.data);
+      setNewStaffNote("");
+    }
+  } catch (err) {
+    console.error("❌ Failed to update request or fetch notes:", err);
+  }
+};
+
+
+const handleSelectRequest = async (req) => {
+  try {
+    console.log("🖱️ handleSelectRequest triggered for:", req);
+    setSelectedRequest(req);
+
     const res = await axios.get(
-      `/api/appointment-requests/${selectedRequest.id}/notes?_=${Date.now()}`,
+      `/api/appointment-requests/${req.id}/notes?_=${Date.now()}`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -206,9 +242,9 @@ const handleUpdateRequest = async () => {
     );
 
     setStaffNotes(res.data);
-    setNewStaffNote("");
   } catch (err) {
-    console.error("❌ Failed to update request or fetch notes:", err);
+    console.error("❌ Failed to fetch staff notes in handleSelectRequest:", err);
+    setStaffNotes([]);
   }
 };
 
@@ -349,7 +385,7 @@ const handleSaveAppointment = async () => {
             .map((req) => (
               <div
   key={req.id}
-  onClick={() => setSelectedRequest(req)}
+  onClick={() => handleSelectRequest(req)}
   className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between transition hover:shadow-lg cursor-pointer"
 >
                 <div className="flex-1">
@@ -434,9 +470,14 @@ const handleSaveAppointment = async () => {
       <div className="w-1/2 border-l border-gray-300 bg-white overflow-y-auto">
         {selectedRequest ? (
           <PatientDetailPanel
-            selectedRequest={selectedRequest}
-            onClose={() => setSelectedRequest(null)}
-          />
+  selectedRequest={selectedRequest}
+  onClose={() => setSelectedRequest(null)}
+  staffNotes={staffNotes}
+  newStaffNote={newStaffNote}
+  setNewStaffNote={setNewStaffNote}
+  setSelectedRequest={setSelectedRequest}
+  handleUpdateRequest={handleUpdateRequest}
+/>
         ) : (
           <div className="h-full flex items-center justify-center text-gray-400 italic">
             Select a request to view details
@@ -463,6 +504,7 @@ const handleSaveAppointment = async () => {
         setSelectedRequest={setSelectedRequest}
         setStaffNotes={setStaffNotes}
         setOpenFormsPanelPatient={setOpenFormsPanelPatient}
+        handleSelectRequest={handleSelectRequest}
       />
     </div>
 
@@ -470,9 +512,14 @@ const handleSaveAppointment = async () => {
     <div className="w-1/2 border-l border-gray-300 bg-white overflow-y-auto">
       {selectedRequest ? (
         <PatientDetailPanel
-          selectedRequest={selectedRequest}
-          onClose={() => setSelectedRequest(null)}
-        />
+  selectedRequest={selectedRequest}
+  onClose={() => setSelectedRequest(null)}
+  staffNotes={staffNotes}
+  newStaffNote={newStaffNote}
+  setNewStaffNote={setNewStaffNote}
+  setSelectedRequest={setSelectedRequest}
+  handleUpdateRequest={handleUpdateRequest}
+/>
       ) : (
         <div className="h-full flex items-center justify-center text-gray-400 italic">
           Select a request to view details
@@ -482,21 +529,26 @@ const handleSaveAppointment = async () => {
   </div>
 )}
 
-
-            {activeTab === "all" && (
+{activeTab === "all" && (
   <AllRequestsTab
     requests={[
       ...requests.filter((r) => !r.patient_id),
       ...requests.filter((r) => r.patient_id),
     ]}
-    setOpenScheduleModal={setOpenScheduleModal}
     selectedRequest={selectedRequest}
+    handleSelectRequest={handleSelectRequest}
+    setOpenScheduleModal={setOpenScheduleModal}
     setAppointmentType={setAppointmentType}
-    setSelectedRequest={setSelectedRequest}
+    staffNotes={staffNotes}
     setStaffNotes={setStaffNotes}
-    setOpenFormsPanelPatient={setOpenFormsPanelPatient}
+    newStaffNote={newStaffNote}
+    setNewStaffNote={setNewStaffNote}
+    setSelectedRequest={setSelectedRequest}
+    handleUpdateRequest={handleUpdateRequest}
   />
 )}
+
+
         </div>
 
    {/* View Details Modal disabled in favor of Master–Detail panel */}
