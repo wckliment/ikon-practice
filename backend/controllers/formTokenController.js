@@ -99,6 +99,8 @@ exports.getTokensByPatient = async (req, res) => {
   const { patNum } = req.params;
 
   try {
+    console.log("🔍 Fetching tokens for patient:", patNum);
+
     const [rows] = await db.query(
       `SELECT
          t.token,
@@ -107,7 +109,7 @@ exports.getTokensByPatient = async (req, res) => {
          t.method,
          t.id
        FROM custom_form_tokens t
-       JOIN custom_forms f ON t.form_id = f.id
+       LEFT JOIN custom_forms f ON t.form_id = f.id
        WHERE t.patient_id = ?
          AND NOT EXISTS (
            SELECT 1 FROM custom_form_submissions s
@@ -117,9 +119,10 @@ exports.getTokensByPatient = async (req, res) => {
       [patNum]
     );
 
+    console.log(`✅ Tokens fetched: ${rows.length}`);
     res.json(rows);
   } catch (err) {
-    console.error("❌ Error fetching tokens for patient:", err);
+    console.error("❌ SQL Error in getTokensByPatient:", err.message);
     res.status(500).json({ error: "Failed to fetch form tokens." });
   }
 };

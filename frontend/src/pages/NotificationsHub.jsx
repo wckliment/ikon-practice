@@ -228,8 +228,14 @@ const handleUpdateRequest = async (id = selectedRequest.id, updates = {}) => {
 
 const handleSelectRequest = async (req) => {
   try {
-    console.log("🖱️ handleSelectRequest triggered for:", req);
-    setSelectedRequest(req);
+    const enrichedRequest = {
+      ...req,
+      location_id: req.location_id || user?.location_id || 1, // fallback to 1
+    };
+
+    console.log("🖱️ handleSelectRequest (enriched):", enrichedRequest); // ✅ safe now
+
+    setSelectedRequest(enrichedRequest);
 
     const res = await axios.get(
       `/api/appointment-requests/${req.id}/notes?_=${Date.now()}`,

@@ -24,6 +24,9 @@ const PatientDetailPanel = ({
 
   const [localStatus, setLocalStatus] = useState(selectedRequest.status || "");
   const [forms, setForms] = useState({ completed: [], pending: [] });
+  const [availableForms, setAvailableForms] = useState([]);
+  const [selectedFormId, setSelectedFormId] = useState("");
+  const [method, setMethod] = useState("text");
 
   // ⏱ Sync local status with selectedRequest when changed
 useEffect(() => {
@@ -44,41 +47,57 @@ useEffect(() => {
   };
 
 
+const fetchForms = async () => {
+  if (!selectedRequest?.patient_id) {
+    console.warn("⚠️ No patient_id found, skipping forms fetch.");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+
+  try {
+    const [completedRes, pendingRes] = await Promise.all([
+      axios.get(`/api/forms/submissions/patient/${selectedRequest.patient_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      axios.get(`/api/custom-form-tokens/patient/${selectedRequest.patient_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
+
+    console.log("✅ Completed Forms:", completedRes.data);
+    console.log("🕓 Pending Forms:", pendingRes.data);
+
+    setForms({
+      completed: completedRes.data || [],
+      pending: pendingRes.data || [],
+    });
+  } catch (err) {
+    console.error("❌ Failed to fetch forms for patient:", err);
+  }
+};
+
+  useEffect(() => {
+  fetchForms();
+}, [selectedRequest]);
+
 useEffect(() => {
-  console.log("🔍 selectedRequest in forms fetch:", selectedRequest);
-
-  const fetchForms = async () => {
-    if (!selectedRequest?.patient_id) {
-      console.warn("⚠️ No patient_id found, skipping forms fetch.");
-      return;
-    }
-
-    const token = localStorage.getItem("token");
-
+  const fetchAvailableForms = async () => {
     try {
-      const [completedRes, pendingRes] = await Promise.all([
-        axios.get(`/api/forms/submissions/patient/${selectedRequest.patient_id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        axios.get(`/api/custom-form-tokens/patient/${selectedRequest.patient_id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      console.log("✅ Completed Forms:", completedRes.data);
-      console.log("🕓 Pending Forms:", pendingRes.data);
-
-      setForms({
-        completed: completedRes.data || [],
-        pending: pendingRes.data || [],
+      const res = await axios.get("/api/forms", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
+      console.log("📋 Available forms fetched:", res.data);
+      setAvailableForms(res.data);
     } catch (err) {
-      console.error("❌ Failed to fetch forms for patient:", err);
+      console.error("❌ Failed to fetch form templates", err);
     }
   };
 
-  fetchForms();
-}, [selectedRequest]);
+  fetchAvailableForms();
+}, []);
+
+
 
   return (
     <div className="flex flex-col h-full overflow-y-auto p-6 bg-white border-l border-gray-300">
@@ -154,6 +173,82 @@ useEffect(() => {
   <option value="scheduled">Scheduled</option>
 </select>
         </div>
+
+
+        {/* Forms Section */}
+        {/* ➕ Send Form Section */}
+<div className="mt-8">
+  <h3 className="text-sm font-semibold mb-2 text-gray-700">Send Form</h3>
+
+  {/* Dropdown */}
+  <select
+    value={selectedFormId}
+    onChange={(e) => setSelectedFormId(e.target.value)}
+    className="w-full mb-2 p-2 border rounded text-sm"
+  >
+    <option value="">Select a form...</option>
+    {availableForms.map((form) => (
+  <option key={form.id} value={form.id}>
+    {form.name}
+  </option>
+))}
+  </select>
+
+  {/* Radio Buttons */}
+  <div className="flex items-center mb-2 space-x-4 text-sm">
+    {["text", "email", "tablet"].map((option) => (
+      <label key={option} className="flex items-center space-x-1">
+        <input
+          type="radio"
+          value={option}
+          checked={method === option}
+          onChange={(e) => setMethod(e.target.value)}
+        />
+        <span>{option}</span>
+      </label>
+    ))}
+  </div>
+
+  {/* Submit Button */}
+  <button
+    disabled={!selectedFormId || !method}
+onClick={async () => {
+  try {
+    const payload = {
+      patient_id: selectedRequest.patient_id,
+      form_id: selectedFormId,
+      method,
+      location_id: selectedRequest.location_id,
+    };
+
+    console.log("📬 Sending form token with payload:", payload);
+
+    await axios.post("/api/custom-form-tokens/generate", payload, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    });
+
+    setSelectedFormId("");
+    setMethod(""); // optional: reset delivery method
+    alert("✅ Form sent!");
+
+    // 📬 Refresh the forms list
+    fetchForms();
+  } catch (err) {
+    console.error("❌ Failed to send form", err);
+    alert("Failed to send form.");
+  }
+}}
+    className={`mt-2 px-4 py-2 text-sm rounded transition ${
+      !selectedFormId || !method
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-green-600 text-white hover:bg-green-700"
+    }`}
+  >
+    ➕ Send Form
+  </button>
+</div>
 
       {/* ✅ Insert Forms Section Here */}
         {forms.completed.length > 0 && (
